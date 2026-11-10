@@ -4,7 +4,7 @@
 
 Atlasio is a governed subsurface data workspace with a map-led way to discover and use the data. Read [PRD.md](PRD.md) before proposing architecture or building features. The map is a discovery and inspection surface; data stewardship, provenance, versioning, and coordinate integrity are the core product.
 
-Atlasio is intended for companies in any country. Libya is a convenient first pilot dataset because the founder can access and evaluate local material. Design the core for global use and eventual extension to other GIS domains. Do not encode a single company, country, basin, datum, or petroleum vocabulary as an unchangeable global assumption.
+Atlasio is intended for companies in any country. Test the core with material from multiple regions and design for eventual extension to other GIS domains. Do not encode a single company, country, basin, datum, or petroleum vocabulary as an unchangeable global assumption.
 
 ## Scope and sequencing
 
@@ -53,4 +53,5 @@ Atlasio is intended for companies in any country. Libya is a convenient first pi
 
 - Apply the Alfazen `versioning-prefixed` skill for this repository. Do not use `versioning-alfazen` or `versioning-classic` here.
 - Keep root `VERSION` as plain `m.n.p`. Increment `p` for every `feat`, `fix`, or `perf` commit; documentation and maintenance commits leave it unchanged.
-- Prefix each commit subject with `v{VERSION}` only. Put the UTC `yymmddc` build number in the `Alfazen-Build` trailer, never in the subject. See [VERSIONING.md](VERSIONING.md) for the hook workflow.
+- Prefix each commit subject with `v{VERSION}` only. Put the UTC `yymmddc` build number in the `Alfazen-Build` trailer, never in the subject. See [versioning.md](docs/versioning.md) for the hook workflow.
+- When a feature is complete and verified, commit it with its `VERSION` patch bump and push it without waiting for a separate request.

@@ -9,7 +9,7 @@
 
 Oil and gas teams often have well, seismic, interpretation, drilling, and production data scattered across applications, file shares, physical archives, and personal projects. A map helps people find an asset, but the harder task is establishing what each dataset represents, whether it is trustworthy, which coordinate system it uses, and which version was used for a decision.
 
-Atlasio will give data managers a controlled place to ingest, validate, reconcile, version, and publish subsurface data. Geoscientists and engineers will use search, records, and an excellent map to discover that data and understand its provenance. The product is intended for oil and gas organizations in any country. Libya is a convenient first pilot location because relevant local data is easier for the founder to access and evaluate; it does not define the product's geographic scope. The data model and CRS engine must work across jurisdictions, including Canada and the United States, and leave room for later non-oil-and-gas GIS domains.
+Atlasio will give data managers a controlled place to ingest, validate, reconcile, version, and publish subsurface data. Geoscientists and engineers will use search, records, and an excellent map to discover that data and understand its provenance. The product is intended for oil and gas organizations in any country. Pilot material from multiple countries will test the global data model and CRS engine. The platform should leave room for later non-oil-and-gas GIS domains.
 
 ## 2. Product position
 
@@ -41,7 +41,7 @@ Atlasio's initial differentiation is a modern, map-led interface over rigorous, 
 4. **Map and record agree.** A feature selected on the map opens the same authoritative record found by search.
 5. **Large files stay practical.** Keep massive seismic volumes in managed object storage or an external governed location; index and preview them through Atlasio.
 6. **Working data stays distinguishable.** Draft interpretations can coexist with approved corporate versions.
-7. **Global core, local validation.** Country, company, basin, datum, and regulatory conventions are configurable; Libyan pilot data tests the core rather than defining it.
+7. **Global core, local validation.** Country, company, basin, datum, and regulatory conventions are configurable; pilot data from multiple regions tests the core without defining it.
 
 ## 5. Core data concepts
 
@@ -78,7 +78,7 @@ The first release must demonstrate one complete workflow: import a real-world we
 ### 6.3 Coordinate reference systems and vertical references
 
 **C-01** Record the source CRS of every spatial dataset, using an EPSG identifier where one is unambiguous and storing the full CRS definition when necessary. Preserve original coordinates.  
-**C-02** Support verified transformations among the systems actually found in pilot data, including ED50, WGS 84, UTM zones, and Lambert variants. Support local datums such as Libya's ELD79/LGD2006 where authoritative definitions and transformation parameters are available, and apply the same approach to other countries. A name alone is insufficient to select an operation.  
+**C-02** Support verified transformations among the systems actually found in pilot data, including ED50, WGS 84, UTM zones, and Lambert variants. Support local datums where authoritative definitions and transformation parameters are available, and apply the same approach across countries. A name alone is insufficient to select an operation.\
 **C-03** Show the selected transformation operation, parameters/grid dependency, accuracy information when supplied by the CRS library, and any warnings. Require explicit review when several plausible operations exist or a required grid is unavailable.  
 **C-04** Keep horizontal CRS, vertical datum, well reference elevation, depth units, and time/depth domain as separate concepts. Do not silently convert KB/DF/GL, TVD/MD, or time/depth.  
 **C-05** Validate transformations with known control points from the pilot datasets and round-trip checks. Store transformation provenance so the displayed map location can be reproduced.
@@ -119,7 +119,7 @@ These are in scope for the platform vision, but are not a condition for the firs
 
 ## 8. Pilot workflows and acceptance
 
-### Workflow A — reconcile a pilot well (Libya example)
+### Workflow A — reconcile a pilot well
 
 A data manager imports a well header, deviation survey, LAS or scanned log, tops spreadsheet, and report. Atlasio retains the originals, detects a likely existing well under an alternate name, reports CRS and unit ambiguities, and presents the source and proposed normalized values. The manager resolves the identity and location, a reviewer approves the package, and a new immutable published version appears in the well record and on the map. The previous version remains inspectable.
 
@@ -139,13 +139,13 @@ An asset lead opens a well or survey used in an interpretation and can identify 
 
 ## 9. Initial technical direction
 
-This is a recommended starting architecture to validate during implementation planning:
+This is the starting architecture to validate through the first working slice. The Rust core and backend decision is recorded in [Decision 0001](docs/decisions/0001-rust-core.md):
 
 - **System of record:** PostgreSQL with PostGIS for relational metadata, geometries, constraints, and spatial queries. Prefer it over MySQL for this geospatial workload. Do not make Microsoft SQL Server a Release 1 dependency; assess a connector if a pilot customer needs one.
 - **Large binaries:** S3-compatible object storage or a governed external repository, referenced by versioned metadata and checksums. Do not store seismic cubes as ordinary database rows.
 - **CRS engine:** a mature PROJ-based service/library with pinned coordinate-operation definitions and required transformation grids. Record the operation selected for each derived location.
 - **Map:** a modern web map client such as MapLibre, with server-side spatial queries and appropriate raster/vector delivery for previews and grids.
-- **API and UI:** choose a stack after a thin vertical slice proves import, review, publication, search, and map display. Keep domain rules and coordinate logic server-side.
+- **API and UI:** use Rust for domain rules and the backend API, with a web client for the initial interface. Prove the stack through import, review, publication, search, and map display. Keep domain rules and coordinate logic server-side.
 
 The architecture must support export of original and normalized data, documented APIs, and migration away from any chosen storage provider.
 
@@ -162,7 +162,7 @@ The architecture must support export of original and normalized data, documented
 
 These decisions require pilot data or user validation before committing to detailed interfaces and infrastructure:
 
-1. Which licensed Libyan datasets and reference control points are available for the first pilot, and which second-country fixture will test portability?
+1. Which licensed datasets and reference control points are available for the first pilot, and which additional-country fixture will test portability?
 2. Which file formats occur most often in those packages, and which require parsing in Release 1 versus cataloging only?
 3. What deployment environment, identity provider, and data-residency requirements will the first operator impose?
 4. Which exact CRS definitions, transformation grids, and vertical references occur in the pilot material?
