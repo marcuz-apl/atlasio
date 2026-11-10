@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+"""Atlasio prefixed version and commit trailer helper."""
+
+import datetime
+import pathlib
+import re
+import subprocess
+import sys
+
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+VERSION_PATTERN = re.compile(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)")
+BUILD_PATTERN = re.compile(r"^Alfazen-Build: v[0-9]+\.[0-9]+\.[0-9]+\+([0-9]{6})([1-9a-z])$", re.MULTILINE)
+PREFIX_PATTERN = re.compile(r"^v[0-9]+\.[0-9]+\.[0-9]+ ")
+CONNECTED_PREFIX_PATTERN = re.compile(r"^v[0-9]+\.[0-9]+\.[0-9]+\+[0-9]{6}[1-9a-z] ")
+COUNTERS = "123456789abcdefghijklmnopqrstuvwxyz"
+
+
+def git(*args):
+    return subprocess.run(["git", *args], cwd=ROOT, text=True, capture_output=True, check=True).stdout
+
+
+def version(value):
+    value = value.strip()
+    match = VERSION_PATTERN.fullmatch(value)
+    if not match:
+        raise ValueError(f"Invalid VERSION: {value!r}; expected m.n.p")
+    return tuple(map(int, match.groups()))
+
+
+def current_version():
+    return version((ROOT / "VERSION").read_text())
+
+
+def build_id():
+    day = datetime.datetime.now(datetime.timezone.utc).strftime("%y%m%d")
+    try:
+        history = git("log", "--format=%B%x00")
+    except subprocess.CalledProcessError:
+        history = ""  # A new repository has no build history.
+    used = [COUNTERS.index(counter) for logged_day, counter in BUILD_PATTERN.findall(history) if logged_day == day]
+    next_counter = max(used, default=-1) + 1
+    if next_counter >= len(COUNTERS):
+        raise ValueError(f"Daily Alfazen build counter exhausted for {day}")
+    base = ".".join(map(str, current_version()))
+    return f"v{base}+{day}{COUNTERS[next_counter]}"
+
+
+def stamp(message_path):
+    path = pathlib.Path(message_path)
+    lines = path.read_text().splitlines()
+    if not lines or not lines[0].strip():
+        raise ValueError("Commit subject is empty")
+    lines[0] = PREFIX_PATTERN.sub("", CONNECTED_PREFIX_PATTERN.sub("", lines[0]))
+    lines = [line for line in lines if not line.startswith("Alfazen-Build: ")]
+    while lines and not lines[-1]:
+        lines.pop()
+    identifier = build_id()
+    lines[0] = f"{identifier.split('+', 1)[0]} {lines[0]}"
+    path.write_text("\n".join(lines) + f"\n\nAlfazen-Build: {identifier}\n")
+
+
+def validate(message_path):
+    message = pathlib.Path(message_path).read_text()
+    subject = message.splitlines()[0] if message else ""
+    match = PREFIX_PATTERN.match(subject)
+    if not match:
+        raise ValueError("Commit subject requires a version-only v{VERSION} prefix")
+    prefix = match.group().strip()
+    trailer = re.search(r"(?m)^Alfazen-Build: (v[0-9]+\.[0-9]+\.[0-9]+\+[0-9]{6}[1-9a-z])$", message)
+    if not trailer or trailer.group(1).split("+", 1)[0] != prefix:
+        raise ValueError("Alfazen-Build trailer version must match the subject prefix")
+    staged = version(git("show", ":VERSION"))
+    if prefix != "v" + ".".join(map(str, staged)):
+        raise ValueError("Commit prefix must match staged VERSION")
+    subject = PREFIX_PATTERN.sub("", subject)
+    if not re.match(r"^(feat|fix|perf)(\([^)]*\))?: ", subject):
+        return
+    try:
+        previous = version(git("show", "HEAD:VERSION"))
+    except subprocess.CalledProcessError:
+        return  # Initial commit has no preceding version.
+    expected = (previous[0], previous[1], previous[2] + 1)
+    if staged != expected:
+        raise ValueError(f"{subject.split(':', 1)[0]} requires staged VERSION {'.'.join(map(str, expected))}; found {'.'.join(map(str, staged))}")
+
+
+def main():
+    command = sys.argv[1] if len(sys.argv) > 1 else ""
+    if command == "id" and len(sys.argv) == 2:
+        print(build_id())
+    elif command == "bump" and len(sys.argv) == 2:
+        major, minor, patch = current_version()
+        updated = f"{major}.{minor}.{patch + 1}"
+        (ROOT / "VERSION").write_text(updated + "\n")
+        print(updated)
+    elif command == "hook" and len(sys.argv) >= 3:
+        stamp(sys.argv[2])
+    elif command == "validate" and len(sys.argv) == 3:
+        validate(sys.argv[2])
+    else:
+        raise ValueError("Usage: alfazen-version id|bump|hook MESSAGE_FILE|validate MESSAGE_FILE")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (ValueError, OSError, subprocess.CalledProcessError) as error:
+        print(f"alfazen-version: {error}", file=sys.stderr)
+        sys.exit(1)
