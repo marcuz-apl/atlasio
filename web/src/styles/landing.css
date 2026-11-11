@@ -1,0 +1,256 @@
+/* ---------- Landing heading ---------- */
+.landing-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  align-items: end;
+  gap: 40px;
+  padding-bottom: 26px;
+  border-bottom: 1px solid var(--line);
+}
+
+.landing-intro .eyebrow {
+  margin-bottom: 16px;
+}
+
+.landing-intro h1 {
+  max-width: 20ch;
+  font-size: clamp(36px, 3.9vw, 50px);
+  font-weight: 600;
+  line-height: 1.02;
+  letter-spacing: -0.055em;
+  color: var(--ink);
+}
+
+.landing-intro h1 em {
+  color: var(--accent);
+  font-style: normal;
+}
+
+.landing-intro .lede {
+  max-width: 58ch;
+  margin-top: 15px;
+}
+
+.area-control {
+  justify-self: end;
+  width: 100%;
+  max-width: 340px;
+  padding: 14px 16px 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+
+.area-control > label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+}
+
+.area-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px;
+}
+
+.area-row select {
+  min-height: 42px;
+  font-size: var(--text-md);
+  font-weight: 500;
+}
+
+.area-row .btn {
+  min-height: 42px;
+  padding: 0 12px;
+}
+
+.area-source {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+/* ---------- Landing grid ---------- */
+.landing-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.18fr);
+  gap: 16px;
+  align-items: stretch;
+  margin-top: 20px;
+}
+
+/* ---------- Coverage ledger ---------- */
+.coverage-panel {
+  display: flex;
+  flex-direction: column;
+  height: var(--landing-h);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.coverage-panel .panel-head {
+  padding: 19px 20px 0;
+}
+
+.scope-chip {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.coverage-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 20px 13px;
+  border-bottom: 1px solid var(--line);
+}
+
+.coverage-summary > p:first-child {
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.coverage-summary strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.coverage-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 14px 14px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.coverage-group {
+  padding-top: 12px;
+}
+
+.coverage-group + .coverage-group {
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.coverage-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 7px 6px;
+  color: var(--muted);
+}
+
+.coverage-group-head svg {
+  width: 15px;
+  height: 15px;
+  color: var(--faint);
+}
+
+.coverage-group-head h3 {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.coverage-items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px 6px;
+}
+
+.metric {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 9px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+}
+
+.metric-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.metric-label::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--faint);
+  border-radius: 50%;
+  flex: none;
+}
+
+.metric-value {
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.metric.available {
+  border-color: color-mix(in srgb, var(--good) 22%, transparent);
+  background: var(--good-soft);
+}
+
+.metric.available .metric-label {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.metric.available .metric-label::before {
+  border-color: var(--good);
+  background: var(--good);
+}
+
+.metric.planned .metric-label {
+  color: var(--faint);
+}
+
+.metric.planned .metric-value {
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.coverage-foot {
+  padding: 12px 20px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-tint);
+}
+
+.coverage-foot p {
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.coverage-foot strong {
+  color: var(--ink-2);
+  font-weight: 600;
+}

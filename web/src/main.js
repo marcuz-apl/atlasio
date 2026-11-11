@@ -1,293 +1,408 @@
-import { Map, NavigationControl, setWorkerUrl } from 'maplibre-gl';
+import '@fontsource-variable/archivo';
+import '@fontsource/ibm-plex-mono/400.css';
+import '@fontsource/ibm-plex-mono/500.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
-import { feature } from 'topojson-client';
-import world from 'world-atlas/land-110m.json';
-import countriesTopo from 'world-atlas/countries-110m.json';
 import './style.css';
 
-setWorkerUrl(workerUrl);
+import { api } from './lib/api.js';
+import { state } from './lib/state.js';
+import { $, $$, toast } from './lib/ui.js';
+import { roleLabel } from './lib/format.js';
+import * as dashboard from './views/dashboard.js';
+import * as workspace from './views/workspace.js';
+import { initIngest, loadQueue as loadIngestQueue } from './views/ingest.js';
+import { initReview, loadReview as loadReviewQueue } from './views/review.js';
 
-const $ = (selector) => document.querySelector(selector);
-const countryFeatures = feature(countriesTopo, countriesTopo.objects.countries).features;
-const keyInput = $('#api-key');
-let currentRole = null;
-keyInput.value = sessionStorage.getItem('atlasio-key') || '';
-const notice = (message, error = false) => {
-  const element = $('#notice');
-  element.textContent = message;
-  element.className = error ? 'error' : 'success';
-};
+const THEME_KEY = 'atlasio-theme';
+const TABS = new Set(['explore', 'records', 'ingest', 'review']);
 
-async function api(path, options = {}) {
-  const response = await fetch(`/api${path}`, {
-    ...options,
-    headers: { 'X-Atlasio-Key': keyInput.value, 'Content-Type': 'application/json', ...(options.headers || {}) },
+initTheme();
+initModules();
+initChrome();
+
+if (!location.hash) {
+  history.replaceState(null, '', '#/');
+}
+
+if (state.key) {
+  connect(state.key, { fromGate: true, announce: false });
+} else {
+  showGate();
+}
+
+function initModules() {
+  dashboard.initDashboard({ onNavigate: navigate });
+  workspace.initWorkspace({ onNavigate: navigate });
+  initIngest();
+  initReview({ onMutation: refreshData });
+}
+
+function initTheme() {
+  const theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+  applyTheme(theme, { persist: false });
+  $('#theme-toggle')?.addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    applyTheme(next, { persist: true });
   });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : data.detail?.message || JSON.stringify(data.detail || data));
-  return data;
 }
 
-function textNode(tag, value, className = '') {
-  const node = document.createElement(tag);
-  node.textContent = value ?? 'Unknown';
-  node.className = className;
-  return node;
-}
-
-const graticule = { type: 'FeatureCollection', features: [] };
-for (let lon = -180; lon <= 180; lon += 30) {
-  graticule.features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: Array.from({ length: 37 }, (_, i) => [lon, -90 + i * 5]) }, properties: {} });
-}
-for (let lat = -60; lat <= 60; lat += 30) {
-  graticule.features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: Array.from({ length: 73 }, (_, i) => [-180 + i * 5, lat]) }, properties: {} });
-}
-
-const map = new Map({
-  container: 'map',
-  style: { version: 8, sources: { land: { type: 'geojson', data: feature(world, world.objects.land) }, grid: { type: 'geojson', data: graticule }, country: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } }, wells: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } } }, layers: [
-    { id: 'background', type: 'background', paint: { 'background-color': '#eaf1f1' } },
-    { id: 'land', type: 'fill', source: 'land', paint: { 'fill-color': '#d5e3db', 'fill-outline-color': '#afc4bb' } },
-    { id: 'grid', type: 'line', source: 'grid', paint: { 'line-color': '#c9d9d8', 'line-width': 1 } },
-    { id: 'country-fill', type: 'fill', source: 'country', paint: { 'fill-color': '#d9a54f', 'fill-opacity': 0.12, 'fill-outline-color': '#bf8a37' } },
-    { id: 'wells-halo', type: 'circle', source: 'wells', paint: { 'circle-radius': 10, 'circle-color': '#fff', 'circle-stroke-color': '#176873', 'circle-stroke-width': 2 } },
-    { id: 'wells', type: 'circle', source: 'wells', paint: { 'circle-radius': 5, 'circle-color': '#176873' } },
-  ] },
-  center: [0, 12], zoom: 1.1,
-});
-for (const country of countryFeatures.filter(item => item.properties.name).sort((a,b) => a.properties.name.localeCompare(b.properties.name))) {
-  const option = new Option(country.properties.name, country.properties.name);
-  $('#area-select').add(option);
-}
-let allMapFeatures = { type: 'FeatureCollection', features: [] };
-map.addControl(new NavigationControl(), 'top-right');
-map.on('click', 'wells', (event) => openWell(event.features[0].properties.well_id));
-map.on('mouseenter', 'wells', () => { map.getCanvas().style.cursor = 'pointer'; });
-map.on('mouseleave', 'wells', () => { map.getCanvas().style.cursor = ''; });
-
-async function refreshMap() {
-  const features = await api('/map/wells');
-  if (!map.isStyleLoaded()) await new Promise(resolve => map.once('load', resolve));
-  allMapFeatures = features;
-  map.getSource('wells').setData(features);
-  $('#record-count').textContent = features.features.length;
-}
-
-const metricLabels = [
-  ['ep_projects','E&P projects'],['wells','Wells'],['logs','Logs'],['formation_tops','Formation tops'],
-  ['interpretations','Interpretations'],['seismic_surveys','Seismic surveys'],['seismic_2d_lines','2D seismic lines'],
-  ['seismic_3d_cubes','3D seismic cubes'],['seismic_interpretations','Seismic interpretations'],['reports','Reports'],
-  ['ma_reports','M&A reports'],['concession_maps','Concession maps'],['drilling_records','Drilling records'],
-  ['horizontal_wells','Horizontal wells'],['production_records','Production records'],['original_files','Original files'],
-];
-async function loadDashboard(wellIds = null) {
-  const query = new URLSearchParams();
-  if (wellIds !== null) {
-    query.set('area', 'true');
-    if (wellIds.length) query.set('well_ids', wellIds.join(','));
-  }
-  const data = await api(`/dashboard${query.size ? `?${query}` : ''}`);
-  $('.dashboard-caption').textContent = data.scope === 'global' ? 'Global counts · records available to your role' : 'Area counts · records available to your role';
-  const grid = $('#dashboard-metrics'); grid.replaceChildren();
-  for (const [key, label] of metricLabels) {
-    const count = data.counts[key];
-    const card = document.createElement('article'); card.className = `metric-card ${count.state}`;
-    card.append(textNode('span', label, 'metric-label'));
-    card.append(textNode('strong', count.value === null ? '—' : new Intl.NumberFormat().format(count.value), 'metric-value'));
-    card.append(textNode('span', count.state === 'available' ? 'IN CATALOG' : 'NOT CATALOGED', 'metric-state'));
-    grid.append(card);
-  }
-}
-
-async function search() {
-  const q = $('#search').value;
-  const wells = await api(`/wells/search?q=${encodeURIComponent(q)}`);
-  const container = $('#results');
-  container.replaceChildren();
-  if (!wells.length) container.append(textNode('p', 'No approved wells found.', 'muted'));
-  for (const well of wells) {
-    const button = textNode('button', `${well.name} · v${well.version_no} · ${well.external_id || 'No external ID'}`, 'result');
-    button.onclick = () => {
-      map.flyTo({ center: [well.longitude, well.latitude], zoom: 6 });
-      openWell(well.id);
-    };
-    container.append(button);
-  }
-}
-
-async function openWell(id) {
-  const well = await api(`/wells/${id}`);
-  const container = $('#record');
-  container.replaceChildren();
-  container.classList.remove('empty-record');
-  container.append(textNode('h3', well.versions[0].name));
-  for (const version of well.versions) {
-    const card = document.createElement('div');
-    card.className = 'version';
-    card.append(textNode('strong', `Version ${version.version_no}${version.id === well.current_version_id ? ' · Current' : ''}`));
-    card.append(textNode('p', `Aliases: ${version.aliases.join(', ') || 'None'} · External ID: ${version.external_id || 'Unknown'}`));
-    card.append(textNode('p', `Source: ${version.source} · CRS: ${version.source_crs} · Source (${version.source_x}, ${version.source_y})`));
-    card.append(textNode('p', `Display (${version.longitude}, ${version.latitude}) · Operation: ${version.transform_operation}`));
-    card.append(textNode('p', `Original: ${version.original_name} · SHA-256: ${version.sha256}`));
-    card.append(textNode('p', `License: ${version.license} · Confidentiality: ${version.confidentiality}`));
-    card.append(textNode('p', `Reviewed by ${version.reviewer} · ${new Date(version.published_at).toLocaleString()}`));
-    for (const finding of version.qc) card.append(textNode('p', `${finding.severity.toUpperCase()}: ${finding.message}`, `finding ${finding.severity}`));
-    const file = textNode('button', 'Download original', 'secondary');
-    file.onclick = async () => {
-      try {
-        const response = await fetch(`/api/files/${version.file_id}`, { headers: { 'X-Atlasio-Key': keyInput.value } });
-        if (!response.ok) throw new Error((await response.json()).detail);
-        const url = URL.createObjectURL(await response.blob());
-        const link = document.createElement('a'); link.href = url; link.download = version.original_name; link.click(); URL.revokeObjectURL(url);
-      } catch (error) { notice(error.message, true); }
-    };
-    if (version.download_allowed) card.append(file);
-    container.append(card);
-  }
-}
-
-async function refreshImports() {
-  const items = await api('/imports');
-  const container = $('#imports');
-  container.replaceChildren();
-  const active = items.filter(item => item.status === 'staged' || item.status === 'submitted');
-  if (!active.length) container.append(textNode('p', 'No imports awaiting action.', 'muted'));
-  for (const item of active) {
-    const card = document.createElement('div'); card.className = 'import-card';
-    card.append(textNode('strong', item.manifest.name || 'Unnamed well'));
-    card.append(textNode('span', item.status, 'pill'));
-    for (const finding of item.qc) card.append(textNode('p', `${finding.severity.toUpperCase()}: ${finding.message}`, `finding ${finding.severity}`));
-    if (item.status === 'staged' && currentRole === 'importer') {
-      const correction = document.createElement('textarea'); correction.placeholder = 'Correct metadata as JSON, e.g. {"source_crs":"EPSG:4326"}';
-      card.append(correction);
-      const fix = textNode('button', 'Save correction', 'secondary');
-      fix.onclick = () => act(async () => api(`/imports/${item.id}`, { method: 'PATCH', body: correction.value }), 'Correction saved');
-      const submit = textNode('button', 'Submit for review');
-      submit.onclick = () => act(async () => api(`/imports/${item.id}/submit`, { method: 'POST' }), 'Submitted for review');
-      card.append(fix, submit);
+function applyTheme(theme, { persist = false } = {}) {
+  state.theme = theme;
+  document.documentElement.dataset.theme = theme;
+  if (persist) {
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch (error) {
+      /* Private browsing can block storage; the theme still applies for this view. */
     }
-    if (item.status === 'submitted' && currentRole === 'reviewer') {
-      const resolution = document.createElement('select');
-      resolution.append(new Option('Publish as new well', 'new'));
-      for (const finding of item.qc.filter(finding => finding.code === 'possible_duplicate' && finding.well_id)) {
-        resolution.append(new Option(`New version of ${finding.well_id}`, finding.well_id));
-      }
-      const reason = document.createElement('input'); reason.placeholder = 'Review reason';
-      const approve = textNode('button', 'Approve and publish');
-      approve.onclick = () => act(async () => api(`/imports/${item.id}/review`, { method: 'POST', body: JSON.stringify({ decision: 'approve', identity_resolution: resolution.value, reason: reason.value }) }), 'Published');
-      const reject = textNode('button', 'Reject', 'secondary');
-      reject.onclick = () => act(async () => api(`/imports/${item.id}/review`, { method: 'POST', body: JSON.stringify({ decision: 'reject', reason: reason.value }) }), 'Rejected');
-      card.append(resolution, reason, approve, reject);
-    }
-    container.append(card);
   }
+  const button = $('#theme-toggle');
+  if (button) {
+    button.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+  }
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', theme === 'dark' ? '#0b1310' : '#143b2e');
+  window.dispatchEvent(new CustomEvent('atlasio:theme'));
 }
 
-async function act(action, success) {
-  try { await action(); notice(success); await Promise.allSettled([...(currentRole === 'reader' ? [] : [refreshImports()]), search(), refreshMap()]); }
-  catch (error) { notice(error.message, true); }
+function initChrome() {
+  const menuButton = $('#info-button');
+  const menu = $('#info-menu');
+
+  const closeMenu = () => {
+    if (!menu) return;
+    menu.hidden = true;
+    menuButton?.setAttribute('aria-expanded', 'false');
+  };
+
+  menuButton?.addEventListener('click', () => {
+    if (!menu) return;
+    menu.hidden = !menu.hidden;
+    menuButton.setAttribute('aria-expanded', String(!menu.hidden));
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('.menu-wrap')) closeMenu();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeMenu();
+  });
+
+  $$('[data-dialog]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const dialog = document.getElementById(button.dataset.dialog);
+      closeMenu();
+      if (dialog && !dialog.open) dialog.showModal();
+    });
+  });
+
+  $$('.dialog-close').forEach((button) => {
+    button.addEventListener('click', () => button.closest('dialog')?.close());
+  });
+
+  $$('dialog').forEach((dialog) => {
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) dialog.close();
+    });
+  });
+
+  $('#access-button')?.addEventListener('click', () => {
+    if (!state.role) {
+      showGate();
+      return;
+    }
+    const dialog = $('#access-dialog');
+    const lede = $('#access-lede');
+    if (lede) {
+      lede.textContent = `You are connected as a ${roleLabel(state.role)}. Reconnect with another key to change what you can see and do.`;
+    }
+    if (dialog && !dialog.open) dialog.showModal();
+  });
+
+  $('#access-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const key = $('#access-key')?.value.trim() || '';
+    if (!key) {
+      toast('Enter an access key to reconnect.', 'error');
+      return;
+    }
+    const submit = event.currentTarget.querySelector('button[type="submit"]');
+    if (submit) submit.disabled = true;
+    const ok = await connect(key, { announce: true });
+    if (submit) submit.disabled = false;
+    if (ok) {
+      $('#access-key').value = '';
+      $('#access-dialog')?.close();
+    }
+  });
+
+  $('#disconnect-button')?.addEventListener('click', disconnect);
+
+  $$('[data-demo-key]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      gateError('');
+      const roles = $$('.gate-role');
+      roles.forEach((node) => {
+        node.disabled = true;
+      });
+      await connect(button.dataset.demoKey, { fromGate: true, announce: true });
+      roles.forEach((node) => {
+        node.disabled = false;
+      });
+    });
+  });
+
+  $('#gate-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const key = $('#gate-key')?.value.trim() || '';
+    if (!key) {
+      gateError('Enter an access key to continue.');
+      return;
+    }
+    gateError('');
+    const submit = event.currentTarget.querySelector('button[type="submit"]');
+    if (submit) submit.disabled = true;
+    await connect(key, { fromGate: true, announce: true });
+    if (submit) submit.disabled = false;
+  });
+
+  window.addEventListener('hashchange', () => {
+    applyRoute().catch((error) => toast(error.message, 'error'));
+  });
 }
 
-async function connect() {
+async function connect(key, { fromGate = false, announce = false } = {}) {
+  const trimmed = String(key || '').trim();
+  if (!trimmed) {
+    gateError('Enter an access key to continue.');
+    return false;
+  }
+  const previousKey = state.key;
+  state.key = trimmed;
   try {
     const { role } = await api('/me');
-    currentRole = role;
-    document.querySelector('.workspace').classList.toggle('reader-view', role === 'reader');
-    sessionStorage.setItem('atlasio-key', keyInput.value);
-    $('#stage-panel').hidden = role !== 'importer';
-    $('#review-panel').hidden = role === 'reader';
-    $('#refresh-imports').disabled = role === 'reader';
-    notice(`Connected as ${role}`);
-    await Promise.all([search(), refreshMap(), loadDashboard(), ...(role === 'reader' ? [] : [refreshImports()])]);
-  } catch (error) { notice(error.message, true); }
+    state.role = role;
+    try {
+      sessionStorage.setItem('atlasio-key', trimmed);
+    } catch (error) {
+      /* Session storage is optional. */
+    }
+    applyRole();
+    hideGate();
+    gateError('');
+    workspace.resetWorkspace();
+    await loadCore();
+    await applyRoute();
+    if (announce) toast(`Connected as ${roleLabel(role)}.`, 'success');
+    return true;
+  } catch (error) {
+    state.key = previousKey;
+    if (fromGate) {
+      if (error.status === 401 && !previousKey) {
+        state.key = '';
+        try {
+          sessionStorage.removeItem('atlasio-key');
+        } catch (storageError) {
+          /* ignore */
+        }
+      }
+      showGate();
+      gateError(
+        error.status === 401 || error.status === 403
+          ? 'That access key was not recognised. Try a demo role or another key.'
+          : error.message,
+      );
+    } else {
+      toast(error.message, 'error');
+    }
+    return false;
+  }
 }
 
-$('#stage-form').onsubmit = async (event) => {
-  event.preventDefault();
-  const data = new FormData(event.currentTarget);
-  const file = data.get('file');
-  const base64 = await new Promise((resolve, reject) => {
-    const reader = new FileReader(); reader.onload = () => resolve(reader.result.split(',')[1]); reader.onerror = reject; reader.readAsDataURL(file);
+async function loadCore() {
+  try {
+    const wells = await api('/map/wells');
+    state.wells = wells;
+    dashboard.setWells(wells);
+    workspace.setWells(wells);
+  } catch (error) {
+    toast(error.message, 'error');
+  }
+  await dashboard.refreshCounts({ silent: true });
+}
+
+function applyRole() {
+  const label = roleLabel(state.role);
+  const access = $('#access-label');
+  if (access) access.textContent = label;
+  const footer = $('#footer-role');
+  if (footer) footer.textContent = state.role ? label : 'Not connected';
+  const badge = $('#workspace-role');
+  if (badge) {
+    badge.textContent = state.role ? `${label} access` : '—';
+    badge.classList.toggle('role-importer', state.role === 'importer');
+  }
+  const lede = $('#workspace-lede');
+  if (lede) {
+    lede.textContent = {
+      reader: 'Search approved wells and inspect the evidence behind every record.',
+      importer: 'Stage packages, correct metadata, and track them through review.',
+      reviewer: 'Resolve identity, publish approved packages, and inspect the record.',
+    }[state.role] || 'Search approved wells and inspect the evidence behind every record.';
+  }
+  const accessButton = $('#access-button');
+  if (accessButton) accessButton.title = state.role ? `Connected as ${label} · manage access` : 'Connect to the workspace';
+
+  if (state.role) document.body.dataset.role = state.role;
+  else delete document.body.dataset.role;
+
+  const ingestTab = $('[data-tab="ingest"]');
+  const reviewTab = $('[data-tab="review"]');
+  if (ingestTab) ingestTab.hidden = state.role !== 'importer';
+  if (reviewTab) reviewTab.hidden = state.role !== 'reviewer';
+}
+
+function navigate(path, { replace = false } = {}) {
+  if (!path) return;
+  if (replace) {
+    history.replaceState(null, '', path);
+    return;
+  }
+  if (location.hash === path) {
+    applyRoute().catch((error) => toast(error.message, 'error'));
+    return;
+  }
+  location.hash = path;
+}
+
+function parseRoute() {
+  const raw = location.hash.replace(/^#\/?/, '');
+  const [pathPart, queryPart = ''] = raw.split('?');
+  const segments = pathPart.split('/').filter(Boolean);
+  if (segments[0] === 'workspace') {
+    return {
+      view: 'workspace',
+      tab: TABS.has(segments[1]) ? segments[1] : 'explore',
+      well: new URLSearchParams(queryPart).get('well'),
+    };
+  }
+  return { view: 'landing', tab: 'explore', well: null };
+}
+
+async function applyRoute() {
+  const route = parseRoute();
+  if (!state.role) {
+    showGate();
+    return;
+  }
+  hideGate();
+
+  if (route.view === 'landing') {
+    showLanding();
+    return;
+  }
+
+  if (route.tab === 'ingest' && state.role !== 'importer') {
+    toast('Ingest is available to importers.', 'error');
+    navigate('#/workspace/explore', { replace: true });
+    return;
+  }
+  if (route.tab === 'review' && state.role !== 'reviewer') {
+    toast('Review is available to reviewers.', 'error');
+    navigate('#/workspace/explore', { replace: true });
+    return;
+  }
+
+  showWorkspaceView(route.tab);
+  await workspace.showTab(route.tab);
+
+  if (route.tab === 'ingest') await loadIngestQueue();
+  if (route.tab === 'review') await loadReviewQueue();
+
+  if (route.tab === 'explore') {
+    if (route.well) {
+      await workspace.selectWell(route.well, { fly: true, updateHash: false });
+    } else {
+      workspace.closeInspector({ updateHash: false });
+    }
+  }
+}
+
+function showLanding() {
+  const landing = $('#view-landing');
+  const workspaceView = $('#view-workspace');
+  if (landing) landing.hidden = false;
+  if (workspaceView) workspaceView.hidden = true;
+  dashboard.hidePreview();
+  setNav('dashboard');
+  document.title = 'Atlasio · Subsurface workspace';
+}
+
+function showWorkspaceView(tab) {
+  const landing = $('#view-landing');
+  const workspaceView = $('#view-workspace');
+  if (landing) landing.hidden = true;
+  if (workspaceView) workspaceView.hidden = false;
+  dashboard.hidePreview();
+  setNav('workspace');
+  document.title = `Atlasio · Workspace · ${tab.charAt(0).toUpperCase()}${tab.slice(1)}`;
+  if (window.scrollY > 0) window.scrollTo({ top: 0, behavior: 'auto' });
+}
+
+function setNav(name) {
+  $$('[data-nav]').forEach((link) => {
+    if (link.dataset.nav === name) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
   });
-  const manifest = {
-    name: data.get('name'), external_id: data.get('external_id'), aliases: data.get('aliases').split(',').map(x => x.trim()).filter(Boolean),
-    source: data.get('source'), license: data.get('license'), confidentiality: data.get('confidentiality'), download_allowed: data.has('download_allowed'),
-    source_crs: data.get('source_crs'), x: Number(data.get('x')), y: Number(data.get('y')),
-  };
-  await act(async () => api('/imports', { method: 'POST', body: JSON.stringify({ manifest, file_name: file.name, file_base64: base64 }) }), 'Package staged');
-};
+}
 
-$('#connect').onclick = connect;
-$('#refresh-imports').onclick = () => act(async () => {}, 'Queue refreshed');
-$('#search-button').onclick = () => search().catch(error => notice(error.message, true));
-$('#search').onkeydown = (event) => { if (event.key === 'Enter') search().catch(error => notice(error.message, true)); };
-function coordinatePairs(value, output = []) {
-  if (Array.isArray(value) && typeof value[0] === 'number' && typeof value[1] === 'number') output.push(value);
-  else if (Array.isArray(value)) value.forEach(child => coordinatePairs(child, output));
-  return output;
+function showGate() {
+  const gate = $('#access-gate');
+  if (gate) gate.hidden = false;
+  document.body.classList.add('gate-open');
 }
-function ringContains([x, y], ring) {
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const [xi, yi] = ring[i], [xj, yj] = ring[j];
-    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
-  }
-  return inside;
-}
-function withinCountry(point, country) {
-  const polygons = country.geometry.type === 'Polygon' ? [country.geometry.coordinates] : country.geometry.coordinates;
-  return polygons.some(rings => ringContains(point, rings[0]) && !rings.slice(1).some(ring => ringContains(point, ring)));
-}
-function showCountry(country, label = country.properties.name) {
-  const points = coordinatePairs(country.geometry.coordinates);
-  const bounds = points.reduce((box, [x,y]) => [[Math.min(box[0][0],x),Math.min(box[0][1],y)],[Math.max(box[1][0],x),Math.max(box[1][1],y)]], [[180,90],[-180,-90]]);
-  map.getSource('country')?.setData({ type: 'FeatureCollection', features: [country] });
-  const visible = allMapFeatures.features.filter(f => withinCountry(f.geometry.coordinates, country));
-  map.getSource('wells')?.setData({ type: 'FeatureCollection', features: visible });
-  $('#record-count').textContent = visible.length;
-  $('#area-label').textContent = `${label} · country map and catalog counts`;
-  loadDashboard(visible.map(item => item.properties.well_id)).catch(error => notice(error.message, true));
-  map.fitBounds(bounds, { padding: 50, maxZoom: 5.2, duration: 900 });
-}
-$('#area-select').onchange = (event) => {
-  if (event.target.value === 'global') {
-    $('#area-label').textContent = 'Global map · global catalog counts';
-    map.getSource('country')?.setData({ type: 'FeatureCollection', features: [] });
-    map.flyTo({ center: [0, 15], zoom: 1.25 });
-    map.getSource('wells')?.setData(allMapFeatures);
-    loadDashboard().catch(error => notice(error.message, true));
-    return;
-  }
-  if (event.target.value !== 'current') {
-    const selected = countryFeatures.find(country => country.properties.name === event.target.value);
-    if (selected) showCountry(selected);
-    return;
-  }
-  if (!navigator.geolocation) { notice('This browser does not provide location access.', true); event.target.value = 'global'; return; }
-  navigator.geolocation.getCurrentPosition(({ coords }) => {
-    $('#area-label').textContent = 'Nearby current-location records · scoped catalog counts';
-    map.getSource('country')?.setData({ type: 'FeatureCollection', features: [] });
-    map.flyTo({ center: [coords.longitude, coords.latitude], zoom: 5 });
-    const radius = 8;
-    const nearby = allMapFeatures.features.filter(({ geometry }) => {
-      const [lon, lat] = geometry.coordinates;
-      return Math.abs(lat - coords.latitude) <= radius && Math.abs(lon - coords.longitude) <= radius * 1.5;
-    });
-    map.getSource('wells')?.setData({ type: 'FeatureCollection', features: nearby });
-    $('#record-count').textContent = nearby.length;
-    $('#dashboard-metrics').dataset.scope = 'current-location';
-    loadDashboard(nearby.map(item => item.properties.well_id)).catch(error => notice(error.message, true));
-  }, () => { notice('Location was unavailable. Choose Global overview or allow location access.', true); event.target.value = 'global'; }, { timeout: 10000 });
-};
-if (keyInput.value) connect();
 
-document.querySelectorAll('[data-dialog]').forEach((button) => {
-  button.addEventListener('click', () => document.getElementById(button.dataset.dialog).showModal());
-});
-document.querySelectorAll('.dialog-close').forEach((button) => {
-  button.addEventListener('click', () => button.closest('dialog').close());
-});
-document.querySelectorAll('.info-dialog').forEach((dialog) => {
-  dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
-});
+function hideGate() {
+  const gate = $('#access-gate');
+  if (gate) gate.hidden = true;
+  document.body.classList.remove('gate-open');
+}
+
+function gateError(message) {
+  const node = $('#gate-error');
+  if (!node) return;
+  node.textContent = message || '';
+  node.hidden = !message;
+}
+
+function disconnect() {
+  state.key = '';
+  state.role = null;
+  try {
+    sessionStorage.removeItem('atlasio-key');
+  } catch (error) {
+    /* ignore */
+  }
+  applyRole();
+  workspace.resetWorkspace();
+  $('#access-dialog')?.close();
+  showGate();
+  gateError('');
+  toast('Disconnected from the workspace.', 'info');
+}
+
+async function refreshData() {
+  try {
+    const wells = await api('/map/wells');
+    state.wells = wells;
+    dashboard.setWells(wells);
+    workspace.setWells(wells);
+    await Promise.allSettled([
+      dashboard.refreshCounts({ silent: true }),
+      workspace.refreshAfterPublish(),
+    ]);
+  } catch (error) {
+    toast(error.message, 'error');
+  }
+}

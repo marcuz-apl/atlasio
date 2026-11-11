@@ -1,0 +1,109 @@
+:root {
+  --font-ui: 'Archivo Variable', 'Archivo', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+
+  --shell-max: 1520px;
+  --gutter: clamp(18px, 3vw, 52px);
+  --header-h: 64px;
+  --landing-h: clamp(520px, calc(100dvh - 392px), 760px);
+  --workspace-h: clamp(540px, calc(100dvh - 300px), 780px);
+
+  --text-xs: 11px;
+  --text-sm: 12.5px;
+  --text-md: 13.5px;
+  --text-base: 15px;
+  --text-lg: 17px;
+
+  --radius-xs: 4px;
+  --radius-s: 6px;
+  --radius-m: 10px;
+  --radius-l: 14px;
+
+  --bg: #f2f0e8;
+  --surface: #fbfaf5;
+  --surface-raised: #fffefa;
+  --surface-sunken: #e9e7dd;
+  --surface-tint: #f6f4ec;
+
+  --ink: #14201b;
+  --ink-2: #3f5148;
+  --muted: #5f6f66;
+  --faint: #7f8c83;
+
+  --line: #dcded3;
+  --line-strong: #c5cabc;
+
+  --brand: #143b2e;
+  --brand-2: #1e5240;
+  --brand-soft: #e2ebe2;
+
+  --accent: #a96f26;
+  --accent-ink: #7a4d12;
+  --accent-soft: #f3e6cf;
+
+  --good: #2c6e4d;
+  --good-soft: #e2ede4;
+  --warn: #8f631c;
+  --warn-soft: #f7ecd6;
+  --bad: #9b4330;
+  --bad-soft: #f8e7e1;
+  --info: #2e6a73;
+  --info-soft: #e0edef;
+
+  --primary-bg: #143b2e;
+  --primary-ink: #fbfaf5;
+  --primary-hover: #1c4c3b;
+
+  --focus: #a96f26;
+  --map-sea: #dbe6e2;
+
+  --shadow-1: 0 1px 2px rgba(20, 32, 27, 0.05), 0 10px 28px rgba(20, 32, 27, 0.045);
+  --shadow-2: 0 24px 70px rgba(20, 32, 27, 0.16);
+
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --bg: #0b1310;
+  --surface: #111c17;
+  --surface-raised: #18251f;
+  --surface-sunken: #0d1814;
+  --surface-tint: #14211b;
+
+  --ink: #e9eee6;
+  --ink-2: #b6c2b8;
+  --muted: #93a297;
+  --faint: #7e8e83;
+
+  --line: #26352d;
+  --line-strong: #35483e;
+
+  --brand: #8dc0a6;
+  --brand-2: #aed6bd;
+  --brand-soft: #1a2c24;
+
+  --accent: #d7a458;
+  --accent-ink: #f0c67d;
+  --accent-soft: #2b2418;
+
+  --good: #77b992;
+  --good-soft: #152a1f;
+  --warn: #d9a85e;
+  --warn-soft: #2a2318;
+  --bad: #e08d75;
+  --bad-soft: #2d1c18;
+  --info: #7cb7bf;
+  --info-soft: #152a2d;
+
+  --primary-bg: #d7a458;
+  --primary-ink: #14201b;
+  --primary-hover: #e5b974;
+
+  --focus: #d7a458;
+  --map-sea: #091416;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.25);
+  --shadow-2: 0 26px 80px rgba(0, 0, 0, 0.55);
+
+  color-scheme: dark;
+}
