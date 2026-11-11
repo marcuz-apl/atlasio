@@ -189,6 +189,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = Router::new()
         .route("/api/health", get(health))
         .route("/api/me", get(me))
+        .route("/api/dashboard", get(dashboard))
         .route("/api/imports", post(stage).get(imports))
         .route("/api/imports/{id}", get(import_detail).patch(correct))
         .route("/api/imports/{id}/submit", post(submit))
@@ -228,6 +229,79 @@ async fn health(State(state): State<AppState>) -> ApiResult {
 async fn me(State(state): State<AppState>, headers: HeaderMap) -> ApiResult {
     let who = role(&headers, &state, &["importer", "reviewer", "reader"])?;
     Ok(Json(json!({ "role": who })))
+}
+
+#[derive(Deserialize)]
+struct DashboardParams {
+    well_ids: Option<String>,
+    area: Option<bool>,
+}
+
+async fn dashboard(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(params): Query<DashboardParams>,
+) -> ApiResult {
+    let who = role(&headers, &state, &["importer", "reviewer", "reader"])?;
+    let well_ids = if params.area.unwrap_or(false) {
+        Some(
+            params
+                .well_ids
+                .unwrap_or_default()
+                .split(',')
+                .filter(|id| !id.is_empty())
+                .map(str::parse)
+                .collect::<Result<Vec<Uuid>, _>>()
+                .map_err(|_| {
+                    ApiError::new(StatusCode::BAD_REQUEST, "well_ids must contain UUID values")
+                })?,
+        )
+    } else {
+        None
+    };
+    let wells: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM wells w JOIN well_versions v ON v.id=w.current_version_id JOIN file_assets f ON f.batch_id=v.batch_id WHERE ($1 OR f.confidentiality='public') AND ($2::uuid[] IS NULL OR w.id=ANY($2))",
+    )
+    .bind(who != "reader")
+    .bind(&well_ids)
+    .fetch_one(&state.db)
+    .await?;
+    let versions: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM well_versions v JOIN file_assets f ON f.batch_id=v.batch_id WHERE ($1 OR f.confidentiality='public') AND ($2::uuid[] IS NULL OR v.well_id=ANY($2))",
+    )
+    .bind(who != "reader")
+    .bind(&well_ids)
+    .fetch_one(&state.db)
+    .await?;
+    let originals: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM file_assets f JOIN import_batches b ON b.id=f.batch_id WHERE b.status='published' AND ($1 OR f.confidentiality='public') AND ($2::uuid[] IS NULL OR b.well_id=ANY($2))",
+    )
+    .bind(who != "reader")
+    .bind(&well_ids)
+    .fetch_one(&state.db)
+    .await?;
+    Ok(Json(json!({
+        "scope": if params.area.unwrap_or(false) { "selected_area" } else { "global" },
+        "counts": {
+            "wells": { "value": wells, "state": "available" },
+            "well_versions": { "value": versions, "state": "available" },
+            "original_files": { "value": originals, "state": "available" },
+            "ep_projects": { "value": null, "state": "not_cataloged" },
+            "logs": { "value": null, "state": "not_cataloged" },
+            "formation_tops": { "value": null, "state": "not_cataloged" },
+            "interpretations": { "value": null, "state": "not_cataloged" },
+            "seismic_surveys": { "value": null, "state": "not_cataloged" },
+            "seismic_2d_lines": { "value": null, "state": "not_cataloged" },
+            "seismic_3d_cubes": { "value": null, "state": "not_cataloged" },
+            "seismic_interpretations": { "value": null, "state": "not_cataloged" },
+            "reports": { "value": null, "state": "not_cataloged" },
+            "ma_reports": { "value": null, "state": "not_cataloged" },
+            "concession_maps": { "value": null, "state": "not_cataloged" },
+            "drilling_records": { "value": null, "state": "not_cataloged" },
+            "horizontal_wells": { "value": null, "state": "not_cataloged" },
+            "production_records": { "value": null, "state": "not_cataloged" }
+        }
+    })))
 }
 
 #[derive(Deserialize)]

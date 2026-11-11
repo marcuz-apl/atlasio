@@ -3,11 +3,13 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { feature } from 'topojson-client';
 import world from 'world-atlas/land-110m.json';
+import countriesTopo from 'world-atlas/countries-110m.json';
 import './style.css';
 
 setWorkerUrl(workerUrl);
 
 const $ = (selector) => document.querySelector(selector);
+const countryFeatures = feature(countriesTopo, countriesTopo.objects.countries).features;
 const keyInput = $('#api-key');
 let currentRole = null;
 keyInput.value = sessionStorage.getItem('atlasio-key') || '';
@@ -44,15 +46,21 @@ for (let lat = -60; lat <= 60; lat += 30) {
 
 const map = new Map({
   container: 'map',
-  style: { version: 8, sources: { land: { type: 'geojson', data: feature(world, world.objects.land) }, grid: { type: 'geojson', data: graticule }, wells: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } } }, layers: [
+  style: { version: 8, sources: { land: { type: 'geojson', data: feature(world, world.objects.land) }, grid: { type: 'geojson', data: graticule }, country: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } }, wells: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } } }, layers: [
     { id: 'background', type: 'background', paint: { 'background-color': '#eaf1f1' } },
     { id: 'land', type: 'fill', source: 'land', paint: { 'fill-color': '#d5e3db', 'fill-outline-color': '#afc4bb' } },
     { id: 'grid', type: 'line', source: 'grid', paint: { 'line-color': '#c9d9d8', 'line-width': 1 } },
+    { id: 'country-fill', type: 'fill', source: 'country', paint: { 'fill-color': '#d9a54f', 'fill-opacity': 0.12, 'fill-outline-color': '#bf8a37' } },
     { id: 'wells-halo', type: 'circle', source: 'wells', paint: { 'circle-radius': 10, 'circle-color': '#fff', 'circle-stroke-color': '#176873', 'circle-stroke-width': 2 } },
     { id: 'wells', type: 'circle', source: 'wells', paint: { 'circle-radius': 5, 'circle-color': '#176873' } },
   ] },
   center: [0, 12], zoom: 1.1,
 });
+for (const country of countryFeatures.filter(item => item.properties.name).sort((a,b) => a.properties.name.localeCompare(b.properties.name))) {
+  const option = new Option(country.properties.name, country.properties.name);
+  $('#area-select').add(option);
+}
+let allMapFeatures = { type: 'FeatureCollection', features: [] };
 map.addControl(new NavigationControl(), 'top-right');
 map.on('click', 'wells', (event) => openWell(event.features[0].properties.well_id));
 map.on('mouseenter', 'wells', () => { map.getCanvas().style.cursor = 'pointer'; });
@@ -61,8 +69,35 @@ map.on('mouseleave', 'wells', () => { map.getCanvas().style.cursor = ''; });
 async function refreshMap() {
   const features = await api('/map/wells');
   if (!map.isStyleLoaded()) await new Promise(resolve => map.once('load', resolve));
+  allMapFeatures = features;
   map.getSource('wells').setData(features);
   $('#record-count').textContent = features.features.length;
+}
+
+const metricLabels = [
+  ['ep_projects','E&P projects'],['wells','Wells'],['logs','Logs'],['formation_tops','Formation tops'],
+  ['interpretations','Interpretations'],['seismic_surveys','Seismic surveys'],['seismic_2d_lines','2D seismic lines'],
+  ['seismic_3d_cubes','3D seismic cubes'],['seismic_interpretations','Seismic interpretations'],['reports','Reports'],
+  ['ma_reports','M&A reports'],['concession_maps','Concession maps'],['drilling_records','Drilling records'],
+  ['horizontal_wells','Horizontal wells'],['production_records','Production records'],['original_files','Original files'],
+];
+async function loadDashboard(wellIds = null) {
+  const query = new URLSearchParams();
+  if (wellIds !== null) {
+    query.set('area', 'true');
+    if (wellIds.length) query.set('well_ids', wellIds.join(','));
+  }
+  const data = await api(`/dashboard${query.size ? `?${query}` : ''}`);
+  $('.dashboard-caption').textContent = data.scope === 'global' ? 'Global counts · records available to your role' : 'Area counts · records available to your role';
+  const grid = $('#dashboard-metrics'); grid.replaceChildren();
+  for (const [key, label] of metricLabels) {
+    const count = data.counts[key];
+    const card = document.createElement('article'); card.className = `metric-card ${count.state}`;
+    card.append(textNode('span', label, 'metric-label'));
+    card.append(textNode('strong', count.value === null ? '—' : new Intl.NumberFormat().format(count.value), 'metric-value'));
+    card.append(textNode('span', count.state === 'available' ? 'IN CATALOG' : 'NOT CATALOGED', 'metric-state'));
+    grid.append(card);
+  }
 }
 
 async function search() {
@@ -164,7 +199,7 @@ async function connect() {
     $('#review-panel').hidden = role === 'reader';
     $('#refresh-imports').disabled = role === 'reader';
     notice(`Connected as ${role}`);
-    await Promise.all([search(), refreshMap(), ...(role === 'reader' ? [] : [refreshImports()])]);
+    await Promise.all([search(), refreshMap(), loadDashboard(), ...(role === 'reader' ? [] : [refreshImports()])]);
   } catch (error) { notice(error.message, true); }
 }
 
@@ -187,4 +222,72 @@ $('#connect').onclick = connect;
 $('#refresh-imports').onclick = () => act(async () => {}, 'Queue refreshed');
 $('#search-button').onclick = () => search().catch(error => notice(error.message, true));
 $('#search').onkeydown = (event) => { if (event.key === 'Enter') search().catch(error => notice(error.message, true)); };
+function coordinatePairs(value, output = []) {
+  if (Array.isArray(value) && typeof value[0] === 'number' && typeof value[1] === 'number') output.push(value);
+  else if (Array.isArray(value)) value.forEach(child => coordinatePairs(child, output));
+  return output;
+}
+function ringContains([x, y], ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i], [xj, yj] = ring[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function withinCountry(point, country) {
+  const polygons = country.geometry.type === 'Polygon' ? [country.geometry.coordinates] : country.geometry.coordinates;
+  return polygons.some(rings => ringContains(point, rings[0]) && !rings.slice(1).some(ring => ringContains(point, ring)));
+}
+function showCountry(country, label = country.properties.name) {
+  const points = coordinatePairs(country.geometry.coordinates);
+  const bounds = points.reduce((box, [x,y]) => [[Math.min(box[0][0],x),Math.min(box[0][1],y)],[Math.max(box[1][0],x),Math.max(box[1][1],y)]], [[180,90],[-180,-90]]);
+  map.getSource('country')?.setData({ type: 'FeatureCollection', features: [country] });
+  const visible = allMapFeatures.features.filter(f => withinCountry(f.geometry.coordinates, country));
+  map.getSource('wells')?.setData({ type: 'FeatureCollection', features: visible });
+  $('#record-count').textContent = visible.length;
+  $('#area-label').textContent = `${label} · country map and catalog counts`;
+  loadDashboard(visible.map(item => item.properties.well_id)).catch(error => notice(error.message, true));
+  map.fitBounds(bounds, { padding: 50, maxZoom: 5.2, duration: 900 });
+}
+$('#area-select').onchange = (event) => {
+  if (event.target.value === 'global') {
+    $('#area-label').textContent = 'Global map · global catalog counts';
+    map.getSource('country')?.setData({ type: 'FeatureCollection', features: [] });
+    map.flyTo({ center: [0, 15], zoom: 1.25 });
+    map.getSource('wells')?.setData(allMapFeatures);
+    loadDashboard().catch(error => notice(error.message, true));
+    return;
+  }
+  if (event.target.value !== 'current') {
+    const selected = countryFeatures.find(country => country.properties.name === event.target.value);
+    if (selected) showCountry(selected);
+    return;
+  }
+  if (!navigator.geolocation) { notice('This browser does not provide location access.', true); event.target.value = 'global'; return; }
+  navigator.geolocation.getCurrentPosition(({ coords }) => {
+    $('#area-label').textContent = 'Nearby current-location records · scoped catalog counts';
+    map.getSource('country')?.setData({ type: 'FeatureCollection', features: [] });
+    map.flyTo({ center: [coords.longitude, coords.latitude], zoom: 5 });
+    const radius = 8;
+    const nearby = allMapFeatures.features.filter(({ geometry }) => {
+      const [lon, lat] = geometry.coordinates;
+      return Math.abs(lat - coords.latitude) <= radius && Math.abs(lon - coords.longitude) <= radius * 1.5;
+    });
+    map.getSource('wells')?.setData({ type: 'FeatureCollection', features: nearby });
+    $('#record-count').textContent = nearby.length;
+    $('#dashboard-metrics').dataset.scope = 'current-location';
+    loadDashboard(nearby.map(item => item.properties.well_id)).catch(error => notice(error.message, true));
+  }, () => { notice('Location was unavailable. Choose Global overview or allow location access.', true); event.target.value = 'global'; }, { timeout: 10000 });
+};
 if (keyInput.value) connect();
+
+document.querySelectorAll('[data-dialog]').forEach((button) => {
+  button.addEventListener('click', () => document.getElementById(button.dataset.dialog).showModal());
+});
+document.querySelectorAll('.dialog-close').forEach((button) => {
+  button.addEventListener('click', () => button.closest('dialog').close());
+});
+document.querySelectorAll('.info-dialog').forEach((dialog) => {
+  dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+});
