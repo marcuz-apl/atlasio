@@ -1,0 +1,322 @@
+/* ---------- Map panel ---------- */
+.map-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+
+.map-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.map-title h2 {
+  margin-top: 3px;
+  font-size: 21px;
+  letter-spacing: -0.035em;
+}
+
+.map-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.map-meta b {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.map-source {
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.map-mount {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: var(--map-sea);
+}
+
+#map {
+  position: absolute;
+  inset: 0;
+}
+
+.map-mount .maplibregl-map {
+  font-family: var(--font-ui);
+}
+
+.map-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--map-sea);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+/* ---------- MapLibre controls ---------- */
+.maplibregl-ctrl-group {
+  border: 1px solid var(--line) !important;
+  border-radius: var(--radius-s) !important;
+  background: var(--surface-raised) !important;
+  box-shadow: var(--shadow-1) !important;
+  overflow: hidden;
+}
+
+.maplibregl-ctrl-group button {
+  width: 34px !important;
+  height: 34px !important;
+  background: transparent !important;
+}
+
+.maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--line) !important;
+}
+
+.maplibregl-ctrl-group button:hover {
+  background: var(--surface-sunken) !important;
+}
+
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: none;
+  opacity: 0.72;
+}
+
+[data-theme='dark'] .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(0.82) sepia(0.06) saturate(0.6);
+}
+
+.maplibregl-ctrl-scale {
+  border: 0 !important;
+  border-bottom: 1px solid var(--ink-2) !important;
+  border-left: 1px solid var(--ink-2) !important;
+  border-right: 1px solid var(--ink-2) !important;
+  background: color-mix(in srgb, var(--surface) 72%, transparent) !important;
+  color: var(--ink-2) !important;
+  font-family: var(--font-mono);
+  font-size: 10.5px !important;
+  padding: 1px 5px !important;
+}
+
+.maplibregl-ctrl-attrib {
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent) !important;
+  color: var(--muted) !important;
+  font-family: var(--font-mono);
+  font-size: 10.5px !important;
+}
+
+.maplibregl-ctrl-attrib a {
+  color: var(--muted) !important;
+}
+
+.maplibregl-ctrl-attrib-button {
+  filter: none;
+}
+
+[data-theme='dark'] .maplibregl-ctrl-attrib-button {
+  filter: invert(0.82) sepia(0.06) saturate(0.6);
+}
+
+.maplibregl-popup-content {
+  padding: 0 !important;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  background: var(--surface-raised);
+  color: var(--ink);
+  box-shadow: var(--shadow-2);
+  font-family: var(--font-ui);
+}
+
+.maplibregl-popup-tip {
+  border-top-color: var(--surface-raised) !important;
+  border-bottom-color: var(--surface-raised) !important;
+}
+
+.maplibregl-popup-close-button {
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1;
+}
+
+.maplibregl-popup-close-button:hover {
+  background: var(--surface-sunken);
+  color: var(--ink);
+}
+
+.map-pin {
+  display: grid;
+  gap: 3px;
+  min-width: 176px;
+  padding: 11px 13px;
+}
+
+.map-pin strong {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.map-pin span {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.map-pin span.coord {
+  color: var(--ink-2);
+}
+
+/* ---------- Coordinate rail ---------- */
+.coordinate-rail {
+  display: flex;
+  align-items: stretch;
+  border-top: 1px solid var(--line);
+  background: var(--surface-tint);
+}
+
+.coord-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 14px;
+  border-right: 1px solid var(--line);
+}
+
+.coord-cell:last-child {
+  border-right: 0;
+}
+
+.coord-label {
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+  white-space: nowrap;
+}
+
+.coord-value {
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.coord-note {
+  flex: 1;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+.coord-note .coord-value {
+  color: var(--faint);
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Landing map preview ---------- */
+.map-preview {
+  position: absolute;
+  left: 16px;
+  bottom: 56px;
+  z-index: 4;
+  width: min(300px, calc(100% - 32px));
+  padding: 13px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-2);
+  animation: view-in 0.18s ease-out;
+}
+
+.map-preview .preview-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.map-preview .preview-head strong {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.map-preview dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 12px;
+  margin: 9px 0 11px;
+}
+
+.map-preview dt {
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.6;
+}
+
+.map-preview dd {
+  margin: 0;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.map-preview .btn {
+  min-height: 34px;
+  width: 100%;
+  justify-content: space-between;
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 760px) {
+  .map-preview {
+    left: 10px;
+    bottom: 52px;
+    width: calc(100% - 20px);
+  }
+}
