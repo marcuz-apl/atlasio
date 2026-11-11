@@ -199,6 +199,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/map/wells", get(map_wells))
         .route("/api/files/{id}", get(download))
         .route("/", get(index))
+        .route("/favicon.svg", get(favicon))
         .nest_service("/assets", ServeDir::new("web/dist/assets"))
         .layer(DefaultBodyLimit::max(8 * 1024 * 1024))
         .with_state(state);
@@ -217,6 +218,13 @@ async fn index() -> Result<Html<String>, ApiError> {
             )
         })?;
     Ok(Html(html))
+}
+
+async fn favicon() -> Response {
+    match tokio::fs::read("web/dist/favicon.svg").await {
+        Ok(bytes) => ([(header::CONTENT_TYPE, "image/svg+xml")], bytes).into_response(),
+        Err(_) => StatusCode::NOT_FOUND.into_response(),
+    }
 }
 
 async fn health(State(state): State<AppState>) -> ApiResult {
