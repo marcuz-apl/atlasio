@@ -1,0 +1,60 @@
+:root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #17333b; background: #f4f7f6; font-synthesis: none; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; }
+button, input, textarea, select { font: inherit; }
+button { border: 0; border-radius: 7px; background: #176873; color: white; padding: 10px 14px; min-height: 44px; cursor: pointer; font-weight: 650; transition: background-color .18s ease, transform .18s ease; }
+button:hover { background: #0d525c; }
+button:active { transform: translateY(1px); }
+button:focus-visible { outline: 3px solid #e6ab45; outline-offset: 2px; }
+button.secondary { color: #176873; background: #e3eff0; }
+button.text-button { color: #176873; background: transparent; padding: 0; }
+input, textarea, select { border: 1px solid #bdd0d0; border-radius: 7px; background: white; padding: 9px; min-height: 42px; width: 100%; color: #17333b; }
+input:focus, textarea:focus, select:focus { outline: 2px solid #80bec3; border-color: #176873; }
+input[type="checkbox"] { width: auto; }
+label { display: grid; gap: 5px; font-size: 14px; font-weight: 600; }
+textarea { min-height: 65px; resize: vertical; }
+.topbar { background: #103e47; color: #d5e6e8; display: flex; align-items: center; gap: 15px; padding: 12px 28px; }
+.brand { font-size: 23px; font-weight: 800; letter-spacing: -.04em; color: white; }
+.topbar > span { font-size: 12px; }
+.key-control { margin-left: auto; display: flex; gap: 9px; align-items: center; }
+.key-control label { white-space: nowrap; }
+.key-control input { width: 185px; }
+main { max-width: 1600px; padding: 24px 28px 60px; margin: auto; }
+.hero { padding: 13px 0 23px; }
+.eyebrow { margin: 0; color: #176873; text-transform: uppercase; font-size: 12px; font-weight: 800; letter-spacing: .12em; }
+h1 { margin: 8px 0; font-size: clamp(25px, 3vw, 38px); letter-spacing: -.04em; }
+.hero > p:last-child { margin: 0; color: #55717a; }
+#notice { min-height: 0; }
+#notice:not(:empty) { border-radius: 7px; padding: 11px 13px; margin-bottom: 15px; }
+#notice.success { background: #e5f4ef; color: #1b654d; }
+#notice.error { background: #fbeaea; color: #a13c3c; }
+.workspace { display: grid; grid-template-columns: minmax(320px, 390px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.workspace:has(.sidebar .panel:not([hidden])) { grid-template-columns: minmax(320px, 390px) minmax(0, 1fr); }
+.workspace:has(.sidebar .panel[hidden] + .panel[hidden]) { grid-template-columns: 1fr; }
+.sidebar, .main-column { display: grid; gap: 18px; min-width: 0; }
+.panel { background: #fff; border: 1px solid #dce7e6; border-radius: 11px; padding: 18px; box-shadow: 0 3px 14px #1c454908; }
+.section-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 15px; }
+.section-head h2 { font-size: 16px; margin: 0; }
+.section-head > span { font-size: 12px; color: #526f77; }
+form { display: grid; gap: 12px; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.check { display: flex; align-items: center; font-weight: 500; }
+.stack { display: grid; gap: 10px; }
+.import-card, .version { border: 1px solid #dae6e5; border-radius: 8px; padding: 12px; display: grid; gap: 8px; }
+.import-card p, .version p { margin: 0; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.pill { width: fit-content; border-radius: 100px; padding: 3px 8px; background: #edf4f4; color: #176873; font-size: 12px; text-transform: uppercase; font-weight: 700; }
+.finding { padding: 7px; border-radius: 5px; }
+.finding.error { background: #fff0ee; color: #a54135; }
+.finding.warning { background: #fff6df; color: #8a5b0a; }
+.muted, .map-note { color: #526f77; font-size: 13px; }
+.search-row { display: flex; gap: 8px; }
+.results { display: grid; gap: 7px; margin-top: 10px; max-height: 185px; overflow-y: auto; }
+.result { text-align: left; background: #eef5f5; color: #174f59; }
+.map-panel { padding-bottom: 11px; }
+#map { height: 430px; border-radius: 8px; overflow: hidden; }
+.map-note { margin: 10px 0 0; }
+.record { display: grid; gap: 10px; }
+.record h3 { margin: 0; }
+@media (max-width: 850px) { .workspace { grid-template-columns: 1fr; } .topbar { flex-wrap: wrap; padding: 12px 18px; } .key-control { width: 100%; margin-left: 0; } main { padding: 15px; } }
+@media (prefers-reduced-motion: reduce) { button { transition: none; } }

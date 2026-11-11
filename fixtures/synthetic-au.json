@@ -1,0 +1,12 @@
+{
+  "name": "SYNTHETIC WELL AU-001",
+  "aliases": ["SYNTHETIC ALIAS AU-001"],
+  "external_id": "SYNTHETIC-AU-001",
+  "source": "SYNTHETIC TEST PACKAGE - COUNTRY B",
+  "license": "Synthetic fixture for unrestricted testing",
+  "confidentiality": "public",
+  "download_allowed": true,
+  "source_crs": "EPSG:4326",
+  "x": 135.0,
+  "y": -25.0
+}

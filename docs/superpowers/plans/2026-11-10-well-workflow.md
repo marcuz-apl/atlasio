@@ -30,12 +30,12 @@
 - Only explicitly supplied `EPSG:4326` coordinates can publish in this slice; other or missing CRSs produce blocking QC. This is a reversible first-slice limit, not a claim of general CRS support.
 - Synthetic fixtures must be labeled and cover two countries. No customer files enter Git.
 - Local demo API keys exercise API authorization; production identity integration remains outside this slice.
-- The draft SQL migration and browser client need review against the Rust API before they are considered implemented or verified.
+- The local stack uses S3Mock for test storage. Production storage and identity integration still need validation.
 
 ## Tasks
 
-- [ ] Create database migration, migration runner, and local PostgreSQL/PostGIS plus object storage stack.
-- [ ] Test and implement QC, duplicate candidates, and immutable publication rules.
-- [ ] Add staging, correction, review, record, search, map, and authorized file APIs.
-- [ ] Build the browser workflow with locally bundled map assets.
-- [ ] Run the whole workflow with both synthetic fixtures, verify migration and restore, and document setup and limits.
+- [x] Create database migration, migration runner, and local PostgreSQL/PostGIS plus object storage stack.
+- [x] Test and implement QC, duplicate candidates, and immutable publication rules.
+- [x] Add staging, correction, review, record, search, map, and authorized file APIs.
+- [x] Build the browser workflow with locally bundled map assets.
+- [x] Run the whole workflow with both synthetic fixtures, verify migration and local restore, and document setup and limits.
