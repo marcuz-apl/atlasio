@@ -504,16 +504,6 @@ body[data-role='reviewer'] .status-dot {
   white-space: nowrap;
 }
 
-.footer-status {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  white-space: nowrap;
-}
-
 .social-links {
   display: flex;
   align-items: center;
