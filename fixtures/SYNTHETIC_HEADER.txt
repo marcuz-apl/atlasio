@@ -1,0 +1,2 @@
+SYNTHETIC TEST FILE — NO REAL WELL DATA
+This file exercises original-file storage and checksum verification.

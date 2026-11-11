@@ -1,8 +1,25 @@
 # Atlasio
 
-Atlasio is a planned governed subsurface data workspace. It aims to help teams stage, review, publish, and find technical data, with a map for discovery and inspection. Source files, provenance, dataset versions, permissions, and coordinate integrity are central to the product.
+Atlasio is a governed subsurface data workspace. Its first working slice lets a team stage a well header and original file, resolve QC findings, review and publish an immutable version, then find that well through search or an offline map. Source files, provenance, dataset versions, permissions, and coordinate integrity are central to the product.
 
-The project is in its first implementation slice; there is no verified application to run yet. This slice will take a well package through staging, quality checks, review, publication, search, and map display. The core is intended for global use and will be tested with material from multiple countries.
+The core is intended for global use and has synthetic fixtures from two countries. Release 1 remains in progress; see [PRD.md](PRD.md) for its broader requirements.
+
+## Run the first slice
+
+Requires Docker Compose, a Rust toolchain, and Node.js/npm. From the repository root:
+
+```sh
+docker compose up -d
+npm --prefix web ci
+npm --prefix web run build
+./scripts/dev-server.sh
+```
+
+Open `http://localhost:8000`. Local demo keys are `importer-demo`, `reviewer-demo`, and `reader-demo`. In another terminal, run `node scripts/smoke.mjs` to exercise the two synthetic packages, version replacement, search, map API, download, and access checks. The demo PostgreSQL and S3Mock services retain state in Docker volumes. S3Mock is a development test service.
+
+Only an explicitly supplied `EPSG:4326` source position can be published in this slice. Missing and other CRSs block submission pending a verified operation; no datum or vertical conversion is inferred. The upload limit is 5 MiB. Demo API keys, coarse public/restricted access, header-only metadata, and alias/ID duplicate checks are not the full Release 1 identity, file-format, spatial-duplicate, or authorization design. Do not use the demo credentials or S3Mock for production data.
+
+The [backup and restore rehearsal](docs/operations/backup-restore.md) describes how metadata and original objects are recovered together.
 
 ## Project documents
 
