@@ -15,10 +15,14 @@ import { initReview, loadReview as loadReviewQueue } from './views/review.js';
 
 const THEME_KEY = 'atlasio-theme';
 const THEME_MODES = new Set(['auto', 'light', 'dark']);
+const THEME_CYCLE = { auto: 'light', light: 'dark', dark: 'auto' };
+const THEME_NAMES = { auto: 'Automatic', light: 'Light', dark: 'Dark' };
 const darkScheme = matchMedia('(prefers-color-scheme: dark)');
+const THEME_REFRESH_MS = 30000;
 const TABS = new Set(['explore', 'records', 'ingest', 'review']);
 
 let themeMode = 'auto';
+let resolvedTheme = null;
 
 initTheme();
 initModules();
@@ -44,12 +48,21 @@ function initModules() {
 function initTheme() {
   themeMode = storedThemeMode();
   applyTheme(themeMode);
-  $$('[data-theme-mode]').forEach((button) => {
-    button.addEventListener('click', () => applyTheme(button.dataset.themeMode, { persist: true }));
+
+  $('#theme-toggle')?.addEventListener('click', () => {
+    applyTheme(THEME_CYCLE[themeMode] ?? 'auto', { persist: true });
   });
+
   darkScheme.addEventListener?.('change', () => {
     if (themeMode === 'auto') applyTheme('auto');
   });
+
+  // Some browsers do not emit a change event when the OS palette switches; poll slowly as a fallback.
+  setInterval(() => {
+    if (themeMode === 'auto' && resolvedTheme !== (darkScheme.matches ? 'dark' : 'light')) {
+      applyTheme('auto');
+    }
+  }, THEME_REFRESH_MS);
 }
 
 function storedThemeMode() {
@@ -65,6 +78,8 @@ function storedThemeMode() {
 function applyTheme(mode, { persist = false } = {}) {
   themeMode = THEME_MODES.has(mode) ? mode : 'auto';
   const theme = themeMode === 'auto' ? (darkScheme.matches ? 'dark' : 'light') : themeMode;
+  const automaticFlip = themeMode === 'auto' && resolvedTheme !== null && resolvedTheme !== theme;
+  resolvedTheme = theme;
   state.theme = theme;
   document.documentElement.dataset.theme = theme;
   if (persist) {
@@ -74,13 +89,28 @@ function applyTheme(mode, { persist = false } = {}) {
       /* Private browsing can block storage; the theme still applies for this view. */
     }
   }
-  $$('[data-theme-mode]').forEach((button) => {
-    const active = button.dataset.themeMode === themeMode;
-    button.setAttribute('aria-pressed', String(active));
-    button.title = button.dataset.themeMode === 'auto'
-      ? `Automatic — ${theme} now`
-      : button.dataset.themeMode === 'light' ? 'Light' : 'Dark';
-  });
+
+  const toggle = $('#theme-toggle');
+  if (toggle) {
+    const next = THEME_CYCLE[themeMode];
+    toggle.dataset.mode = themeMode;
+    toggle.setAttribute(
+      'aria-label',
+      themeMode === 'auto'
+        ? `Color theme: automatic, ${theme} now. Switch to ${next} only.`
+        : `Color theme: ${themeMode}. Switch to ${next === 'auto' ? 'automatic' : next}.`
+    );
+    toggle.title =
+      themeMode === 'auto'
+        ? `Automatic — ${theme} now · click for light only`
+        : `${THEME_NAMES[themeMode]} · click for ${next === 'auto' ? 'automatic' : next}`;
+    if (automaticFlip) {
+      toggle.classList.remove('is-turning');
+      void toggle.offsetWidth;
+      toggle.classList.add('is-turning');
+    }
+  }
+
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', theme === 'dark' ? '#0b1310' : '#143b2e');
   window.dispatchEvent(new CustomEvent('atlasio:theme'));

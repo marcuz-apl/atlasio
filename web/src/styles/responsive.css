@@ -303,16 +303,13 @@
     height: 34px;
   }
 
-  .theme-switch {
+  .theme-toggle {
+    width: 30px;
+    height: 30px;
     margin-left: 2px;
   }
 
-  .theme-option {
-    width: 26px;
-    height: 26px;
-  }
-
-  .theme-icon {
+  .theme-glyph {
     width: 15px;
     height: 15px;
   }
