@@ -19,6 +19,8 @@ const THEME_CYCLE = { auto: 'light', light: 'dark', dark: 'auto' };
 const THEME_NAMES = { auto: 'Automatic', light: 'Light', dark: 'Dark' };
 const darkScheme = matchMedia('(prefers-color-scheme: dark)');
 const THEME_REFRESH_MS = 30000;
+const NIGHT_START_HOUR = 19;
+const NIGHT_END_HOUR = 7;
 const TABS = new Set(['explore', 'records', 'ingest', 'review']);
 
 let themeMode = 'auto';
@@ -59,10 +61,18 @@ function initTheme() {
 
   // Some browsers do not emit a change event when the OS palette switches; poll slowly as a fallback.
   setInterval(() => {
-    if (themeMode === 'auto' && resolvedTheme !== (darkScheme.matches ? 'dark' : 'light')) {
+    if (themeMode === 'auto' && resolvedTheme !== autoTheme()) {
       applyTheme('auto');
     }
   }, THEME_REFRESH_MS);
+}
+
+// Automatic means the system palette, with a local-time night override so an
+// evening workspace turns dark even when the OS itself stays in light mode.
+function autoTheme() {
+  const hour = new Date().getHours();
+  const night = hour >= NIGHT_START_HOUR || hour < NIGHT_END_HOUR;
+  return night || darkScheme.matches ? 'dark' : 'light';
 }
 
 function storedThemeMode() {
@@ -77,7 +87,7 @@ function storedThemeMode() {
 
 function applyTheme(mode, { persist = false } = {}) {
   themeMode = THEME_MODES.has(mode) ? mode : 'auto';
-  const theme = themeMode === 'auto' ? (darkScheme.matches ? 'dark' : 'light') : themeMode;
+  const theme = themeMode === 'auto' ? autoTheme() : themeMode;
   const automaticFlip = themeMode === 'auto' && resolvedTheme !== null && resolvedTheme !== theme;
   resolvedTheme = theme;
   state.theme = theme;

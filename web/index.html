@@ -12,8 +12,10 @@
         try {
           var stored = localStorage.getItem('atlasio-theme');
           var mode = stored === 'light' || stored === 'dark' ? stored : 'auto';
+          var hour = new Date().getHours();
+          var night = hour >= 19 || hour < 7;
           var theme = mode === 'auto'
-            ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+            ? ((night || matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light')
             : mode;
           document.documentElement.dataset.theme = theme;
         } catch (error) {
