@@ -3,36 +3,38 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Atlasio</title>
+    <meta name="theme-color" content="#142823" />
+    <title>Atlasio · Subsurface workspace</title>
   </head>
   <body>
-    <header class="topbar"><div class="brand">Atlasio</div><span>Governed subsurface workspace</span><div class="key-control"><label for="api-key">API key</label><input id="api-key" type="password" autocomplete="off" placeholder="Enter your role key" /><button id="connect">Connect</button></div></header>
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Atlasio home">atlasio<span>.</span></a>
+      <div class="workspace-name"><span class="live-dot"></span> Atlas workspace <span class="slash">/</span> Data explorer</div>
+      <div class="key-control"><label for="api-key">Access key</label><input id="api-key" type="password" autocomplete="off" placeholder="Role key" /><button id="connect">Connect</button></div>
+    </header>
     <main>
-      <section class="hero"><p class="eyebrow">Release 1 · First slice</p><h1>Publish trusted well data, then find it on the map.</h1><p>Original files, source coordinates, quality findings, and review decisions stay attached to every published version.</p></section>
+      <section class="page-heading"><div><p class="eyebrow">ATLAS WORKSPACE <span>/</span> EXPLORER</p><h1>Well locations</h1></div><p>Search, inspect, and review governed subsurface records.</p></section>
       <div id="notice" role="status" aria-live="polite"></div>
       <div class="workspace">
         <aside class="sidebar">
-          <section class="panel" id="stage-panel"><div class="section-head"><h2>Stage a well package</h2><span>Importer</span></div>
+          <section class="panel stage-panel" id="stage-panel"><div class="section-head"><div><p class="eyebrow">INGESTION</p><h2>Stage a package</h2></div><span class="mini-tag">IMPORTER</span></div>
             <form id="stage-form">
               <label>Well name<input name="name" required /></label>
-              <label>External ID<input name="external_id" /></label>
-              <label>Aliases, separated by commas<input name="aliases" /></label>
-              <label>Source organization or package<input name="source" required /></label>
-              <label>License or permitted use<input name="license" required /></label>
-              <label>Confidentiality<input name="confidentiality" value="restricted" /></label>
-              <div class="row"><label>Source X / longitude<input name="x" type="number" step="any" required /></label><label>Source Y / latitude<input name="y" type="number" step="any" required /></label></div>
-              <label>Source CRS<input name="source_crs" placeholder="EPSG:4326" /></label>
-              <label class="check"><input name="download_allowed" type="checkbox" /> Source license permits download</label>
-              <label>Original file (up to 5 MiB)<input name="file" type="file" required /></label>
-              <button type="submit">Stage package</button>
+              <div class="row"><label>External ID<input name="external_id" /></label><label>Aliases<input name="aliases" placeholder="Comma separated" /></label></div>
+              <label>Source package<input name="source" required /></label>
+              <div class="row"><label>License<input name="license" required /></label><label>Confidentiality<input name="confidentiality" value="restricted" /></label></div>
+              <div class="row"><label>Source X<input name="x" type="number" step="any" required /></label><label>Source Y<input name="y" type="number" step="any" required /></label></div>
+              <label>Source CRS<input name="source_crs" placeholder="Enter known CRS" /></label>
+              <label class="check"><input name="download_allowed" type="checkbox" /> License permits download</label>
+              <label class="file-label">Original file <small>Up to 5 MiB</small><input name="file" type="file" required /></label>
+              <button type="submit" class="primary wide">Stage package <span>↗</span></button>
             </form>
           </section>
-          <section class="panel" id="review-panel"><div class="section-head"><h2>Review queue</h2><button class="text-button" id="refresh-imports">Refresh</button></div><div id="imports" class="stack"><p class="muted">Connect with an importer or reviewer key.</p></div></section>
+          <section class="panel queue-panel" id="review-panel"><div class="section-head"><div><p class="eyebrow">GOVERNANCE</p><h2>Review queue</h2></div><button class="text-button" id="refresh-imports">Refresh ↻</button></div><div id="imports" class="stack"><p class="muted">Connect with an importer or reviewer key.</p></div></section>
         </aside>
         <div class="main-column">
-          <section class="panel discovery"><div class="section-head"><h2>Discover published wells</h2><span>Approved versions only</span></div><div class="search-row"><input id="search" placeholder="Search name, alias, or external ID" /><button id="search-button">Search</button></div><div id="results" class="results"></div></section>
-          <section class="panel map-panel"><div class="section-head"><h2>Map</h2><span>Explicit EPSG:4326 positions</span></div><div id="map"></div><p class="map-note">Offline land outline and approved well points. Broader CRS operations require reviewed control points.</p></section>
-          <section class="panel"><div class="section-head"><h2>Well record</h2><span>Versions and provenance</span></div><div id="record" class="record"><p class="muted">Choose a well from search or the map.</p></div></section>
+          <section class="map-panel"><div id="map"></div><div class="map-search"><div class="map-search-title"><span class="eyebrow">CATALOG SEARCH</span><span class="approved-tag"><i></i> Approved</span></div><div class="search-row"><span class="search-icon">⌕</span><input id="search" placeholder="Well name, alias, or ID" /><button id="search-button" class="primary">Search</button></div><div id="results" class="results"></div></div><div class="map-tools"><span class="map-legend"><i></i> Published wells <b id="record-count">—</b></span><span>Verified coordinates · Offline map</span></div></section>
+          <section class="panel record-panel"><div class="section-head"><div><p class="eyebrow">SELECTED RECORD</p><h2>Well details</h2></div><span class="detail-state">READY</span></div><div id="record" class="record empty-record"><div class="empty-symbol" aria-hidden="true"><span>＋</span></div><strong>Choose a well</strong><p class="muted">Select a map point or search result to review its approved version, source files, and coordinate history.</p><div class="detail-hint"><span>01</span> Search the catalog <i></i><span>02</span> Inspect provenance</div></div></section>
         </div>
       </div>
     </main>

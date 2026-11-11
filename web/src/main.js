@@ -62,6 +62,7 @@ async function refreshMap() {
   const features = await api('/map/wells');
   if (!map.isStyleLoaded()) await new Promise(resolve => map.once('load', resolve));
   map.getSource('wells').setData(features);
+  $('#record-count').textContent = features.features.length;
 }
 
 async function search() {
@@ -84,6 +85,7 @@ async function openWell(id) {
   const well = await api(`/wells/${id}`);
   const container = $('#record');
   container.replaceChildren();
+  container.classList.remove('empty-record');
   container.append(textNode('h3', well.versions[0].name));
   for (const version of well.versions) {
     const card = document.createElement('div');
@@ -156,6 +158,7 @@ async function connect() {
   try {
     const { role } = await api('/me');
     currentRole = role;
+    document.querySelector('.workspace').classList.toggle('reader-view', role === 'reader');
     sessionStorage.setItem('atlasio-key', keyInput.value);
     $('#stage-panel').hidden = role !== 'importer';
     $('#review-panel').hidden = role === 'reader';
