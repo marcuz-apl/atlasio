@@ -112,7 +112,7 @@ function applyTheme(mode, { persist = false } = {}) {
   }
 
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', theme === 'dark' ? '#0b1310' : '#143b2e');
+  if (meta) meta.setAttribute('content', theme === 'dark' ? '#15141a' : '#ffffff');
   window.dispatchEvent(new CustomEvent('atlasio:theme'));
 }
 

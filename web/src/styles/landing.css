@@ -26,6 +26,15 @@
   font-style: normal;
 }
 
+@supports ((background-clip: text) or (-webkit-background-clip: text)) {
+  .landing-intro h1 em {
+    background: linear-gradient(92deg, var(--brand), var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
 .landing-intro .lede {
   max-width: 58ch;
   margin-top: 15px;
