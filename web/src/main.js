@@ -263,8 +263,6 @@ function applyRole() {
   const label = roleLabel(state.role);
   const access = $('#access-label');
   if (access) access.textContent = label;
-  const footer = $('#footer-role');
-  if (footer) footer.textContent = state.role ? label : 'Not connected';
   const badge = $('#workspace-role');
   if (badge) {
     badge.textContent = state.role ? `${label} access` : '—';
