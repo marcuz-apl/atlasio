@@ -14,7 +14,11 @@ import { initIngest, loadQueue as loadIngestQueue } from './views/ingest.js';
 import { initReview, loadReview as loadReviewQueue } from './views/review.js';
 
 const THEME_KEY = 'atlasio-theme';
+const THEME_MODES = new Set(['auto', 'light', 'dark']);
+const darkScheme = matchMedia('(prefers-color-scheme: dark)');
 const TABS = new Set(['explore', 'records', 'ingest', 'review']);
+
+let themeMode = 'auto';
 
 initTheme();
 initModules();
@@ -38,61 +42,54 @@ function initModules() {
 }
 
 function initTheme() {
-  const theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
-  applyTheme(theme, { persist: false });
-  $('#theme-toggle')?.addEventListener('click', () => {
-    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-    applyTheme(next, { persist: true });
+  themeMode = storedThemeMode();
+  applyTheme(themeMode);
+  $$('[data-theme-mode]').forEach((button) => {
+    button.addEventListener('click', () => applyTheme(button.dataset.themeMode, { persist: true }));
+  });
+  darkScheme.addEventListener?.('change', () => {
+    if (themeMode === 'auto') applyTheme('auto');
   });
 }
 
-function applyTheme(theme, { persist = false } = {}) {
+function storedThemeMode() {
+  try {
+    const stored = localStorage.getItem(THEME_KEY);
+    if (THEME_MODES.has(stored)) return stored;
+  } catch (error) {
+    /* Private browsing can block storage; fall back to automatic. */
+  }
+  return 'auto';
+}
+
+function applyTheme(mode, { persist = false } = {}) {
+  themeMode = THEME_MODES.has(mode) ? mode : 'auto';
+  const theme = themeMode === 'auto' ? (darkScheme.matches ? 'dark' : 'light') : themeMode;
   state.theme = theme;
   document.documentElement.dataset.theme = theme;
   if (persist) {
     try {
-      localStorage.setItem(THEME_KEY, theme);
+      localStorage.setItem(THEME_KEY, themeMode);
     } catch (error) {
       /* Private browsing can block storage; the theme still applies for this view. */
     }
   }
-  const button = $('#theme-toggle');
-  if (button) {
-    button.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
-  }
+  $$('[data-theme-mode]').forEach((button) => {
+    const active = button.dataset.themeMode === themeMode;
+    button.setAttribute('aria-pressed', String(active));
+    button.title = button.dataset.themeMode === 'auto'
+      ? `Automatic — ${theme} now`
+      : button.dataset.themeMode === 'light' ? 'Light' : 'Dark';
+  });
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', theme === 'dark' ? '#0b1310' : '#143b2e');
   window.dispatchEvent(new CustomEvent('atlasio:theme'));
 }
 
 function initChrome() {
-  const menuButton = $('#info-button');
-  const menu = $('#info-menu');
-
-  const closeMenu = () => {
-    if (!menu) return;
-    menu.hidden = true;
-    menuButton?.setAttribute('aria-expanded', 'false');
-  };
-
-  menuButton?.addEventListener('click', () => {
-    if (!menu) return;
-    menu.hidden = !menu.hidden;
-    menuButton.setAttribute('aria-expanded', String(!menu.hidden));
-  });
-
-  document.addEventListener('click', (event) => {
-    if (!event.target.closest('.menu-wrap')) closeMenu();
-  });
-
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') closeMenu();
-  });
-
   $$('[data-dialog]').forEach((button) => {
     button.addEventListener('click', () => {
       const dialog = document.getElementById(button.dataset.dialog);
-      closeMenu();
       if (dialog && !dialog.open) dialog.showModal();
     });
   });
