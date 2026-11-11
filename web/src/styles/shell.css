@@ -40,7 +40,7 @@
 .brand-mark {
   width: 30px;
   height: 30px;
-  color: var(--accent);
+  color: var(--brand);
   stroke-width: 1.7;
 }
 
