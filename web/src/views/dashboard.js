@@ -18,10 +18,10 @@ const groups = [
     title: 'Culture & Lands',
     icon: 'land',
     items: [
+      ['gis_basemaps', 'GIS & Basemaps'],
       ['concession_maps', 'Concession Maps'],
       ['permits_licenses', 'Permits & Licenses'],
       ['land_leases', 'Land & Lease Records'],
-      ['gis_basemaps', 'GIS & Basemaps'],
     ],
   },
   {
@@ -60,8 +60,8 @@ const groups = [
     title: 'Production Data',
     icon: 'production',
     items: [
-      ['production_records', 'Production Records'],
       ['production_tests', 'Production Tests'],
+      ['production_records', 'Production Records'],
       ['injection_records', 'Injection Records'],
     ],
   },

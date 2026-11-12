@@ -4,6 +4,11 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.29 — 2026-11-12
+Build: v0.1.29+261112g
+Type: feat
+- Put GIS & Basemaps first under Culture & Lands, and Production Tests first under Production Data.
+
 ## 0.1.28 — 2026-11-12
 Build: v0.1.28+261112f
 Type: feat
