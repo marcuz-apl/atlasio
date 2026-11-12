@@ -4,6 +4,12 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.3.3 — 2026-11-12
+Build: v0.3.3+2611127
+Type: fix
+- Replace the header descriptor with the approved promise: Governed subsurface data, in place.
+- Use the same line in the About dialog and drop its terminal period, matching the display rule.
+
 ## 0.3.1 — 2026-11-12
 Build: v0.3.1+2611125
 Type: feat
