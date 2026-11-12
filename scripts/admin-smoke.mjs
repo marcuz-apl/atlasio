@@ -22,6 +22,14 @@ assert.equal((await request('/admin/status', admin)).status, 200);
 assert.equal((await request('/admin/status', datamgr)).status, 200);
 assert.equal((await request('/admin/status', readerKey)).status, 403);
 assert.equal((await request('/admin/profiles', readerKey)).status, 403);
+assert.equal((await request('/admin/changelog', readerKey)).status, 403);
+
+const changelog = await request('/admin/changelog', datamgr);
+assert.equal(changelog.status, 200, JSON.stringify(changelog.value));
+assert(changelog.value.entries.length >= 19, 'the change log carries the release history');
+assert.equal(changelog.value.entries[0].version, changelog.value.latest);
+assert(changelog.value.entries.some((entry) => entry.version === '0.1.17'));
+assert(changelog.value.entries.some((entry) => entry.highlights.length > 0));
 
 const created = await request('/admin/profiles', datamgr, 'POST', {
   role: 'reader',
@@ -129,4 +137,4 @@ const audit = await request('/admin/audit', datamgr);
 assert(audit.value.some((entry) => entry.action === 'admin.backup.restore'));
 assert(audit.value.some((entry) => entry.action === 'admin.profile.rotate'));
 
-console.log('Admin profiles, demo-key rotation, backup, verify, download, restore rehearsal, maintenance block, and audit passed.');
+console.log('Admin profiles, demo-key rotation, backup, verify, download, restore rehearsal, maintenance block, change log, and audit passed.');

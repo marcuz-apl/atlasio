@@ -4,7 +4,7 @@ export const DOCS_HTML = `
   <h2>Why this page exists</h2>
   <p>Atlasio is built around choices that are easy to lose: why coordinates are stored the way they are, why a published version never changes, why a category shows a dash instead of a zero, and why the catalog is grouped into six domains. This page keeps those choices beside the product so a client, reviewer, or future maintainer can understand the reasoning without reconstructing it from commits or conversations.</p>
   <p>Read it in three ways. The <a href="#/docs" data-doc-link="docs-invariants">invariants</a> are the rules we do not break. The <a href="#/docs" data-doc-link="docs-decisions">decision log</a> records what we chose, when, and what it costs. The <a href="#/docs" data-doc-link="docs-glossary">glossary</a> fixes the vocabulary used by the interface and the API.</p>
-  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.18. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
+  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.19. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
 </section>
 
 <section class="docs-section" id="docs-architecture" data-doc-section>
@@ -147,6 +147,7 @@ export const DOCS_HTML = `
   <p>Administrator and Data Manager keys bootstrap from the server environment. Viewer, importer, and reviewer profiles are records in PostgreSQL: demo keys are visible so the pilot gate can hand them out, while custom keys are stored as SHA-256 hashes and shown once at creation or rotation. Revoking a profile stops it on the next request; rotating a demo key updates the public sign-in gate without a rebuild.</p>
   <p>The <code>#/admin</code> panel is linked in the header only for those two roles. Data Managers manage profiles and run, download, and verify backups. Restoring or deleting a backup is reserved for Administrators. A restore requires typing <code>RESTORE &lt;backup id&gt;</code>, takes a fresh pre-restore backup first, verifies the archive checksum, and pauses every non-admin session until it finishes. Verification restores the archive into a scratch database and compares record counts, which catches a truncated or mismatched dump before anyone relies on it.</p>
   <p>With local object storage, original files are copied into the backup archive. With S3, the archive holds the database dump only, so an operator must take a provider snapshot or bucket copy alongside it. A failed restore deliberately leaves maintenance on; the pre-restore backup is the recovery path, and the failure is recorded in the audit trail.</p>
+  <p>The panel also renders the product's change log from the repository <code>CHANGELOG.md</code>, newest first, with version, release date, build identifier, change type, commit, and the user-visible changes. The server reads the file on request, so a deployment can update its build history without rebuilding the client. Each entry is added in the same commit that bumps <code>VERSION</code>; the published table below stays a shorter client-facing summary.</p>
 </section>
 
 <section class="docs-section" id="docs-versioning" data-doc-section>
@@ -168,6 +169,7 @@ export const DOCS_HTML = `
         <tr><td>0.1.16</td><td>This reference page, linked from the header and the access gate.</td></tr>
         <tr><td>0.1.17</td><td>Admin panel: managed access profiles, demo-key rotation, verified backups, guarded restore, and an administrative audit trail.</td></tr>
         <tr><td>0.1.18</td><td>Backup adapter honours the configured database, so verification and restore compare the same dataset.</td></tr>
+        <tr><td>0.1.19</td><td>Admin change log records every released build from the repository change log.</td></tr>
       </tbody>
     </table>
   </div>
@@ -275,6 +277,17 @@ export const DOCS_HTML = `
       <dt>Decision</dt><dd>Add an <code>#/admin</code> panel for Administrators and Data Managers. Environment keys bootstrap the two operational roles; viewer, importer, and reviewer profiles live in PostgreSQL, with custom keys stored as SHA-256 hashes and shown once. A backup is a custom-format dump plus a manifest with checksum, record counts, and object summary; local originals are copied into the archive. Restore requires an Administrator, a typed confirmation, a fresh pre-restore backup, checksum verification, and maintenance mode that pauses non-admin sessions.</dd>
       <dt>Why</dt><dd>Access changes and recovery become visible, auditable operations rather than shell history. Data Managers can run routine work; only an Administrator can replace the database.</dd>
       <dt>Trade-off</dt><dd>Custom keys are hashed without a salt because they are machine-generated with 256 bits of entropy; losing one means rotating it. S3 deployments must pair the database archive with a provider snapshot. A failed restore leaves maintenance on deliberately so the pre-restore backup stays the recovery path.</dd>
+    </dl>
+  </article>
+
+  <article class="decision">
+    <div class="decision-head"><span class="decision-id">D-0010</span><span class="decision-tag">Accepted</span><span class="decision-tag">v0.1.19</span></div>
+    <h3>Build history is a product artifact</h3>
+    <dl>
+      <dt>Context</dt><dd>Release history lived in git and in the public docs table. The Administration panel could show the current version but not how the deployment got there, so an operator reconstructing a build had to leave the product.</dd>
+      <dt>Decision</dt><dd>Keep a repository <code>CHANGELOG.md</code> with one section per release and serve it as structured entries in the Administration panel. The server reads the file on each request and accepts an <code>ATLASIO_CHANGELOG</code> override. Entries carry version, date, build identifier, change type, commit reference, and user-visible changes; the newest release is marked.</dd>
+      <dt>Why</dt><dd>The build history travels with the deployment, stays readable in code review, and can be corrected without a server rebuild or client release.</dd>
+      <dt>Trade-off</dt><dd>A second release record beside the public docs table. The file must be updated in the same commit as the version bump, or the panel goes stale; the docs table stays the short client-facing summary while the change log is the detailed build record.</dd>
     </dl>
   </article>
 </section>

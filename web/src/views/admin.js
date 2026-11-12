@@ -1,7 +1,7 @@
 import { api } from '../lib/api.js';
 import { state } from '../lib/state.js';
 import { $, el, icon, toast, copyText, setButtonBusy, emptyState } from '../lib/ui.js';
-import { formatBytes, formatCount, formatDateTime, roleLabel } from '../lib/format.js';
+import { formatBytes, formatCount, formatDate, formatDateTime, roleLabel } from '../lib/format.js';
 
 const ADMIN_ROLES = new Set(['admin', 'datamgr']);
 const KIND_LABEL = { demo: 'Demo', custom: 'Custom' };
@@ -14,6 +14,7 @@ let audit = [];
 const verification = new Map();
 let pendingRestore = null;
 let confirmResolve = null;
+let changelog = null;
 
 export function initAdmin() {
   if (initialized) return;
@@ -85,12 +86,14 @@ export async function refreshAdmin({ announce = false } = {}) {
       api('/admin/profiles'),
       api('/admin/backups'),
       api('/admin/audit'),
+      api('/admin/changelog'),
     ]);
-    const [statusResult, profilesResult, backupsResult, auditResult] = results;
+    const [statusResult, profilesResult, backupsResult, auditResult, changelogResult] = results;
     if (statusResult.status === 'fulfilled') system = statusResult.value;
     if (profilesResult.status === 'fulfilled') profiles = profilesResult.value;
     if (backupsResult.status === 'fulfilled') backups = backupsResult.value;
     if (auditResult.status === 'fulfilled') audit = auditResult.value;
+    if (changelogResult.status === 'fulfilled') changelog = changelogResult.value;
 
     const failure = results.find((result) => result.status === 'rejected')?.reason;
     if (failure) reportError(failure);
@@ -105,6 +108,7 @@ function renderAll() {
   renderStats();
   renderProfiles();
   renderBackups();
+  renderChangelog();
   renderAudit();
   const banner = $('#maintenance-banner');
   if (banner) banner.hidden = !system?.maintenance;
@@ -294,6 +298,67 @@ function renderStorageNote() {
     system.storage.mode === 's3'
       ? 'Originals live in S3. Each archive holds the database dump only — take a provider snapshot or bucket copy alongside it.'
       : `Originals are stored locally and copied into each archive. Backup directory: ${system.backup_dir}`));
+}
+
+function renderChangelog() {
+  const host = $('#admin-changelog');
+  if (!host) return;
+  host.replaceChildren();
+  const entries = changelog?.entries || [];
+  const count = $('#admin-changelog-count');
+  if (count) count.textContent = formatCount(entries.length);
+  const foot = $('#admin-changelog-foot');
+  if (foot) {
+    foot.textContent = changelog
+      ? `Source: ${changelog.source} · latest ${changelog.latest || '—'} · server ${changelog.app_version}`
+      : 'Source: CHANGELOG.md';
+  }
+  if (!entries.length) {
+    host.append(emptyState({
+      title: 'No build history found',
+      message: 'Add CHANGELOG.md beside VERSION, or point ATLASIO_CHANGELOG at the file the server should read.',
+      iconName: 'file',
+    }));
+    return;
+  }
+
+  entries.forEach((entry, index) => {
+    const article = el('article', 'changelog-entry');
+
+    const head = el('div', 'changelog-head');
+    head.append(el('span', 'changelog-version', entry.version));
+    if (entry.kind) {
+      head.append(el('span', `admin-pill changelog-kind is-${entry.kind}`, entry.kind));
+    }
+    if (index === 0) head.append(el('span', 'admin-pill is-good', 'Latest'));
+    head.append(el('time', 'changelog-date', formatReleaseDate(entry.date)));
+    article.append(head);
+
+    if (entry.build || (entry.commit && entry.commit !== 'pending')) {
+      const meta = el('div', 'changelog-meta');
+      if (entry.build) meta.append(el('code', 'changelog-build', entry.build));
+      if (entry.commit && entry.commit !== 'pending') {
+        meta.append(el('span', 'changelog-commit', `commit ${entry.commit}`));
+      }
+      article.append(meta);
+    }
+
+    if (entry.summary) article.append(el('p', 'changelog-summary', entry.summary));
+
+    if (Array.isArray(entry.highlights) && entry.highlights.length) {
+      const list = el('ul', 'changelog-items');
+      for (const highlight of entry.highlights) list.append(el('li', '', highlight));
+      article.append(list);
+    }
+
+    host.append(article);
+  });
+}
+
+function formatReleaseDate(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ''));
+  if (!match) return value || '—';
+  return formatDate(new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
 }
 
 function renderAudit() {
