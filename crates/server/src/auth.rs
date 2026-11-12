@@ -243,6 +243,63 @@ pub(crate) async fn bootstrap_accounts(
     Ok(())
 }
 
+pub(crate) struct MfaReset {
+    pub username: String,
+    pub role: String,
+    pub cleared: bool,
+}
+
+/// Clear one account's authenticator and recovery codes without touching its
+/// password. Used by the explicit `reset-mfa` operator command.
+pub(crate) async fn reset_mfa_for_username(
+    pool: &PgPool,
+    username: &str,
+) -> Result<MfaReset, String> {
+    let username = check_username(username)?;
+    let account = sqlx::query(
+        "SELECT id, role, mfa_enabled, (mfa_secret IS NOT NULL) AS has_secret FROM admin_accounts WHERE username = $1",
+    )
+    .bind(&username)
+    .fetch_optional(pool)
+    .await
+    .map_err(|error| error.to_string())?
+    .ok_or_else(|| format!("No staff account named '{username}'"))?;
+    let id: Uuid = account.get("id");
+    let role: String = account.get("role");
+    let had_mfa: bool = account.get("mfa_enabled") || account.get("has_secret");
+    if had_mfa {
+        sqlx::query(
+            "UPDATE admin_accounts SET mfa_secret = NULL, mfa_enabled = false, mfa_recovery_hashes = '[]'::jsonb, failed_attempts = 0, locked_until = NULL WHERE id = $1",
+        )
+        .bind(id)
+        .execute(pool)
+        .await
+        .map_err(|error| error.to_string())?;
+        sqlx::query("DELETE FROM auth_sessions WHERE account_id = $1")
+            .bind(id)
+            .execute(pool)
+            .await
+            .map_err(|error| error.to_string())?;
+        record_audit(
+            pool,
+            "system",
+            "auth.mfa.reset",
+            json!({
+                "username": username,
+                "role": role,
+                "source": "reset-mfa command",
+            }),
+        )
+        .await
+        .map_err(|error| error.to_string())?;
+    }
+    Ok(MfaReset {
+        username,
+        role,
+        cleared: had_mfa,
+    })
+}
+
 pub(crate) async fn session_account(
     pool: &PgPool,
     headers: &HeaderMap,

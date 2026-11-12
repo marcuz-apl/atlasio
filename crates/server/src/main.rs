@@ -321,8 +321,40 @@ fn object_store() -> Result<StorageSetup, Box<dyn std::error::Error>> {
     Ok((Arc::new(store), None, "s3"))
 }
 
+async fn run_reset_mfa(username: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let db_url = env::var("DATABASE_URL")?;
+    let pool = PgPool::connect(&db_url).await?;
+    let outcome = auth::reset_mfa_for_username(&pool, username).await?;
+    if outcome.cleared {
+        println!(
+            "atlasio: cleared MFA and recovery codes for the {} account '{}' and signed out its sessions.",
+            outcome.role, outcome.username
+        );
+    } else {
+        println!(
+            "atlasio: MFA is already off for the {} account '{}'; nothing changed.",
+            outcome.role, outcome.username
+        );
+    }
+    pool.close().await;
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut args = env::args().skip(1);
+    if let Some(command) = args.next() {
+        if command == "reset-mfa" {
+            let username = args
+                .next()
+                .ok_or("usage: atlasio-server reset-mfa <username>")?;
+            return run_reset_mfa(&username).await;
+        }
+        return Err(format!(
+            "unknown command '{command}'\nusage: atlasio-server [reset-mfa <username>]"
+        )
+        .into());
+    }
     let db_url = env::var("DATABASE_URL")?;
     let pool = PgPool::connect(&db_url).await?;
     migrate(&pool).await?;

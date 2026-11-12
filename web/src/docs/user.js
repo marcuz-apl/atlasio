@@ -95,7 +95,7 @@ export const USER_DOCS_HTML = `
   <p class="docs-eyebrow">08 / Account &amp; help</p>
   <h2>Keep your account and data trustworthy</h2>
   <ul>
-    <li><strong>Password and MFA.</strong> Use the account menu. Changing a password or disabling MFA signs out your other sessions.</li>
+    <li><strong>Password and MFA.</strong> Use the account menu. Changing a password or disabling MFA signs out your other sessions. If you lose both the authenticator and the recovery codes, a server operator can run the <code>reset-mfa</code> command for your username to clear MFA without changing your password.</li>
     <li><strong>Session lifetime.</strong> Staff sessions last twelve hours. Repeated failed sign-ins lock the account for five minutes.</li>
     <li><strong>Ask for access.</strong> A Data Manager or Administrator manages access keys, roles, and account resets.</li>
     <li><strong>Check the source.</strong> Atlasio keeps provenance visible, but the license and confidentiality of a package still govern how you may use it.</li>

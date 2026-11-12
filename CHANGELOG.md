@@ -4,6 +4,12 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.28 — 2026-11-12
+Build: v0.1.28+261112f
+Type: feat
+- Add the operator-only command `atlasio-server reset-mfa <username>` for a lost authenticator and recovery codes. It clears that account's MFA, lockout, and sessions, keeps the password, writes an `auth.mfa.reset` audit entry, and exits without restarting the service.
+- No reset state lives in the environment, so a normal restart can never strip MFA.
+
 ## 0.1.27 — 2026-11-12
 Build: v0.1.27+261112e
 Type: fix
