@@ -195,6 +195,7 @@
               <div class="account-menu" id="account-menu" role="menu" aria-labelledby="access-button" hidden>
                 <button type="button" role="menuitem" id="menu-profile">User profile</button>
                 <button type="button" role="menuitem" id="menu-password">Change password</button>
+                <button type="button" role="menuitem" id="menu-mfa">Set up MFA</button>
                 <button type="button" role="menuitem" id="menu-logout">Log out</button>
               </div>
             </div>
@@ -740,13 +741,6 @@
         <label class="field"><span>New password</span><input id="password-new" type="password" autocomplete="new-password" minlength="8" required /></label>
         <label class="field"><span>Repeat new password</span><input id="password-repeat" type="password" autocomplete="new-password" minlength="8" required /></label>
         <p class="field-hint">At least 8 characters, and it must not contain the username.</p>
-        <div class="password-mfa">
-          <div class="password-mfa-copy">
-            <strong>Authenticator app</strong>
-            <span id="password-mfa-state">Off</span>
-          </div>
-          <button class="btn btn-secondary btn-small" type="button" id="password-mfa-button">Set up MFA</button>
-        </div>
         <p class="dialog-error" id="password-error" role="alert" hidden></p>
         <div class="dialog-actions">
           <button class="btn btn-primary" type="submit" id="password-submit">Save password</button>

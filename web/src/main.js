@@ -213,6 +213,10 @@ function initChrome() {
     closeAccountMenu();
     openPasswordDialog();
   });
+  $('#menu-mfa')?.addEventListener('click', () => {
+    closeAccountMenu();
+    openMfaDialog();
+  });
   $('#menu-logout')?.addEventListener('click', () => {
     closeAccountMenu();
     void disconnect();
@@ -266,10 +270,6 @@ function initChrome() {
   $('#change-password-button')?.addEventListener('click', () => {
     $('#access-dialog')?.close();
     openPasswordDialog();
-  });
-  $('#password-mfa-button')?.addEventListener('click', () => {
-    $('#password-dialog')?.close();
-    openMfaDialog();
   });
   $('#mfa-button')?.addEventListener('click', () => {
     $('#access-dialog')?.close();
@@ -593,13 +593,6 @@ function openPasswordDialog({ forced = false } = {}) {
       ? 'This account still uses its initial password. Choose your own password now to unlock administrative changes. Other signed-in sessions will be revoked.'
       : 'Choose a new password for this account. Other signed-in sessions will be revoked.';
   }
-  const mfaState = $('#password-mfa-state');
-  const mfaButton = $('#password-mfa-button');
-  const enabled = Boolean(state.account?.mfa_enabled);
-  if (mfaState) {
-    mfaState.textContent = enabled ? 'On' : state.account?.must_enroll_mfa ? 'Off — required' : 'Off';
-  }
-  if (mfaButton) mfaButton.textContent = enabled ? 'Manage MFA' : 'Set up MFA';
   const form = $('#password-form');
   form?.reset();
   const error = $('#password-error');
@@ -648,6 +641,8 @@ async function submitPassword(event) {
 }
 
 function applyAccountChrome() {
+  const menuMfa = $('#menu-mfa');
+  if (menuMfa) menuMfa.textContent = state.account?.mfa_enabled ? 'Manage MFA' : 'Set up MFA';
   const passwordPending = Boolean(state.session && state.account?.must_change_password);
   const mfaPending = Boolean(state.session && state.account?.must_enroll_mfa);
   const pending = passwordPending || mfaPending;

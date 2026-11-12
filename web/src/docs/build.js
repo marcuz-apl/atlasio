@@ -4,7 +4,7 @@ export const BUILD_DOCS_HTML = `
   <h2>Why this page exists</h2>
   <p>Atlasio is built around choices that are easy to lose: why coordinates are stored the way they are, why a published version never changes, why a category shows a dash instead of a zero, and why the catalog is grouped into six domains. This page keeps those choices beside the product so a client, reviewer, or future maintainer can understand the reasoning without reconstructing it from commits or conversations.</p>
   <p>Read it in three ways. The <a href="#/docs" data-doc-link="docs-invariants">invariants</a> are the rules we do not break. The <a href="#/docs" data-doc-link="docs-decisions">decision log</a> records what we chose, when, and what it costs. The <a href="#/docs" data-doc-link="docs-glossary">glossary</a> fixes the vocabulary used by the interface and the API.</p>
-  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.24. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
+  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.25. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
 </section>
 
 <section class="docs-section" id="docs-architecture" data-doc-section>
@@ -177,6 +177,7 @@ export const BUILD_DOCS_HTML = `
         <tr><td>0.1.22</td><td>Account menu for profile, password, MFA management, and log out; the Admin Panel change log and audit trail start collapsed.</td></tr>
         <tr><td>0.1.23</td><td>New passwords need at least 8 characters instead of 12.</td></tr>
         <tr><td>0.1.24</td><td>#/docs becomes the signed-in user guide; the build notes move into Administration at #/admin/docs.</td></tr>
+        <tr><td>0.1.25</td><td>MFA gets its own account-menu entry beside Change password: Set up MFA, then Manage MFA once enrolled.</td></tr>
       </tbody>
     </table>
   </div>

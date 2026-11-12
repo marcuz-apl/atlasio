@@ -5,7 +5,7 @@ export const USER_DOCS_HTML = `
   <p>The sign-in gate offers three ways in. A <strong>demo role</strong> opens a sandbox viewer, importer, or reviewer session. An <strong>access key</strong> connects with a managed key from your team. An <strong>Administrator or Data Manager</strong> signs in with a username and password.</p>
   <p>Staff accounts must choose their own password at first sign-in, and privileged changes stay blocked until they do. If your deployment requires multi-factor authentication, the account also enrols an authenticator app before it can administer anything.</p>
   <ul>
-    <li><strong>Account menu.</strong> Click the account chip in the top-right for User profile, Change password, and Log out. Change password also shows and manages the authenticator app.</li>
+    <li><strong>Account menu.</strong> Click the account chip in the top-right for User profile, Change password, Set up MFA, and Log out. The MFA entry becomes Manage MFA once an authenticator is on; it opens its own dialog.</li>
     <li><strong>Theme.</strong> One control cycles automatic, light, and dark. Automatic follows the operating system and turns dark after nightfall.</li>
     <li><strong>Docs.</strong> The Docs link in the header returns to this guide at any time.</li>
   </ul>

@@ -4,6 +4,12 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.25 — 2026-11-12
+Build: v0.1.25+261112c
+Type: feat
+- Give multi-factor authentication its own account-menu entry beside Change password, instead of hiding it inside the password dialog.
+- Label the entry Set up MFA until an authenticator is enrolled, then Manage MFA.
+
 ## 0.1.24 — 2026-11-12
 Build: v0.1.24+261112b
 Type: feat
