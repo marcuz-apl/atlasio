@@ -101,6 +101,15 @@
       <symbol id="i-plus" viewBox="0 0 24 24">
         <path d="M12 4v16M4 12h16" />
       </symbol>
+      <symbol id="i-minus" viewBox="0 0 24 24">
+        <path d="M4 12h16" />
+      </symbol>
+      <symbol id="i-expand" viewBox="0 0 24 24">
+        <path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5" />
+      </symbol>
+      <symbol id="i-shrink" viewBox="0 0 24 24">
+        <path d="M4 9h5V4M20 9h-5V4M4 15h5v5M20 15h-5v5" />
+      </symbol>
       <symbol id="i-well" viewBox="0 0 24 24">
         <path d="M5 21 12 3l7 18" />
         <path d="M8.2 14h7.6" />
@@ -453,44 +462,118 @@
 
             <div class="workspace-main" id="workspace-main">
               <div class="ws-panel ws-explore" data-panel="explore">
-                <aside class="panel catalog-pane" aria-label="Approved well catalog">
-                  <header class="catalog-head">
-                    <div>
-                      <p class="eyebrow">CATALOG</p>
-                      <h2>Approved wells <span class="count-badge" id="catalog-count">—</span></h2>
-                    </div>
-                    <button class="icon-btn" id="catalog-refresh" type="button" aria-label="Refresh catalog" title="Refresh catalog">
-                      <svg aria-hidden="true"><use href="#i-refresh" /></svg>
-                    </button>
-                  </header>
-                  <form class="search-field" id="catalog-search-form">
-                    <svg class="field-icon" aria-hidden="true"><use href="#i-search" /></svg>
-                    <label class="sr-only" for="catalog-search">Search wells</label>
-                    <input id="catalog-search" type="search" placeholder="Well name, alias, or ID" autocomplete="off" />
-                    <button class="btn btn-secondary btn-small" type="submit">Search</button>
-                  </form>
-                  <div class="catalog-list" id="catalog-list" aria-live="polite"></div>
-                  <footer class="catalog-foot">Select a well to inspect it on the map.</footer>
-                </aside>
+                <div class="explore-stage" id="explore-stage" data-catalog="open" data-display="open">
+                  <div class="map-mount explore-mount" id="workspace-map-mount"></div>
 
-                <section class="map-panel workspace-map" aria-labelledby="workspace-map-title">
-                  <div class="map-head">
-                    <div class="map-title">
-                      <p class="eyebrow">MAP</p>
-                      <h2 id="workspace-map-title">Approved wells</h2>
+                  <div class="explore-toolbar" role="toolbar" aria-label="Map tools" aria-orientation="vertical">
+                    <div class="toolbar-group">
+                      <button class="tool-btn" type="button" data-map-action="zoom-in" aria-label="Zoom in" title="Zoom in">
+                        <svg aria-hidden="true"><use href="#i-plus" /></svg>
+                      </button>
+                      <button class="tool-btn" type="button" data-map-action="zoom-out" aria-label="Zoom out" title="Zoom out">
+                        <svg aria-hidden="true"><use href="#i-minus" /></svg>
+                      </button>
                     </div>
-                    <div class="map-meta">
-                      <span class="legend-item"><i class="legend-dot filled"></i><b id="workspace-well-count">—</b> wells</span>
-                      <button class="btn btn-secondary btn-small" id="fit-all" type="button">Fit all</button>
+                    <div class="toolbar-group">
+                      <button class="tool-btn" id="fit-all" type="button" data-map-action="fit" aria-label="Fit all wells" title="Fit all wells">
+                        <svg aria-hidden="true"><use href="#i-globe" /></svg>
+                      </button>
+                      <button class="tool-btn" id="catalog-toggle" type="button" data-map-action="catalog" aria-label="Toggle catalog" aria-expanded="true" title="Catalog">
+                        <svg aria-hidden="true"><use href="#i-well" /></svg>
+                      </button>
+                      <button class="tool-btn" id="display-toggle" type="button" data-map-action="display" aria-label="Toggle map display controls" aria-expanded="true" title="Map display">
+                        <svg aria-hidden="true"><use href="#i-ops" /></svg>
+                      </button>
+                    </div>
+                    <div class="toolbar-group">
+                      <button class="tool-btn" type="button" data-map-action="export" aria-label="Export map as PNG" title="Export PNG">
+                        <svg aria-hidden="true"><use href="#i-download" /></svg>
+                      </button>
+                      <button class="tool-btn" id="fullscreen-toggle" type="button" data-map-action="fullscreen" aria-label="Enter full screen" title="Full screen">
+                        <svg aria-hidden="true"><use href="#i-expand" /></svg>
+                      </button>
                     </div>
                   </div>
-                  <div class="map-mount" id="workspace-map-mount"></div>
-                  <div class="coordinate-rail" aria-label="Map coordinates">
+
+                  <form class="explore-search search-field" id="explore-search-form" role="search">
+                    <svg class="field-icon" aria-hidden="true"><use href="#i-search" /></svg>
+                    <label class="sr-only" for="explore-search">Find a well on the map</label>
+                    <input id="explore-search" type="search" placeholder="Find a well…" autocomplete="off" />
+                    <div class="explore-results" id="explore-results" hidden></div>
+                  </form>
+
+                  <aside class="explore-display" id="explore-display" aria-label="Map display controls">
+                    <header class="display-head">
+                      <p class="eyebrow">MAP DISPLAY</p>
+                      <span class="display-crs">EPSG:4326</span>
+                    </header>
+                    <label class="display-field"><span>Basemap</span>
+                      <div class="select-wrap">
+                        <select id="basemap-select">
+                          <option value="topo">Topographic</option>
+                          <option value="gray">Light gray canvas</option>
+                          <option value="dark">Dark gray canvas</option>
+                          <option value="imagery">Satellite imagery</option>
+                          <option value="natgeo">NatGeo style</option>
+                          <option value="offline">Offline vector</option>
+                        </select>
+                        <svg class="select-arrow" aria-hidden="true"><use href="#i-chevron-down" /></svg>
+                      </div>
+                    </label>
+                    <div class="display-toggles">
+                      <label class="check"><input type="checkbox" id="toggle-wells" checked /><span>Well symbols</span></label>
+                      <label class="check"><input type="checkbox" id="toggle-graticule" checked /><span>Graticule</span></label>
+                      <label class="check"><input type="checkbox" id="toggle-borders" checked /><span>Country borders</span></label>
+                      <label class="check"><input type="checkbox" id="toggle-area" checked /><span>Area of interest</span></label>
+                    </div>
+                    <label class="display-field"><span>Symbol size <output id="symbol-size-value">4.2 px</output></span>
+                      <input type="range" id="symbol-size" min="2.5" max="8" step="0.1" value="4.2" />
+                    </label>
+                    <label class="display-field"><span>Symbol opacity <output id="well-opacity-value">100%</output></span>
+                      <input type="range" id="well-opacity" min="20" max="100" step="5" value="100" />
+                    </label>
+                    <div class="display-actions">
+                      <button class="btn btn-secondary btn-small" type="button" data-map-action="fit">Reset view</button>
+                      <button class="btn btn-secondary btn-small" type="button" data-map-action="export">Export PNG</button>
+                    </div>
+                    <p class="display-note" id="basemap-note">Offline vector · Natural Earth</p>
+                  </aside>
+
+                  <aside class="panel catalog-pane explore-catalog" id="explore-catalog" aria-label="Approved well catalog">
+                    <header class="catalog-head">
+                      <div>
+                        <p class="eyebrow">CATALOG</p>
+                        <h2>Approved wells <span class="count-badge" id="catalog-count">—</span></h2>
+                      </div>
+                      <div class="catalog-head-actions">
+                        <button class="icon-btn" id="catalog-refresh" type="button" aria-label="Refresh catalog" title="Refresh catalog">
+                          <svg aria-hidden="true"><use href="#i-refresh" /></svg>
+                        </button>
+                        <button class="icon-btn" type="button" data-map-action="catalog" aria-label="Close catalog" title="Close catalog">
+                          <svg aria-hidden="true"><use href="#i-close" /></svg>
+                        </button>
+                      </div>
+                    </header>
+                    <form class="search-field" id="catalog-search-form">
+                      <svg class="field-icon" aria-hidden="true"><use href="#i-search" /></svg>
+                      <label class="sr-only" for="catalog-search">Search wells</label>
+                      <input id="catalog-search" type="search" placeholder="Well name, alias, or ID" autocomplete="off" />
+                      <button class="btn btn-secondary btn-small" type="submit">Search</button>
+                    </form>
+                    <div class="catalog-list" id="catalog-list" aria-live="polite"></div>
+                    <footer class="catalog-foot">Select a well to inspect it on the map.</footer>
+                  </aside>
+
+                  <div class="coordinate-rail explore-rail" aria-label="Map coordinates">
                     <span class="coord-cell"><span class="coord-label">CURSOR</span><span class="coord-value coord-cursor-value">—</span></span>
                     <span class="coord-cell"><span class="coord-label">DISPLAY CRS</span><span class="coord-value">EPSG:4326</span></span>
+                    <span class="coord-cell"><span class="coord-label">ZOOM</span><span class="coord-value" id="rail-zoom">1.2</span></span>
+                    <span class="coord-cell"><span class="coord-label">WELLS</span><span class="coord-value"><b id="workspace-well-count">—</b></span></span>
                     <span class="coord-cell coord-note"><span class="coord-value coord-note-value">Move over the map to read coordinates</span></span>
                   </div>
-                </section>
+
+                  <aside class="inspector" id="inspector" hidden aria-label="Record details" aria-live="polite"></aside>
+                </div>
               </div>
 
               <div class="ws-panel ws-records" data-panel="records" hidden>
@@ -552,6 +635,12 @@
                           <label class="field"><span>Source Y (latitude) <b aria-hidden="true">*</b></span><input name="y" type="number" step="any" required inputmode="decimal" /></label>
                         </div>
                         <label class="field"><span>Source CRS <b aria-hidden="true">*</b></span><input name="source_crs" placeholder="e.g. EPSG:4326" autocomplete="off" /><em class="field-hint">No default is assumed. This slice publishes only explicit EPSG:4326 positions.</em></label>
+                        <div class="pick-row">
+                          <button class="btn btn-secondary btn-small" type="button" id="pick-on-map">
+                            <svg aria-hidden="true"><use href="#i-location" /></svg>Pick on map
+                          </button>
+                          <span class="field-hint" id="pick-hint">The pick sets X/Y and EPSG:4326 explicitly. Native CRS values are typed above.</span>
+                        </div>
                       </fieldset>
                       <fieldset>
                         <legend>Original file</legend>
@@ -603,8 +692,6 @@
                   <div class="review-list" id="review-list" aria-live="polite"></div>
                 </section>
               </div>
-
-              <aside class="inspector" id="inspector" hidden aria-label="Record details" aria-live="polite"></aside>
             </div>
           </div>
         </section>
@@ -824,6 +911,19 @@
       <h2>Data stewardship matters.</h2>
       <p>Catalog counts reflect records available to your role. Items marked “Planned” are not represented in the current catalog. Map positions are shown only when source coordinates have passed the configured review workflow.</p>
       <p class="dialog-meta">Check source licenses and coordinate provenance before using data in operational decisions.</p>
+    </dialog>
+
+    <dialog id="pick-dialog" class="dialog pick-dialog">
+      <button class="dialog-close icon-btn" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-close" /></svg></button>
+      <p class="eyebrow">POSITION</p>
+      <h2>Pick a position on the map</h2>
+      <p class="dialog-lede">Click the map to set the source position. A pick is explicit: it fills X/Y and sets the source CRS to EPSG:4326. For a native CRS, cancel and type the source values instead.</p>
+      <div class="pick-map-mount" id="pick-map-mount"></div>
+      <p class="pick-readout" id="pick-readout">No position picked yet.</p>
+      <div class="dialog-actions">
+        <button class="btn btn-primary" type="button" id="pick-apply" disabled>Use this position</button>
+        <button class="btn btn-ghost" type="button" data-dialog-close>Cancel</button>
+      </div>
     </dialog>
 
     <div class="toasts" id="toasts" role="status" aria-live="polite"></div>

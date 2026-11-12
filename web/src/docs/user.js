@@ -46,7 +46,12 @@ export const USER_DOCS_HTML = `
 <section class="docs-section" id="user-explore" data-doc-section>
   <p class="docs-eyebrow">04 / Explore</p>
   <h2>Inspect a well and its evidence</h2>
-  <p>The workspace map is a discovery and inspection surface. Pan, zoom, and select a well; the inspector opens beside the map with the record behind that position.</p>
+  <p>The workspace map is a discovery and inspection surface. It fills the screen beneath the header: pan, zoom, and select a well, and the inspector opens beside the map with the record behind that position. The catalog sits in a drawer on the left, and the map display panel on the right stays in view while you work.</p>
+  <ul>
+    <li><strong>Basemap.</strong> Choose Topographic, light or dark gray canvas, satellite imagery, NatGeo style, or the offline vector map. If tiles cannot be reached, Atlasio switches to the offline map and tells you.</li>
+    <li><strong>Display controls.</strong> Toggle well symbols, graticule, country borders, and the area of interest; adjust symbol size and opacity live; reset the view or export the current map as a PNG.</li>
+    <li><strong>Quick search.</strong> The field at the top right finds a well by name or ID and flies to it; the catalog drawer keeps the full approved list.</li>
+  </ul>
   <ul>
     <li><strong>Identity.</strong> Name, aliases, external ID, and the stable Atlasio identifier stay separate so sources can disagree without overwriting each other.</li>
     <li><strong>Coordinates.</strong> Source X/Y and source CRS are preserved. The display position and the recorded transformation are shown beside them.</li>
@@ -72,7 +77,7 @@ export const USER_DOCS_HTML = `
   <h2>Stage, correct, and submit a package</h2>
   <p>Importers turn a source package into a reviewed record. The original file is stored unchanged; its checksum proves the bytes survived.</p>
   <ol class="docs-steps">
-    <li><strong>Stage the package.</strong> Provide the header manifest and the original file. The upload limit in this slice is 5 MiB.</li>
+    <li><strong>Stage the package.</strong> Provide the header manifest and the original file. The upload limit in this slice is 5 MiB. <strong>Pick on map</strong> can fill X/Y for you; a pick is explicit and sets the source CRS to EPSG:4326. Native CRS values are always typed by hand.</li>
     <li><strong>Read the QC findings.</strong> Blocking errors must be resolved; warnings need a judgement, not a dismissal.</li>
     <li><strong>Correct metadata</strong> on the staged record. Every correction updates the QC result and is recorded in the audit trail.</li>
     <li><strong>Submit for review.</strong> A staged package is editable; a submitted package is not.</li>

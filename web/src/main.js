@@ -365,6 +365,8 @@ function initChrome() {
     applyRoute().catch((error) => toast(error.message, 'error'));
   });
 
+  window.addEventListener('resize', syncBannerHeight);
+
   window.addEventListener('atlasio:demo-profiles', () => {
     void refreshDemoProfiles();
   });
@@ -675,6 +677,15 @@ function applyAccountChrome() {
     if (action) action.textContent = 'Set up MFA';
   }
   document.body.classList.toggle('has-security-banner', pending);
+  syncBannerHeight();
+}
+
+// The full-bleed Explore stage sizes itself against the header plus any visible
+// security banner, so keep the banner height available as a CSS variable.
+function syncBannerHeight() {
+  const banner = $('#security-banner');
+  const height = banner && !banner.hidden ? banner.offsetHeight : 0;
+  document.documentElement.style.setProperty('--banner-h', `${height}px`);
 }
 
 function showMfaStep(step) {

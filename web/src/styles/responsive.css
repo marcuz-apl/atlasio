@@ -8,10 +8,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .ws-explore {
-    grid-template-columns: minmax(0, 286px) minmax(0, 1fr);
-  }
-
   :root {
     --landing-h: clamp(520px, calc(100dvh - 380px), 700px);
   }
@@ -61,21 +57,13 @@
     overflow-x: auto;
   }
 
-  .ws-explore {
-    grid-template-columns: minmax(0, 1fr);
+  .explore-search {
+    width: min(240px, calc(100% - 190px));
   }
 
-  .catalog-pane {
-    height: auto;
-    max-height: 340px;
-  }
-
-  .catalog-list {
-    max-height: 210px;
-  }
-
-  .workspace-map {
-    height: clamp(440px, 62vw, 560px);
+  .explore-catalog {
+    left: 58px;
+    width: calc(100% - 72px);
   }
 
   .ingest-layout {
@@ -181,21 +169,40 @@
     font-size: var(--text-sm);
   }
 
-  .catalog-pane {
-    max-height: 310px;
+  .explore-toolbar {
+    top: 56px;
+    left: 10px;
   }
 
-  .catalog-list {
-    max-height: 180px;
+  .explore-search {
+    top: 10px;
+    right: 10px;
+    width: 170px;
   }
 
-  .workspace-map {
-    height: 440px;
+  .explore-catalog {
+    top: 56px;
+    left: 54px;
+    bottom: 46px;
+    width: calc(100% - 64px);
   }
 
-  .inspector {
-    width: 100%;
-    border-radius: var(--radius-m);
+  .explore-display {
+    top: 56px;
+    right: 10px;
+    width: min(260px, calc(100% - 70px));
+  }
+
+  .explore-stage .inspector {
+    top: 56px;
+    left: 10px;
+    right: 10px;
+    bottom: 46px;
+    width: auto;
+  }
+
+  .explore-stage .maplibregl-ctrl-bottom-left {
+    display: none;
   }
 
   .version-card dl {
@@ -399,8 +406,12 @@
     grid-template-columns: 1fr;
   }
 
-  .workspace-map {
-    height: 380px;
+  .explore-search {
+    width: 132px;
+  }
+
+  .explore-search input::placeholder {
+    color: transparent;
   }
 
   .workspace-tabs {

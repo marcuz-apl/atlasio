@@ -4,7 +4,7 @@ export const BUILD_DOCS_HTML = `
   <h2>Why this page exists</h2>
   <p>Atlasio is built around choices that are easy to lose: why coordinates are stored the way they are, why a published version never changes, why a category shows a dash instead of a zero, and why the catalog is grouped into six domains. This page keeps those choices beside the product so a client, reviewer, or future maintainer can understand the reasoning without reconstructing it from commits or conversations.</p>
   <p>Read it in three ways. The <a href="#/docs" data-doc-link="docs-invariants">invariants</a> are the rules we do not break. The <a href="#/docs" data-doc-link="docs-decisions">decision log</a> records what we chose, when, and what it costs. The <a href="#/docs" data-doc-link="docs-glossary">glossary</a> fixes the vocabulary used by the interface and the API.</p>
-  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.35. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
+  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.36. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
 </section>
 
 <section class="docs-section" id="docs-architecture" data-doc-section>
@@ -186,6 +186,7 @@ export const BUILD_DOCS_HTML = `
         <tr><td>0.1.30</td><td>E&amp;P Projects removed; Source Files replaces Original Files; DST Records and Core &amp; Sample Records join the catalog as planned categories, with a Wells-versus-Versions explanation.</td></tr>
         <tr><td>0.1.31</td><td>Viewer demo key is <code>viewer-demo</code>; the seeded staff passwords are <code>admin-initial</code> and <code>datamgr-initial</code>.</td></tr>
         <tr><td>0.1.32</td><td>Deviation Surveys replaces Horizontal Wells; orientation is derived from the survey as a well attribute.</td></tr>
+        <tr><td>0.1.36</td><td>Explore becomes a full-bleed map beneath the header with a floating toolbar, basemap gallery, live display controls, catalog drawer, quick search, and PNG export; Ingest gains an explicit pick-on-map position helper.</td></tr>
       </tbody>
     </table>
   </div>
@@ -359,6 +360,16 @@ export const BUILD_DOCS_HTML = `
       <dt>Decision</dt><dd>Remove the Horizontal Wells category and add Deviation Surveys under Well Data. Treat vertical, deviated, and horizontal as a well attribute or filter derived from the deviation survey, not as ledger rows. The catalog stays at twenty-five categories.</dd>
       <dt>Why</dt><dd>Every tile names a record type, trajectory has one authoritative source, and the same well cannot appear under two competing classifications.</dd>
       <dt>Trade-off</dt><dd>There is no direct horizontal-wells list until trajectory data exists and the filter is built. Until then, orientation is a documented attribute rather than a browsable category.</dd>
+    </dl>
+  </article>
+  <article class="decision">
+    <div class="decision-head"><span class="decision-id">D-0016</span><span class="decision-tag">Accepted</span><span class="decision-tag">v0.1.36</span></div>
+    <h3>Explore borrows a map-first layout, never third-party data</h3>
+    <dl>
+      <dt>Context</dt><dd>The UKOGL webmap was admired as a design reference: a full-bleed map under the header with floating tools and a catalog beside it. Atlasio's map had been a boxed panel under a tall page head, which buried the discovery surface.</dd>
+      <dt>Decision</dt><dd>Rebuild Explore as a full-bleed MapLibre stage beneath the app header with a floating toolbar, basemap gallery, permanently visible display controls, catalog drawer, quick search, and a coordinate rail. Only the layout language is borrowed: every thematic layer remains Atlasio's governed data. Basemaps are standard public Esri tiles with attribution, and a labeled offline vector map is the automatic fallback.</dd>
+      <dt>Why</dt><dd>The map is a discovery and inspection surface for every role, while entry and stewardship stay form-first in Ingest and Review. A map-first Explore makes the product's evidence visible at a glance without depending on another organisation's services or terms.</dd>
+      <dt>Trade-off</dt><dd>Online basemaps need external connectivity and Esri's attribution terms; private deployments fall back to the offline vector canvas. The display panel yields space to the record inspector while a record is open.</dd>
     </dl>
   </article>
 </section>
