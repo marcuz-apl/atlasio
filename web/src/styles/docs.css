@@ -8,6 +8,20 @@
   border-bottom: 1px solid var(--line);
 }
 
+.docs-back {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.docs-back:hover {
+  color: var(--accent);
+}
+
 .docs-hero h1 {
   margin: 12px 0 12px;
   color: var(--ink);

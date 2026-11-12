@@ -1,10 +1,10 @@
-export const DOCS_HTML = `
+export const BUILD_DOCS_HTML = `
 <section class="docs-section" id="docs-purpose" data-doc-section>
   <p class="docs-eyebrow">01 / Purpose</p>
   <h2>Why this page exists</h2>
   <p>Atlasio is built around choices that are easy to lose: why coordinates are stored the way they are, why a published version never changes, why a category shows a dash instead of a zero, and why the catalog is grouped into six domains. This page keeps those choices beside the product so a client, reviewer, or future maintainer can understand the reasoning without reconstructing it from commits or conversations.</p>
   <p>Read it in three ways. The <a href="#/docs" data-doc-link="docs-invariants">invariants</a> are the rules we do not break. The <a href="#/docs" data-doc-link="docs-decisions">decision log</a> records what we chose, when, and what it costs. The <a href="#/docs" data-doc-link="docs-glossary">glossary</a> fixes the vocabulary used by the interface and the API.</p>
-  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.23. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
+  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.24. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
 </section>
 
 <section class="docs-section" id="docs-architecture" data-doc-section>
@@ -176,6 +176,7 @@ export const DOCS_HTML = `
         <tr><td>0.1.21</td><td>Staff accounts sign in with seeded passwords and forced first change; optional TOTP MFA with recovery codes and a required-MFA deployment switch.</td></tr>
         <tr><td>0.1.22</td><td>Account menu for profile, password, MFA management, and log out; the Admin Panel change log and audit trail start collapsed.</td></tr>
         <tr><td>0.1.23</td><td>New passwords need at least 8 characters instead of 12.</td></tr>
+        <tr><td>0.1.24</td><td>#/docs becomes the signed-in user guide; the build notes move into Administration at #/admin/docs.</td></tr>
       </tbody>
     </table>
   </div>
@@ -295,6 +296,8 @@ export const DOCS_HTML = `
       <dt>Why</dt><dd>The build history travels with the deployment, stays readable in code review, and can be corrected without a server rebuild or client release.</dd>
       <dt>Trade-off</dt><dd>A second release record beside the public docs table. The file must be updated in the same commit as the version bump, or the panel goes stale; the docs table stays the short client-facing summary while the change log is the detailed build record.</dd>
     </dl>
+  </article>
+
   <article class="decision">
     <div class="decision-head"><span class="decision-id">D-0011</span><span class="decision-tag">Accepted</span><span class="decision-tag">v0.1.21</span></div>
     <h3>Staff identity is an account, not a shared key</h3>
@@ -305,7 +308,20 @@ export const DOCS_HTML = `
       <dt>Trade-off</dt><dd>Operators must keep the reset flag in mind: the environment password seeds an account once, and reissuing it is an explicit action that clears MFA and sessions. Recovery codes are shown once. Account management beyond the seeded pair is still a roadmap item.</dd>
     </dl>
   </article>
+
+  <article class="decision">
+    <div class="decision-head"><span class="decision-id">D-0012</span><span class="decision-tag">Accepted</span><span class="decision-tag">v0.1.24</span></div>
+    <h3>Two guides, two audiences</h3>
+    <dl>
+      <dt>Context</dt><dd>The single reference page mixed build decisions with daily workflow guidance, and it stayed public at <code>#/docs</code>.</dd>
+      <dt>Decision</dt><dd><code>#/docs</code> is now the signed-in user guide for viewers, importers, and reviewers. The build notes moved to <code>#/admin/docs</code>, linked from the Administration panel and limited to Administrators and Data Managers. The sign-in gate no longer links to either guide.</dd>
+      <dt>Why</dt><dd>Each audience gets the material it needs without wading through the other, and implementation detail is no longer exposed before sign-in.</dd>
+      <dt>Trade-off</dt><dd>Staff maintain two documents. A shared section can drift, so the release row and decision log must be updated in the same commit that changes either guide.</dd>
+    </dl>
+  </article>
 </section>
+
+<section class="docs-section" id="docs-references" data-doc-section>
   <p class="docs-eyebrow">12 / References</p>
   <h2>Standards and prior art</h2>
   <p>These sources inform vocabulary and expectations. They are not Release 1 dependencies or endorsements; formats are adopted only when a concrete workflow needs them.</p>
