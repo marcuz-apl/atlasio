@@ -4,6 +4,13 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.30 — 2026-11-12
+Build: v0.1.30+261112h
+Type: feat
+- Remove the E&P Projects tile from Well Data and rename Original Files to Source Files.
+- Add DST Records under Drilling & Completions and Core & Sample Records under Well Data as planned categories.
+- Explain in the guides that Wells counts current wells while Well Versions counts every published version, including corrections.
+
 ## 0.1.29 — 2026-11-12
 Build: v0.1.29+261112g
 Type: feat
