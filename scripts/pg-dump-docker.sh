@@ -11,6 +11,8 @@ file=""
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
+    --dbname) db="${2:-$db}"; db="${db##*/}"; db="${db%%\?*}"; shift 2 ;;
+    --dbname=*) db="${1#--dbname=}"; db="${db##*/}"; db="${db%%\?*}"; shift ;;
     --file) file="${2:-}"; shift 2 ;;
     --file=*) file="${1#--file=}"; shift ;;
     *) shift ;;
