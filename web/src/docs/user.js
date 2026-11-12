@@ -2,7 +2,7 @@ export const USER_DOCS_HTML = `
 <section class="docs-section" id="user-getting-in" data-doc-section>
   <p class="docs-eyebrow">01 / Getting in</p>
   <h2>Enter the workspace</h2>
-  <p>The sign-in gate offers three ways in. A <strong>demo role</strong> opens a sandbox viewer, importer, or reviewer session. An <strong>access key</strong> connects with a managed key from your team. An <strong>Administrator or Data Manager</strong> signs in with a username and password.</p>
+  <p>The sign-in gate offers three ways in. A <strong>demo role</strong> opens a sandbox viewer, importer, or reviewer session using the keys <code>viewer-demo</code>, <code>importer-demo</code>, and <code>reviewer-demo</code>. An <strong>access key</strong> connects with a managed key from your team. An <strong>Administrator or Data Manager</strong> signs in with a username and password.</p>
   <p>Staff accounts must choose their own password at first sign-in, and privileged changes stay blocked until they do. If your deployment requires multi-factor authentication, the account also enrols an authenticator app before it can administer anything.</p>
   <ul>
     <li><strong>Account menu.</strong> Click the account chip in the top-right for User profile, Change password, Set up MFA, and Log out. The MFA entry becomes Manage MFA once an authenticator is on; it opens its own dialog.</li>
@@ -98,7 +98,7 @@ export const USER_DOCS_HTML = `
   <ul>
     <li><strong>Password and MFA.</strong> Use the account menu. Changing a password or disabling MFA signs out your other sessions. If you lose both the authenticator and the recovery codes, a server operator can run the <code>reset-mfa</code> command for your username to clear MFA without changing your password.</li>
     <li><strong>Session lifetime.</strong> Staff sessions last twelve hours. Repeated failed sign-ins lock the account for five minutes.</li>
-    <li><strong>Ask for access.</strong> A Data Manager or Administrator manages access keys, roles, and account resets.</li>
+    <li><strong>Ask for access.</strong> Administrators and Data Managers manage access keys and roles. Password or MFA recovery needs a server operator; there is no self-service bypass.</li>
     <li><strong>Check the source.</strong> Atlasio keeps provenance visible, but the license and confidentiality of a package still govern how you may use it.</li>
   </ul>
   <div class="docs-note"><strong>Scope.</strong> This guide describes the Release 1 local demo. Fixtures are synthetic; no licensed customer data is stored in the repository.</div>
