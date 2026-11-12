@@ -4,6 +4,13 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.22 — 2026-11-12
+Build: v0.1.22+2611129
+Type: feat
+- Replace the staff access chip's dialog with an account menu: User profile, Change password, and Log out.
+- Show account details in User profile, and manage the authenticator app from Change password.
+- Collapse the Admin Panel change log and audit trail by default, with Show/Hide controls that keep their entry counts visible.
+
 ## 0.1.21 — 2026-11-12
 Build: v0.1.21+2611128
 Type: feat

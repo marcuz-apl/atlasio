@@ -132,6 +132,23 @@
   flex: none;
 }
 
+.admin-collapse svg {
+  transition: transform 160ms ease;
+}
+
+.admin-collapse[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+.admin-collapse-body {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-collapse-body[hidden] {
+  display: none;
+}
+
 .admin-table-wrap {
   max-height: 460px;
 }

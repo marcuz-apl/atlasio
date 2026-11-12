@@ -187,10 +187,17 @@
             <a href="#/workspace/explore" data-nav="workspace">Workspace <svg class="nav-arrow" aria-hidden="true"><use href="#i-arrow-right" /></svg></a>
           </nav>
           <div class="appbar-actions">
-            <button class="role-chip" id="access-button" type="button" aria-haspopup="dialog">
-              <span class="status-dot" aria-hidden="true"></span>
-              <span id="access-label">Not connected</span>
-            </button>
+            <div class="account-wrap">
+              <button class="role-chip" id="access-button" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="account-menu">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span id="access-label">Not connected</span>
+              </button>
+              <div class="account-menu" id="account-menu" role="menu" aria-labelledby="access-button" hidden>
+                <button type="button" role="menuitem" id="menu-profile">User profile</button>
+                <button type="button" role="menuitem" id="menu-password">Change password</button>
+                <button type="button" role="menuitem" id="menu-logout">Log out</button>
+              </div>
+            </div>
             <a class="docs-link" id="admin-link" href="#/admin" data-nav="admin" hidden>Admin</a>
             <a class="docs-link" href="#/docs" data-nav="docs">Docs</a>
             <button class="theme-toggle" id="theme-toggle" type="button" data-mode="auto" aria-label="Color theme: automatic, light now. Switch to light." title="Automatic — light now · click for light only">
@@ -393,9 +400,14 @@
                   <h2 id="admin-changelog-title">Change log <span class="count-badge" id="admin-changelog-count">—</span></h2>
                   <p class="panel-lede">Every released build, read from the repository change log. Dates are release dates; build identifiers are the UTC stamps recorded in each commit trailer.</p>
                 </div>
+                <button class="btn btn-secondary btn-small admin-collapse" type="button" data-admin-collapse="admin-changelog-body" aria-expanded="false" aria-controls="admin-changelog-body">
+                  <svg aria-hidden="true"><use href="#i-chevron-down" /></svg><span data-collapse-label>Show</span>
+                </button>
               </header>
-              <div class="changelog" id="admin-changelog" aria-live="polite"></div>
-              <p class="admin-foot" id="admin-changelog-foot">Source: CHANGELOG.md</p>
+              <div class="admin-collapse-body" id="admin-changelog-body" hidden>
+                <div class="changelog" id="admin-changelog" aria-live="polite"></div>
+                <p class="admin-foot" id="admin-changelog-foot">Source: CHANGELOG.md</p>
+              </div>
             </section>
 
             <section class="panel admin-panel" aria-labelledby="admin-audit-title">
@@ -405,8 +417,13 @@
                   <h2 id="admin-audit-title">Admin audit</h2>
                   <p class="panel-lede">The latest 100 administrative actions. Import and review events remain on each package's audit trail.</p>
                 </div>
+                <button class="btn btn-secondary btn-small admin-collapse" type="button" data-admin-collapse="admin-audit-body" aria-expanded="false" aria-controls="admin-audit-body">
+                  <svg aria-hidden="true"><use href="#i-chevron-down" /></svg><span data-collapse-label>Show</span>
+                </button>
               </header>
-              <div class="admin-audit" id="admin-audit-list" aria-live="polite"></div>
+              <div class="admin-collapse-body" id="admin-audit-body" hidden>
+                <div class="admin-audit" id="admin-audit-list" aria-live="polite"></div>
+              </div>
             </section>
           </div>
         </section>
@@ -720,10 +737,17 @@
         <label class="field"><span>New password</span><input id="password-new" type="password" autocomplete="new-password" minlength="12" required /></label>
         <label class="field"><span>Repeat new password</span><input id="password-repeat" type="password" autocomplete="new-password" minlength="12" required /></label>
         <p class="field-hint">At least 12 characters, and it must not contain the username.</p>
+        <div class="password-mfa">
+          <div class="password-mfa-copy">
+            <strong>Authenticator app</strong>
+            <span id="password-mfa-state">Off</span>
+          </div>
+          <button class="btn btn-secondary btn-small" type="button" id="password-mfa-button">Set up MFA</button>
+        </div>
         <p class="dialog-error" id="password-error" role="alert" hidden></p>
         <div class="dialog-actions">
           <button class="btn btn-primary" type="submit" id="password-submit">Save password</button>
-          <button class="btn btn-ghost" type="button" id="password-signout">Sign out</button>
+          <button class="btn btn-ghost" type="button" id="password-signout">Log out</button>
         </div>
       </form>
     </dialog>
@@ -770,6 +794,22 @@
           <button class="btn btn-danger" type="button" id="mfa-disable">Turn off MFA</button>
           <button class="btn btn-ghost" type="button" data-dialog-close>Cancel</button>
         </div>
+      </div>
+    </dialog>
+
+    <dialog id="profile-dialog" class="dialog info-dialog">
+      <button class="dialog-close icon-btn" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-close" /></svg></button>
+      <p class="eyebrow">ACCOUNT</p>
+      <h2>User profile</h2>
+      <dl class="profile-list">
+        <div><dt>Username</dt><dd id="profile-username">—</dd></div>
+        <div><dt>Role</dt><dd id="profile-role">—</dd></div>
+        <div><dt>Password</dt><dd id="profile-password">—</dd></div>
+        <div><dt>Authenticator</dt><dd id="profile-mfa">—</dd></div>
+      </dl>
+      <p class="dialog-note">Staff accounts are seeded from the server environment. Ask an operator to reset the password if you are locked out.</p>
+      <div class="dialog-actions">
+        <button class="btn btn-primary" type="button" data-dialog-close>Close</button>
       </div>
     </dialog>
 

@@ -169,6 +169,10 @@ function initChrome() {
       showGate();
       return;
     }
+    if (state.session) {
+      toggleAccountMenu();
+      return;
+    }
     const dialog = $('#access-dialog');
     const lede = $('#access-lede');
     const account = $('#access-account');
@@ -207,6 +211,45 @@ function initChrome() {
     if (dialog && !dialog.open) dialog.showModal();
   });
 
+  $('#menu-profile')?.addEventListener('click', () => {
+    closeAccountMenu();
+    openProfileDialog();
+  });
+  $('#menu-password')?.addEventListener('click', () => {
+    closeAccountMenu();
+    openPasswordDialog();
+  });
+  $('#menu-logout')?.addEventListener('click', () => {
+    closeAccountMenu();
+    void disconnect();
+  });
+  document.addEventListener('click', (event) => {
+    if (!$('#account-menu') || $('#account-menu').hidden) return;
+    if (!event.target.closest('.account-wrap')) closeAccountMenu();
+  });
+  document.addEventListener('keydown', (event) => {
+    const menu = $('#account-menu');
+    if (!menu || menu.hidden) return;
+    if (event.key === 'Escape') {
+      closeAccountMenu();
+      $('#access-button')?.focus();
+      return;
+    }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const items = [...menu.querySelectorAll('[role="menuitem"]')];
+      if (!items.length) return;
+      const index = items.indexOf(document.activeElement);
+      const step = event.key === 'ArrowDown' ? 1 : -1;
+      if (index < 0) {
+        items[step > 0 ? 0 : items.length - 1]?.focus();
+        return;
+      }
+      const next = (index + step + items.length) % items.length;
+      items[next]?.focus();
+    }
+  });
+
   $('#access-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (state.session) return;
@@ -229,6 +272,10 @@ function initChrome() {
   $('#change-password-button')?.addEventListener('click', () => {
     $('#access-dialog')?.close();
     openPasswordDialog();
+  });
+  $('#password-mfa-button')?.addEventListener('click', () => {
+    $('#password-dialog')?.close();
+    openMfaDialog();
   });
   $('#mfa-button')?.addEventListener('click', () => {
     $('#access-dialog')?.close();
@@ -307,6 +354,7 @@ function initChrome() {
   });
 
   window.addEventListener('hashchange', () => {
+    closeAccountMenu();
     applyRoute().catch((error) => toast(error.message, 'error'));
   });
 
@@ -501,14 +549,63 @@ async function signInStaff(username, password, code = '') {
   }
 }
 
+function toggleAccountMenu() {
+  const menu = $('#account-menu');
+  if (!menu) return;
+  if (menu.hidden) {
+    menu.hidden = false;
+    $('#access-button')?.setAttribute('aria-expanded', 'true');
+    menu.querySelector('[role="menuitem"]')?.focus();
+  } else {
+    closeAccountMenu();
+  }
+}
+
+function closeAccountMenu() {
+  const menu = $('#account-menu');
+  if (menu) menu.hidden = true;
+  $('#access-button')?.setAttribute('aria-expanded', 'false');
+}
+
+function openProfileDialog() {
+  if (!state.session) return;
+  const account = state.account || {};
+  const username = $('#profile-username');
+  const role = $('#profile-role');
+  const password = $('#profile-password');
+  const mfa = $('#profile-mfa');
+  if (username) username.textContent = account.username || '—';
+  if (role) role.textContent = roleLabel(state.role);
+  if (password) {
+    password.textContent = account.must_change_password ? 'Initial password — change required' : 'Changed';
+  }
+  if (mfa) {
+    mfa.textContent = account.mfa_enabled
+      ? 'On'
+      : account.must_enroll_mfa
+        ? 'Off — required'
+        : 'Off';
+  }
+  const dialog = $('#profile-dialog');
+  if (dialog && !dialog.open) dialog.showModal();
+}
+
 function openPasswordDialog({ forced = false } = {}) {
   if (!state.session) return;
+  closeAccountMenu();
   const lede = $('#password-lede');
   if (lede) {
     lede.textContent = forced
       ? 'This account still uses its initial password. Choose your own password now to unlock administrative changes. Other signed-in sessions will be revoked.'
       : 'Choose a new password for this account. Other signed-in sessions will be revoked.';
   }
+  const mfaState = $('#password-mfa-state');
+  const mfaButton = $('#password-mfa-button');
+  const enabled = Boolean(state.account?.mfa_enabled);
+  if (mfaState) {
+    mfaState.textContent = enabled ? 'On' : state.account?.must_enroll_mfa ? 'Off — required' : 'Off';
+  }
+  if (mfaButton) mfaButton.textContent = enabled ? 'Manage MFA' : 'Set up MFA';
   const form = $('#password-form');
   form?.reset();
   const error = $('#password-error');
@@ -757,7 +854,12 @@ function applyRole() {
     }[state.role] || 'Search approved wells and inspect the evidence behind every record.';
   }
   const accessButton = $('#access-button');
-  if (accessButton) accessButton.title = state.role ? `Connected as ${label} · manage access` : 'Connect to the workspace';
+  if (accessButton) {
+    accessButton.title = state.role ? `Connected as ${label} · manage access` : 'Connect to the workspace';
+    accessButton.setAttribute('aria-haspopup', state.session ? 'menu' : 'dialog');
+    accessButton.setAttribute('aria-expanded', 'false');
+  }
+  if (!state.session) closeAccountMenu();
 
   if (state.role) document.body.dataset.role = state.role;
   else delete document.body.dataset.role;
@@ -927,6 +1029,7 @@ function setNav(name) {
 }
 
 function showGate() {
+  closeAccountMenu();
   const gate = $('#access-gate');
   if (gate) gate.hidden = false;
   document.body.classList.add('gate-open');

@@ -1,6 +1,6 @@
 import { api, authHeaders } from '../lib/api.js';
 import { state } from '../lib/state.js';
-import { $, el, icon, toast, copyText, setButtonBusy, emptyState } from '../lib/ui.js';
+import { $, $$, el, icon, toast, copyText, setButtonBusy, emptyState } from '../lib/ui.js';
 import { formatBytes, formatCount, formatDate, formatDateTime, roleLabel } from '../lib/format.js';
 
 const ADMIN_ROLES = new Set(['admin', 'datamgr']);
@@ -27,6 +27,18 @@ export function initAdmin() {
   $('#admin-profile-new')?.addEventListener('click', () => toggleCreate(true));
   $('#admin-create-cancel')?.addEventListener('click', () => toggleCreate(false));
   $('#admin-create-form')?.addEventListener('submit', createProfile);
+
+  $$('[data-admin-collapse]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const body = document.getElementById(button.dataset.adminCollapse);
+      if (!body) return;
+      const expanded = button.getAttribute('aria-expanded') === 'true';
+      button.setAttribute('aria-expanded', String(!expanded));
+      body.hidden = expanded;
+      const label = button.querySelector('[data-collapse-label]');
+      if (label) label.textContent = expanded ? 'Show' : 'Hide';
+    });
+  });
 
   const input = $('#restore-confirm');
   input?.addEventListener('input', () => {
