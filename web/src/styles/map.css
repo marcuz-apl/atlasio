@@ -251,6 +251,19 @@
   text-overflow: ellipsis;
 }
 
+/* ---------- Explore stage control offsets ---------- */
+.explore-stage .maplibregl-ctrl-top-right {
+  display: none;
+}
+
+.explore-stage .maplibregl-ctrl-bottom-left {
+  bottom: 44px;
+}
+
+.explore-stage .maplibregl-ctrl-bottom-right {
+  bottom: 44px;
+}
+
 /* ---------- Landing map preview ---------- */
 .map-preview {
   position: absolute;

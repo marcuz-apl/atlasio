@@ -4,6 +4,14 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.36 — 2026-11-12
+Build: v0.1.36+261112v
+Type: feat
+- Explore becomes a full-bleed map beneath the header: floating toolbar, basemap gallery with an offline vector fallback, live display controls, catalog drawer, quick search, coordinate rail, and PNG export.
+- The record inspector gains Open in Records and Copy well ID, bridging map discovery to stewardship.
+- Ingest gains Pick on map: an explicit pick fills X/Y and sets the source CRS to EPSG:4326; native-CRS entry by typing is unchanged.
+- Version hooks fall back to a working Python interpreter where `python3` is a non-functional stub.
+
 ## 0.1.35 — 2026-11-12
 Build: v0.1.35+261112u
 Type: feat

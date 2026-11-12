@@ -10,6 +10,47 @@ setWorkerUrl(workerUrl);
 const land = feature(world, world.objects.land);
 const emptyCollection = () => ({ type: 'FeatureCollection', features: [] });
 
+// Public basemap tiles (Esri ArcGIS Online, free with attribution) plus a fully
+// offline vector fallback. No third-party thematic data is consumed here.
+export const BASEMAPS = {
+  topo: {
+    label: 'Topographic',
+    tiles: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+    maxzoom: 19,
+    attribution: '© Esri — World Topo Map',
+  },
+  gray: {
+    label: 'Light gray canvas',
+    tiles: 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    maxzoom: 16,
+    attribution: '© Esri — Light Gray Canvas',
+  },
+  dark: {
+    label: 'Dark gray canvas',
+    tiles: 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    maxzoom: 16,
+    attribution: '© Esri — Dark Gray Canvas',
+  },
+  imagery: {
+    label: 'Satellite imagery',
+    tiles: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    maxzoom: 18,
+    attribution: '© Esri — World Imagery',
+  },
+  natgeo: {
+    label: 'NatGeo style',
+    tiles: 'https://services.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}',
+    maxzoom: 16,
+    attribution: '© Esri — NatGeo World Map',
+  },
+  offline: {
+    label: 'Offline vector',
+    tiles: null,
+    maxzoom: 11,
+    attribution: 'Natural Earth (public domain)',
+  },
+};
+
 const graticule = { type: 'FeatureCollection', features: [] };
 for (let lon = -180; lon <= 180; lon += 30) {
   graticule.features.push({
@@ -65,6 +106,8 @@ const palette = {
     well: '#2563eb',
     halo: '#ffffff',
     accent: '#e22850',
+    label: '#8b93a5',
+    labelHalo: '#f4f5f8',
   },
   dark: {
     sea: '#0e0d13',
@@ -76,6 +119,8 @@ const palette = {
     well: '#60a5fa',
     halo: '#15141a',
     accent: '#f53d63',
+    label: '#6d6c7a',
+    labelHalo: '#1b1a22',
   },
 };
 
@@ -100,6 +145,27 @@ const baseStyle = {
       type: 'line',
       source: 'land',
       paint: { 'line-color': '#c9cedb', 'line-width': 0.7 },
+    },
+    {
+      id: 'country-labels',
+      type: 'symbol',
+      source: 'countries',
+      minzoom: 1.4,
+      maxzoom: 7,
+      layout: {
+        'text-field': ['get', 'name'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 1.4, 9, 5, 12],
+        'text-letter-spacing': 0.14,
+        'text-transform': 'uppercase',
+        'text-max-width': 7,
+        'text-padding': 6,
+      },
+      paint: {
+        'text-color': '#8b93a5',
+        'text-halo-color': '#f4f5f8',
+        'text-halo-width': 1.1,
+        'text-opacity': 0.85,
+      },
     },
     {
       id: 'grid',
@@ -211,7 +277,17 @@ const baseStyle = {
   ],
 };
 
-export function createWellMap(container, { onSelect, onEmpty, onReady } = {}) {
+const OVERLAY_GROUPS = {
+  wells: ['wells', 'wells-halo'],
+  graticule: ['grid', 'grid-5', 'grid-1'],
+  borders: ['borders'],
+  area: ['area-fill', 'area-line'],
+};
+
+export function createWellMap(
+  container,
+  { onSelect, onEmpty, onReady, onBasemapError, onMapClick, basemap = 'offline', labels = false } = {},
+) {
   const mount = typeof container === 'string' ? document.querySelector(container) : container;
   if (!mount) return null;
 
@@ -221,9 +297,10 @@ export function createWellMap(container, { onSelect, onEmpty, onReady } = {}) {
     center: [14, 24],
     zoom: 1.15,
     minZoom: 1,
-    maxZoom: 11,
+    maxZoom: 18,
     attributionControl: false,
     dragRotate: false,
+    preserveDrawingBuffer: true,
   });
 
   map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
@@ -239,6 +316,11 @@ export function createWellMap(container, { onSelect, onEmpty, onReady } = {}) {
   let selectedId = null;
   let loaded = false;
   let frame = null;
+  let currentBasemap = 'offline';
+  let pendingBasemap = basemap;
+  let symbolSize = 4.2;
+  let wellOpacity = 1;
+  const overlayState = { wells: true, graticule: true, borders: true, area: true };
 
   const setPaint = (layer, property, value) => {
     if (!loaded) return;
@@ -249,12 +331,61 @@ export function createWellMap(container, { onSelect, onEmpty, onReady } = {}) {
     }
   };
 
+  const setVisibility = (layer, on) => {
+    if (!loaded) return;
+    try {
+      map.setLayoutProperty(layer, 'visibility', on ? 'visible' : 'none');
+    } catch (error) {
+      /* Layer not ready yet. */
+    }
+  };
+
+  const applyBasemap = (key) => {
+    const config = BASEMAPS[key] ? key : 'offline';
+    currentBasemap = config;
+    if (!loaded) {
+      pendingBasemap = config;
+      return;
+    }
+    const raster = config !== 'offline';
+    if (map.getLayer('basemap-raster')) map.removeLayer('basemap-raster');
+    if (map.getSource('basemap')) map.removeSource('basemap');
+    if (raster) {
+      const source = BASEMAPS[config];
+      map.addSource('basemap', {
+        type: 'raster',
+        tiles: [source.tiles],
+        tileSize: 256,
+        maxzoom: source.maxzoom,
+        attribution: source.attribution,
+      });
+      map.addLayer(
+        { id: 'basemap-raster', type: 'raster', source: 'basemap', paint: { 'raster-fade-duration': 140 } },
+        'grid',
+      );
+    }
+    setVisibility('land', !raster);
+    setVisibility('land-line', !raster);
+    setVisibility('country-labels', !raster && labels);
+  };
+
+  const applySymbolStyle = () => {
+    setPaint('wells', 'circle-radius', symbolSize);
+    setPaint('wells', 'circle-opacity', wellOpacity);
+    setPaint('wells-halo', 'circle-radius', symbolSize + 3.8);
+    setPaint('wells-halo', 'circle-opacity', 0.85 * wellOpacity);
+    setPaint('selected-dot', 'circle-radius', symbolSize + 1.2);
+    setPaint('selected-ring', 'circle-radius', symbolSize + 9.8);
+  };
+
   const applyTheme = () => {
     const colors = palette[document.documentElement.dataset.theme] || palette.light;
     setPaint('background', 'background-color', colors.sea);
     setPaint('land', 'fill-color', colors.land);
     setPaint('land', 'fill-outline-color', colors.landLine);
     setPaint('land-line', 'line-color', colors.landLine);
+    setPaint('country-labels', 'text-color', colors.label);
+    setPaint('country-labels', 'text-halo-color', colors.labelHalo);
     setPaint('grid', 'line-color', colors.grid);
     setPaint('grid-5', 'line-color', colors.grid);
     setPaint('grid-1', 'line-color', colors.grid);
@@ -289,12 +420,24 @@ export function createWellMap(container, { onSelect, onEmpty, onReady } = {}) {
 
   map.on('load', () => {
     loaded = true;
+    if (!labels) setVisibility('country-labels', false);
     applyTheme();
+    applyBasemap(pendingBasemap);
+    applySymbolStyle();
+    for (const [group, on] of Object.entries(overlayState)) {
+      OVERLAY_GROUPS[group].forEach((layer) => setVisibility(layer, on));
+    }
     map.getSource('wells')?.setData(wells);
     map.getSource('area')?.setData(area || emptyCollection());
     map.getSource('location')?.setData(location || emptyCollection());
     applySelected();
     onReady?.();
+  });
+
+  map.on('error', (event) => {
+    if (currentBasemap !== 'offline' && (event.sourceId === 'basemap' || event.source?.id === 'basemap')) {
+      onBasemapError?.(currentBasemap);
+    }
   });
 
   map.on('click', 'wells', (event) => {
@@ -304,6 +447,7 @@ export function createWellMap(container, { onSelect, onEmpty, onReady } = {}) {
   });
 
   map.on('click', (event) => {
+    onMapClick?.(event.lngLat);
     const hits = map.queryRenderedFeatures(event.point, { layers: ['wells'] });
     if (!hits.length) onEmpty?.();
   });
@@ -320,7 +464,7 @@ export function createWellMap(container, { onSelect, onEmpty, onReady } = {}) {
     if (frame) return;
     frame = requestAnimationFrame(() => {
       frame = null;
-      const rail = mount.closest('.map-panel')?.querySelector('.coord-cursor-value');
+      const rail = mount.closest('.map-panel, .explore-stage')?.querySelector('.coord-cursor-value');
       if (rail) rail.textContent = formatCursor(event.lngLat);
     });
   });
@@ -400,6 +544,37 @@ export function createWellMap(container, { onSelect, onEmpty, onReady } = {}) {
     },
     fitArea(featureObject) {
       if (featureObject) fitBounds(boundsOf(featureObject), { maxZoom: 4.6 });
+    },
+    setBasemap(key) {
+      applyBasemap(key);
+    },
+    getBasemap: () => currentBasemap,
+    setSymbolSize(value) {
+      symbolSize = Number(value) || 4.2;
+      applySymbolStyle();
+    },
+    setWellOpacity(percent) {
+      wellOpacity = Math.min(1, Math.max(0.1, Number(percent) / 100 || 1));
+      applySymbolStyle();
+    },
+    setOverlay(group, on) {
+      if (!OVERLAY_GROUPS[group]) return;
+      overlayState[group] = Boolean(on);
+      OVERLAY_GROUPS[group].forEach((layer) => setVisibility(layer, on));
+    },
+    exportPNG(fileName = 'atlasio-map.png') {
+      try {
+        const url = map.getCanvas().toDataURL('image/png');
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = fileName;
+        document.body.append(anchor);
+        anchor.click();
+        anchor.remove();
+        return true;
+      } catch (error) {
+        return false;
+      }
     },
     resize() {
       map.resize();

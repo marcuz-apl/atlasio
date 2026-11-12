@@ -1,6 +1,6 @@
 import { api, downloadFile } from '../lib/api.js';
 import { state } from '../lib/state.js';
-import { createWellMap } from '../lib/maps.js';
+import { createWellMap, BASEMAPS } from '../lib/maps.js';
 import {
   formatCount,
   formatDateTime,
@@ -20,6 +20,44 @@ let recordsLoaded = false;
 let inspectorId = null;
 let fitDone = false;
 let initialized = false;
+let basemapFellBack = false;
+
+const EXPLORE_KEY = 'atlasio-explore';
+
+function defaultSettings() {
+  return {
+    basemap: null,
+    symbol: 4.2,
+    opacity: 100,
+    overlays: { wells: true, graticule: true, borders: true, area: true },
+    catalog: null,
+    display: null,
+  };
+}
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(EXPLORE_KEY);
+    if (raw) return { ...defaultSettings(), ...JSON.parse(raw) };
+  } catch (error) {
+    /* Storage can be blocked; defaults are fine. */
+  }
+  return defaultSettings();
+}
+
+let settings = loadSettings();
+
+function saveSettings() {
+  try {
+    localStorage.setItem(EXPLORE_KEY, JSON.stringify(settings));
+  } catch (error) {
+    /* Optional persistence. */
+  }
+}
+
+function initialBasemap() {
+  return settings.basemap || (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'topo');
+}
 
 export function initWorkspace({ onNavigate } = {}) {
   if (initialized) return;
@@ -40,9 +78,7 @@ export function initWorkspace({ onNavigate } = {}) {
     loadRecords($('#records-search')?.value.trim() || '');
   });
 
-  $('#fit-all')?.addEventListener('click', () => {
-    map?.fitWells(state.wells);
-  });
+  initExploreControls();
 
   const inspector = $('#inspector');
   inspector?.addEventListener('click', async (event) => {
@@ -73,21 +109,256 @@ export function initWorkspace({ onNavigate } = {}) {
     const retry = event.target.closest('[data-retry-well]');
     if (retry) {
       openInspector(retry.dataset.retryWell);
+      return;
+    }
+    const openRecords = event.target.closest('[data-open-records]');
+    if (openRecords) {
+      const name = openRecords.dataset.openRecords || '';
+      recordsQuery = name;
+      const input = $('#records-search');
+      if (input) input.value = name;
+      navigate('#/workspace/records');
     }
   });
+}
+
+function initExploreControls() {
+  const stage = $('#explore-stage');
+  stage?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-map-action]');
+    if (!button) return;
+    const action = button.dataset.mapAction;
+    if (action === 'zoom-in') map?.map.zoomIn();
+    else if (action === 'zoom-out') map?.map.zoomOut();
+    else if (action === 'fit') map?.fitWells(state.wells);
+    else if (action === 'catalog') toggleDrawer('catalog');
+    else if (action === 'display') toggleDrawer('display');
+    else if (action === 'export') exportMap();
+    else if (action === 'fullscreen') toggleFullscreen();
+  });
+
+  $('#basemap-select')?.addEventListener('change', (event) => {
+    settings.basemap = event.target.value;
+    saveSettings();
+    basemapFellBack = false;
+    map?.setBasemap(settings.basemap);
+    syncBasemapNote();
+  });
+
+  for (const group of ['wells', 'graticule', 'borders', 'area']) {
+    $(`#toggle-${group}`)?.addEventListener('change', (event) => {
+      settings.overlays[group] = event.target.checked;
+      saveSettings();
+      map?.setOverlay(group, event.target.checked);
+    });
+  }
+
+  $('#symbol-size')?.addEventListener('input', (event) => {
+    settings.symbol = Number(event.target.value);
+    const output = $('#symbol-size-value');
+    if (output) output.textContent = `${settings.symbol.toFixed(1)} px`;
+    saveSettings();
+    map?.setSymbolSize(settings.symbol);
+  });
+
+  $('#well-opacity')?.addEventListener('input', (event) => {
+    settings.opacity = Number(event.target.value);
+    const output = $('#well-opacity-value');
+    if (output) output.textContent = `${settings.opacity}%`;
+    saveSettings();
+    map?.setWellOpacity(settings.opacity);
+  });
+
+  const searchInput = $('#explore-search');
+  searchInput?.addEventListener('input', () => renderSearchResults(searchInput.value.trim()));
+  searchInput?.addEventListener('focus', () => renderSearchResults(searchInput.value.trim()));
+  searchInput?.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') hideSearchResults();
+  });
+  $('#explore-search-form')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const query = searchInput?.value.trim() || '';
+    const first = $('#explore-results')?.querySelector('[data-well-id]');
+    if (first) {
+      selectWell(first.dataset.wellId);
+      hideSearchResults();
+      if (searchInput) searchInput.value = '';
+      return;
+    }
+    if (query) {
+      loadCatalog(query);
+      setDrawer('catalog', 'open');
+    }
+  });
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('#explore-search-form')) hideSearchResults();
+  });
+
+  document.addEventListener('fullscreenchange', () => {
+    const button = $('#fullscreen-toggle');
+    const on = Boolean(document.fullscreenElement);
+    button?.querySelector('use')?.setAttribute('href', on ? '#i-shrink' : '#i-expand');
+    button?.setAttribute('aria-label', on ? 'Exit full screen' : 'Enter full screen');
+    button?.setAttribute('title', on ? 'Exit full screen' : 'Full screen');
+    requestAnimationFrame(() => map?.resize());
+  });
+
+  window.addEventListener('atlasio:theme', () => {
+    if (!settings.basemap && map) {
+      map.setBasemap(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'topo');
+      syncBasemapNote();
+    }
+  });
+}
+
+function setDrawer(kind, value) {
+  const stage = $('#explore-stage');
+  if (!stage) return;
+  stage.dataset[kind] = value;
+  settings[kind] = value;
+  saveSettings();
+  const button = kind === 'catalog' ? $('#catalog-toggle') : $('#display-toggle');
+  button?.setAttribute('aria-expanded', String(value === 'open'));
+}
+
+function toggleDrawer(kind) {
+  const stage = $('#explore-stage');
+  setDrawer(kind, stage?.dataset[kind] === 'open' ? 'closed' : 'open');
+}
+
+function applyExploreDefaults() {
+  const stage = $('#explore-stage');
+  if (!stage) return;
+  const catalog = settings.catalog || (window.innerWidth >= 1240 ? 'open' : 'closed');
+  const display = settings.display || (window.innerWidth >= 980 ? 'open' : 'closed');
+  stage.dataset.catalog = catalog;
+  stage.dataset.display = display;
+  $('#catalog-toggle')?.setAttribute('aria-expanded', String(catalog === 'open'));
+  $('#display-toggle')?.setAttribute('aria-expanded', String(display === 'open'));
+}
+
+function syncBasemapNote() {
+  const note = $('#basemap-note');
+  const select = $('#basemap-select');
+  const key = map?.getBasemap() || initialBasemap();
+  if (select && select.value !== key) select.value = key;
+  if (note) {
+    note.textContent = key === 'offline' ? 'Offline vector · Natural Earth' : `${BASEMAPS[key].label} · © Esri`;
+  }
+}
+
+function syncDisplayControls() {
+  const select = $('#basemap-select');
+  if (select) select.value = settings.basemap || initialBasemap();
+  for (const group of ['wells', 'graticule', 'borders', 'area']) {
+    const box = $(`#toggle-${group}`);
+    if (box) box.checked = Boolean(settings.overlays[group]);
+  }
+  const size = $('#symbol-size');
+  if (size) size.value = String(settings.symbol);
+  const sizeOut = $('#symbol-size-value');
+  if (sizeOut) sizeOut.textContent = `${Number(settings.symbol).toFixed(1)} px`;
+  const opacity = $('#well-opacity');
+  if (opacity) opacity.value = String(settings.opacity);
+  const opacityOut = $('#well-opacity-value');
+  if (opacityOut) opacityOut.textContent = `${settings.opacity}%`;
+  syncBasemapNote();
+}
+
+function exportMap() {
+  const stamp = new Date().toISOString().slice(0, 10);
+  const ok = map?.exportPNG(`atlasio-explore-${stamp}.png`);
+  toast(ok ? 'Map exported as PNG.' : 'Export was blocked by the browser.', ok ? 'success' : 'error');
+}
+
+function toggleFullscreen() {
+  if (document.fullscreenElement) {
+    document.exitFullscreen?.();
+    return;
+  }
+  $('#explore-stage')?.requestFullscreen?.();
+}
+
+function updateRailZoom() {
+  const node = $('#rail-zoom');
+  if (node && map) node.textContent = map.map.getZoom().toFixed(1);
+}
+
+function renderSearchResults(query) {
+  const host = $('#explore-results');
+  if (!host) return;
+  if (!query) {
+    hideSearchResults();
+    return;
+  }
+  const needle = query.toLowerCase();
+  const source = state.catalog.length
+    ? state.catalog.map((well) => ({ id: well.id, name: well.name, meta: well.external_id || well.source || '' }))
+    : state.wells.features.map((item) => ({
+        id: item.properties.well_id,
+        name: item.properties.name,
+        meta: '',
+      }));
+  const matches = source
+    .filter((item) => item.name?.toLowerCase().includes(needle) || item.id?.toLowerCase().includes(needle) || item.meta?.toLowerCase().includes(needle))
+    .slice(0, 8);
+  host.replaceChildren();
+  if (!matches.length) {
+    host.append(el('p', 'explore-results-empty', `No wells match “${query}”.`));
+  }
+  for (const item of matches) {
+    const button = el('button', 'explore-result');
+    button.type = 'button';
+    button.dataset.wellId = item.id;
+    button.append(el('strong', '', item.name || 'Unnamed well'));
+    if (item.meta) button.append(el('small', '', item.meta));
+    button.addEventListener('click', () => {
+      selectWell(item.id);
+      hideSearchResults();
+      const input = $('#explore-search');
+      if (input) input.value = '';
+    });
+    host.append(button);
+  }
+  host.hidden = false;
+}
+
+function hideSearchResults() {
+  const host = $('#explore-results');
+  if (host) host.hidden = true;
 }
 
 export function ensureMap() {
   if (map) return map;
   map = createWellMap('#workspace-map-mount', {
+    basemap: initialBasemap(),
+    labels: true,
     onSelect: (featureObject) => {
       selectWell(featureObject.properties.well_id, { fly: false });
     },
     onEmpty: () => closeInspector(),
+    onBasemapError: () => {
+      if (basemapFellBack) return;
+      basemapFellBack = true;
+      settings.basemap = 'offline';
+      saveSettings();
+      map?.setBasemap('offline');
+      syncBasemapNote();
+      toast('Basemap tiles unreachable — switched to the offline vector map.', 'info');
+    },
   });
   if (map) {
     map.setWells(state.wells);
     if (state.selectedWellId) map.setSelected(state.selectedWellId);
+    map.setSymbolSize(settings.symbol);
+    map.setWellOpacity(settings.opacity);
+    for (const [group, on] of Object.entries(settings.overlays)) map.setOverlay(group, on);
+    map.map.on('move', updateRailZoom);
+    updateRailZoom();
+    if (!fitDone && state.wells.features.length) {
+      fitDone = true;
+      requestAnimationFrame(() => map?.fitWells(state.wells));
+    }
   }
   updateWellCount();
   return map;
@@ -104,11 +375,20 @@ export async function showTab(tab) {
     else link.removeAttribute('aria-current');
   });
 
+  const view = $('#view-workspace');
+  view?.classList.toggle('is-explore', tab === 'explore');
+  document.body.classList.toggle('explore-active', tab === 'explore');
+
   if (tab !== 'explore') closeInspector({ updateHash: false });
 
   if (tab === 'explore') {
+    applyExploreDefaults();
+    syncDisplayControls();
     ensureMap();
-    requestAnimationFrame(() => map?.resize());
+    requestAnimationFrame(() => {
+      map?.resize();
+      updateRailZoom();
+    });
     if (!catalogLoaded) await loadCatalog(catalogQuery);
     else renderCatalog();
   } else if (tab === 'records') {
@@ -308,6 +588,7 @@ export function closeInspector({ updateHash = true } = {}) {
     aside.hidden = true;
     aside.replaceChildren();
   }
+  $('#explore-stage')?.classList.remove('has-inspector');
   inspectorId = null;
   state.selectedWellId = null;
   map?.setSelected(null);
@@ -322,6 +603,7 @@ export async function openInspector(id) {
   if (!aside) return;
   inspectorId = id;
   aside.hidden = false;
+  $('#explore-stage')?.classList.add('has-inspector');
   aside.replaceChildren();
 
   const head = el('header', 'inspector-head');
@@ -462,7 +744,18 @@ function renderInspector(well) {
     body.append(section);
   }
 
-  aside.append(head, body);
+  const actions = el('div', 'inspector-actions');
+  const records = el('button', 'btn btn-secondary btn-small');
+  records.type = 'button';
+  records.dataset.openRecords = current.name || '';
+  records.append(icon('doc'), document.createTextNode('Open in Records'));
+  const copyId = el('button', 'btn btn-secondary btn-small');
+  copyId.type = 'button';
+  copyId.dataset.copy = well.id;
+  copyId.append(icon('copy'), document.createTextNode('Copy well ID'));
+  actions.append(records, copyId);
+
+  aside.append(head, actions, body);
 }
 
 function addRow(list, term, value, { mono = true } = {}) {

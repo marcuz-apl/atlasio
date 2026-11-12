@@ -1,2 +1,6 @@
 #!/bin/sh
-exec "$(dirname "$0")/alfazen-version" hook "$@"
+DIR=$(dirname "$0")
+if command -v python3 >/dev/null 2>&1 && python3 -c "import sys" >/dev/null 2>&1; then
+  exec python3 "$DIR/alfazen-version" hook "$@"
+fi
+exec python "$DIR/alfazen-version" hook "$@"

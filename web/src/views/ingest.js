@@ -1,10 +1,13 @@
 import { api } from '../lib/api.js';
 import { state } from '../lib/state.js';
+import { createWellMap } from '../lib/maps.js';
 import { formatBytes, formatDateTime } from '../lib/format.js';
 import { $, el, icon, toast, emptyState, skeletonRows, setButtonBusy } from '../lib/ui.js';
 
 let initialized = false;
 let items = [];
+let pickMap = null;
+let picked = null;
 
 const requiredFields = [
   ['name', 'Well name'],
@@ -71,6 +74,9 @@ export function initIngest() {
     loadQueue({ announce: true });
   });
 
+  $('#pick-on-map')?.addEventListener('click', openPickDialog);
+  $('#pick-apply')?.addEventListener('click', applyPick);
+
   $('#ingest-queue')?.addEventListener('click', async (event) => {
     const button = event.target.closest('[data-submit-import]');
     if (!button) return;
@@ -86,6 +92,46 @@ export function initIngest() {
   });
 
   updateReadiness();
+}
+
+function openPickDialog() {
+  const dialog = $('#pick-dialog');
+  if (!dialog) return;
+  picked = null;
+  const readout = $('#pick-readout');
+  if (readout) readout.textContent = 'No position picked yet.';
+  const apply = $('#pick-apply');
+  if (apply) apply.disabled = true;
+  if (!dialog.open) dialog.showModal();
+  if (!pickMap) {
+    pickMap = createWellMap('#pick-map-mount', {
+      basemap: 'offline',
+      labels: true,
+      onMapClick: (lngLat) => {
+        picked = [Number(lngLat.lng.toFixed(6)), Number(lngLat.lat.toFixed(6))];
+        pickMap?.setLocation(picked);
+        const node = $('#pick-readout');
+        if (node) node.textContent = `Picked ${picked[0].toFixed(6)}, ${picked[1].toFixed(6)} · EPSG:4326`;
+        const button = $('#pick-apply');
+        if (button) button.disabled = false;
+      },
+    });
+  }
+  requestAnimationFrame(() => pickMap?.resize());
+}
+
+function applyPick() {
+  if (!picked) return;
+  const form = $('#stage-form');
+  if (!form) return;
+  form.elements.x.value = String(picked[0]);
+  form.elements.y.value = String(picked[1]);
+  form.elements.source_crs.value = 'EPSG:4326';
+  const hint = $('#pick-hint');
+  if (hint) hint.textContent = `Position picked from the display map · ${picked[0]}, ${picked[1]} · EPSG:4326.`;
+  form.dispatchEvent(new Event('input', { bubbles: true }));
+  $('#pick-dialog')?.close();
+  toast('Position picked. Source CRS set to EPSG:4326.', 'success');
 }
 
 function updateReadiness() {
