@@ -7,6 +7,7 @@ Maintenance rule: add the next version's section in the same `feat`, `fix`, or `
 ## 0.1.19 — 2026-11-12
 Build: v0.1.19+2611125
 Type: feat
+Commit: 1c288db
 - Add a change log to the Admin Panel, read from this repository file so the build history ships with the product and updates without a rebuild.
 - Show version, release date, build stamp, change type, commit, and highlights, with the newest release marked.
 
