@@ -64,13 +64,47 @@ Coordinate and licence notes: well headers are WGS 84 (`EPSG:4326`); the 2D and 
 
 The current ingest API still accepts one well-header JSON and one original file up to 5 MiB, with an explicit `EPSG:4326` position. These raw logs, SEG-Y volumes, and production series are staged for forthcoming features; the downloader does not load them into the database.
 
+## NSTA open-data package
+
+`scripts/fetch-demo-nsta.mjs` stages the openly downloadable part of the UK NSTA collection under `demo-data/nsta/`. It needs `unzip` on `PATH` for the CGG archive, resumes the archive download from `.part`, and records SHA-256 provenance in `manifest.json`.
+
+| Data | Source | Contents | Size |
+| --- | --- | --- | ---: |
+| Well headers | NSTA UKCS top holes, `OPEN_DATA='Y'` | 13,367 WGS84 wellbores (GeoJSON, CSV, metadata) | 10.4 MiB |
+| Production | NSTA PPRS field-month points (WGS84) | 136,201 rows, 556 fields, June 1975 to August 2026 | 5.6 MiB |
+| Logs | NSTA CGG Additional JDWLs | 28 LAS files | 111.5 MiB |
+| Deviation | NSTA CGG Additional JDWLs | 48 deviation documents (XLSX/XLS/TIF/PDF/CSV) | 156.9 MiB |
+| 2D seismic index | NSTA NDR 2D SDS line index | 200 line records, WGS84 export | 820 KiB |
+| 3D seismic index | NSTA NDR 3D outline index | 716 survey outlines, WGS84 export | 36 MiB |
+
+```sh
+node scripts/fetch-demo-nsta.mjs --dataset all
+node scripts/fetch-demo-nsta.mjs --dataset wells,production
+node scripts/fetch-demo-nsta.mjs --dataset logs,deviation --force
+node scripts/fetch-demo-nsta.mjs --dataset seismic --all-seismic
+node scripts/fetch-demo-nsta.mjs --dataset all --dry-run
+```
+
+Key endpoints:
+
+- NSTA top holes: `https://services-eu1.arcgis.com/OZMfUznmLTnWccBc/arcgis/rest/services/UKCS_offshore_wellbore_top_holes_(WGS84)/FeatureServer/0/query`
+- NSTA PPRS production: `https://services-eu1.arcgis.com/OZMfUznmLTnWccBc/arcgis/rest/services/UKCS_hydrocarbon_field_production_reports_PPRS_points_(WGS84)/FeatureServer/0/query`
+- NSTA CGG Additional JDWLs: `https://datanstauthority.blob.core.windows.net/external/DataReleases/CGG/CGG_Additional_JDWLs.zip`
+- NSTA 2D line index: `https://services-eu1.arcgis.com/OZMfUznmLTnWccBc/arcgis/rest/services/UKCS_NDR_2D_SDS_seismic_lines_(ED50)/FeatureServer/0/query`
+- NSTA 3D outline index: `https://services-eu1.arcgis.com/OZMfUznmLTnWccBc/arcgis/rest/services/UKCS_NDR_3D_SDS_seismic_outlines_(ED50)/FeatureServer/0/query`
+
+The 2D/3D folders contain survey geometry only, not SEG-Y. Raw NSTA offshore SEG-Y lives in the UK National Data Repository at <https://ndr.nstauthority.co.uk/> and needs a free NDR account plus download-access approval; it is not anonymously downloadable like the OSDU Volve bucket. Use the Volve 3D cube for a ready SEG-Y test, or UKOGL for open UK onshore seismic.
+
+The 12 NSTA wells already loaded in Atlasio are CCS wells (Liverpool Bay, Net Zero North Sea, Bacton) with no target field. The CGG logs and deviation documents belong to other UK wells, and the PPRS production is field-level rather than tied to those 12 wells. NSTA open data uses the Open Government Licence v3.0; read the CGG release narrative for any additional terms. The 2D/3D services are named ED50, but this package exports them in WGS 84 for map use, so the source CRS is ED50 / UTM zone 31N (`EPSG:23031`).
+
 ## Datasets deferred for now
 
 - **Volve full release** — roughly 40,000 files under Equinor's data-sharing licence, normally delivered through Databricks. The curated OSDU subset above is now the local demo; the full package remains out of scope.
 - **F3 Netherlands** — a 4.5 GB uncompressed seismic download (7.6 GB unpacked) under CC BY 3.0. Excellent for future seismic work; the current app stores seismic only as an opaque file and cannot display or interpret it.
 - **Teapot Dome** — well logs in LAS, tops, and 3D seismic in a tar archive, but its positions are not in WGS84 and the current slice does not transform CRS or parse LAS.
 - **NLOG Netherlands** — rich wells, logs, and production, but downloads are manual per well and coordinates are commonly RD (`EPSG:28992`), which would need a verified transformation before publication.
-- **Production series** — Sodir's ArcGIS API does not expose monthly production; Norwegianpetroleum.no and NSTA publish CSV histories. The app has no production parser or time-series view yet, so these would be stored evidence only.
+- **NSTA offshore SEG-Y** — raw 2D/3D seismic is held in the NDR behind a free account and download-access approval; the open package carries survey geometry only.
+- **Production parser** — Sodir and NSTA production CSVs are staged as evidence, but the app has no production time-series parser or view yet.
 
 ## Caveats
 

@@ -1,6 +1,6 @@
 # Free Public Well, Seismic, and Production Data for Open-Source Software Demos
 
-> **Verified 2026-11-12 for Atlasio.** For the current well-header slice (EPSG:4326, one file up to 5 MiB), use **Sodir FactMaps WGS84 wellbores** (Norway) and **NSTA UKCS top holes WGS84** (United Kingdom). A curated **Volve** subset is now staged under `demo-data/volve/` for raw log, deviation, production, 2D, and 3D file testing, but it is not ingestible by the header-only API yet. F3, Teapot Dome, and NLOG remain deferred until LAS, SEG-Y, or CRS transformation is implemented. The recipes are in [operations/demo-data.md](operations/demo-data.md), `scripts/fetch-demo-wells.mjs`, and `scripts/fetch-demo-volve.mjs`.
+> **Verified 2026-11-12 for Atlasio.** For the current well-header slice (EPSG:4326, one file up to 5 MiB), use **Sodir FactMaps WGS84 wellbores** (Norway) and **NSTA UKCS top holes WGS84** (United Kingdom). Curated **Volve** and **NSTA** subsets are now staged under `demo-data/volve/` and `demo-data/nsta/` for log, deviation, production, and seismic-index testing, but they are not ingestible by the header-only API yet. Raw NSTA offshore SEG-Y remains NDR-gated. F3, Teapot Dome, and NLOG remain deferred until LAS, SEG-Y, or CRS transformation is implemented. The recipes are in [operations/demo-data.md](operations/demo-data.md), `scripts/fetch-demo-wells.mjs`, `scripts/fetch-demo-volve.mjs`, and `scripts/fetch-demo-nsta.mjs`.
 
 
 
@@ -38,7 +38,23 @@ The full release is still delivered through Databricks or Azure, but the OSDU op
 
 ---
 
+## 1b- NSTA UKCS Open Data (United Kingdom)
 
+The North Sea Transition Authority publishes a broad UKCS open-data collection, but it is not one downloadable field package.
+
+### Freely downloadable
+- 13,367 open wellbore top holes in WGS 84, including the twelve NSTA wells already loaded in Atlasio.
+- PPRS field-month production points in WGS 84: 136,201 rows covering 556 fields from June 1975 to August 2026.
+- CGG Additional JDWLs: 188 MB archive with 28 LAS files and 48 deviation documents. The separate CGG digital log archive is 16 GB.
+- 2D and 3D NDR survey indexes: line and outline geometry in ED50, useful for map display but not raw seismic.
+
+### Gated
+- Raw offshore 2D and 3D SEG-Y is held in the UK National Data Repository at <https://ndr.nstauthority.co.uk/>. A free account is required, and download access is requested per organisation. The 370 MB `NDR_Seismic_ED50.zip` on the NSTA blob is a shapefile index, not SEG-Y.
+
+### Local package
+`scripts/fetch-demo-nsta.mjs` stages the open layers under `demo-data/nsta/` (87 files, about 508 MiB). The twelve loaded NSTA wells are CCS wells (Liverpool Bay, Net Zero North Sea, Bacton) with no target field, so the CGG logs and deviation documents come from other UK wells and the production is field-level rather than tied to those twelve.
+
+---
 
 ## 2- Best Open 3D Seismic Dataset: F3 Netherlands
 
