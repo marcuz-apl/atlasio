@@ -4,6 +4,11 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.33 — 2026-11-12
+Build: v0.1.33+261112q
+Type: feat
+- Let the shared page shell fill the viewport, so the header, workspace, and footer use the full screen width minus the responsive gutter.
+
 ## 0.1.32 — 2026-11-12
 Build: v0.1.32+261112k
 Type: feat
