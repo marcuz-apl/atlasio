@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { createReadStream, createWriteStream } from 'node:fs';
+import { createReadStream, createWriteStream, existsSync } from 'node:fs';
 import { appendFile, copyFile, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Readable, Transform } from 'node:stream';
@@ -14,8 +14,10 @@ const manifestPath = path.join(outputRoot, 'manifest.json');
 const ARCGIS = 'https://services-eu1.arcgis.com/OZMfUznmLTnWccBc/arcgis/rest/services';
 const WELLS_QUERY = `${ARCGIS}/UKCS_offshore_wellbore_top_holes_(WGS84)/FeatureServer/0/query`;
 const PRODUCTION_QUERY = `${ARCGIS}/UKCS_hydrocarbon_field_production_reports_PPRS_points_(WGS84)/FeatureServer/0/query`;
-const SEISMIC_2D_QUERY = `${ARCGIS}/UKCS_NDR_2D_SDS_seismic_lines_(ED50)/FeatureServer/0/query`;
-const SEISMIC_3D_QUERY = `${ARCGIS}/UKCS_NDR_3D_SDS_seismic_outlines_(ED50)/FeatureServer/0/query`;
+const SEISMIC_2D_LAYER = `${ARCGIS}/UKCS_NDR_2D_SDS_seismic_lines_(ED50)/FeatureServer/0`;
+const SEISMIC_3D_LAYER = `${ARCGIS}/UKCS_NDR_3D_SDS_seismic_outlines_(ED50)/FeatureServer/0`;
+const SEISMIC_2D_QUERY = `${SEISMIC_2D_LAYER}/query`;
+const SEISMIC_3D_QUERY = `${SEISMIC_3D_LAYER}/query`;
 const CGG_ADDITIONAL = 'https://datanstauthority.blob.core.windows.net/external/DataReleases/CGG/CGG_Additional_JDWLs.zip';
 const CGG_SIZE = 196503989;
 
@@ -253,6 +255,29 @@ const WELL_FIELDS = [
   'COUNTRYCOD',
 ];
 
+const WELLS_ED50_QUERY = `${ARCGIS}/UKCS_offshore_wellbore_top_holes_(ED50)/FeatureServer/0/query`;
+const WELL_ED50_FIELDS = [
+  'WELLREGNO',
+  'NAME',
+  'WELLALIAS',
+  'ORIGINTENT',
+  'CURRWELLIN',
+  'WELLOPSTAT',
+  'COMPLESTAT',
+  'DEVIATTYP',
+  'DATUMTYPE',
+  'SPUDDATE',
+  'COMPLEDATE',
+  'TARGETFLD',
+  'SUBAREAOP',
+  'TDMDDEPM',
+  'TDTVDSSM',
+  'TOPHOLEDTM',
+  'TOPHOLEXDD',
+  'TOPHOLEYDD',
+  'COUNTRYCOD',
+];
+
 const PRODUCTION_FIELDS = [
   'FIELDNAME',
   'PERIODYR',
@@ -297,33 +322,55 @@ const SEISMIC_3D_FIELDS = [
 ];
 
 async function downloadWells() {
-  console.log('Fetching NSTA open wellbore headers…');
-  const total = await arcgisCount(WELLS_QUERY, "OPEN_DATA='Y'");
-  const features = await arcgisFeaturesAll(
+  console.log('Fetching NSTA open wellbore headers in WGS 84 and native ED50…');
+  const wgsTotal = await arcgisCount(WELLS_QUERY, "OPEN_DATA='Y'");
+  const ed50Total = await arcgisCount(WELLS_ED50_QUERY, "OPEN_DATA='Y'");
+  const wgsFeatures = await arcgisFeaturesAll(
     WELLS_QUERY,
     {
       where: "OPEN_DATA='Y'",
       outFields: WELL_FIELDS.join(','),
       returnGeometry: 'true',
-      outSR: '4326',
     },
     2000,
     Number.POSITIVE_INFINITY,
     'geojson',
   );
-  if (!features.length) throw new Error('NSTA returned no open wellbore headers');
+  const ed50Features = await arcgisFeaturesAll(
+    WELLS_ED50_QUERY,
+    {
+      where: "OPEN_DATA='Y'",
+      outFields: WELL_ED50_FIELDS.join(','),
+      returnGeometry: 'true',
+    },
+    2000,
+    Number.POSITIVE_INFINITY,
+    'json',
+  );
+  if (!wgsFeatures.length || !ed50Features.length) {
+    throw new Error('NSTA returned no open wellbore headers');
+  }
+  const ed50Info = await fetchJson(
+    `${ARCGIS}/UKCS_offshore_wellbore_top_holes_(ED50)/FeatureServer/0`,
+    {},
+  );
   if (dryRun) {
-    console.log(`would write wells/nsta-wellbores.geojson (${features.length} of ${total} wellbores)`);
+    console.log(
+      `would write ${wgsFeatures.length} of ${wgsTotal} WGS84 wellbores and ${ed50Features.length} of ${ed50Total} ED50 wellbores`,
+    );
     return [];
   }
   const directory = path.join(outputRoot, 'wells');
   await mkdir(directory, { recursive: true });
+
   const geojsonPath = 'wells/nsta-wellbores.geojson';
   await writeFile(
     path.join(outputRoot, geojsonPath),
-    JSON.stringify({ type: 'FeatureCollection', features }, null, 2),
+    JSON.stringify({ type: 'FeatureCollection', features: wgsFeatures }, null, 2),
   );
 
+  const asDate = (value) =>
+    Number.isFinite(value) ? new Date(value).toISOString().slice(0, 10) : '';
   const columns = [
     'wellregno',
     'name',
@@ -340,11 +387,9 @@ async function downloadWells() {
     'longitude',
     'latitude',
   ];
-  const rows = features.map((feature) => {
+  const rows = wgsFeatures.map((feature) => {
     const values = feature.properties || {};
     const [lon, lat] = feature.geometry?.coordinates || [];
-    const asDate = (value) =>
-      Number.isFinite(value) ? new Date(value).toISOString().slice(0, 10) : '';
     return [
       values.WELLREGNO,
       values.NAME,
@@ -367,24 +412,94 @@ async function downloadWells() {
     path.join(outputRoot, csvPath),
     [columns, ...rows].map((row) => row.map(csvCell).join(',')).join('\n') + '\n',
   );
+
+  const ed50Path = 'wells/nsta-wellbores.ed50.json';
+  await writeFile(
+    path.join(outputRoot, ed50Path),
+    JSON.stringify(
+      {
+        type: 'NSTA UKCS offshore wellbore top holes (ED50)',
+        source_url: WELLS_ED50_QUERY,
+        source_crs: ed50Info.spatialReference,
+        retrieved_at: new Date().toISOString(),
+        features: ed50Features,
+      },
+      null,
+      2,
+    ),
+  );
+
+  const ed50Columns = [
+    'wellregno',
+    'name',
+    'alias',
+    'intent',
+    'current_intent',
+    'status',
+    'completion_status',
+    'deviation_type',
+    'datum_type',
+    'spud_date',
+    'completion_date',
+    'operator',
+    'target_field',
+    'total_depth_m',
+    'tvd_ss_m',
+    'ed50_longitude',
+    'ed50_latitude',
+  ];
+  const ed50Rows = ed50Features.map((feature) => {
+    const values = feature.attributes || {};
+    const lon = feature.geometry?.x ?? Number(values.TOPHOLEXDD);
+    const lat = feature.geometry?.y ?? Number(values.TOPHOLEYDD);
+    return [
+      values.WELLREGNO,
+      values.NAME,
+      values.WELLALIAS,
+      values.ORIGINTENT,
+      values.CURRWELLIN,
+      values.WELLOPSTAT,
+      values.COMPLESTAT,
+      values.DEVIATTYP,
+      values.DATUMTYPE,
+      asDate(values.SPUDDATE),
+      asDate(values.COMPLEDATE),
+      values.SUBAREAOP,
+      values.TARGETFLD,
+      values.TDMDDEPM,
+      values.TDTVDSSM,
+      lon,
+      lat,
+    ];
+  });
+  const ed50CsvPath = 'wells/nsta-wellbores.ed50.csv';
+  await writeFile(
+    path.join(outputRoot, ed50CsvPath),
+    [ed50Columns, ...ed50Rows].map((row) => row.map(csvCell).join(',')).join('\n') + '\n',
+  );
+
   const metadataPath = 'wells/nsta-wellbores.metadata.json';
   await writeFile(
     path.join(outputRoot, metadataPath),
     JSON.stringify(
       {
-        source: 'NSTA UKCS offshore wellbore top holes (WGS84)',
+        source: 'NSTA UKCS offshore wellbore top holes (WGS84 and ED50 layers)',
         source_url: WELLS_QUERY,
+        alternate_source_url: WELLS_ED50_QUERY,
         license: LICENSES.nsta,
-        count: features.length,
-        source_crs: 'EPSG:4326',
+        count: wgsFeatures.length,
+        ed50_count: ed50Features.length,
+        source_crs: 'EPSG:4326 for the GeoJSON/CSV; EPSG:4230 for the .ed50 files',
         retrieved_at: new Date().toISOString(),
       },
       null,
       2,
     ) + '\n',
   );
-  console.log(`saved   ${geojsonPath} (${features.length} wellbores)`);
-  console.log(`saved   ${csvPath} (${features.length} rows)`);
+  console.log(`saved   ${geojsonPath} (${wgsFeatures.length} WGS84 wellbores)`);
+  console.log(`saved   ${csvPath} (${wgsFeatures.length} rows)`);
+  console.log(`saved   ${ed50Path} (${ed50Features.length} ED50 wellbores)`);
+  console.log(`saved   ${ed50CsvPath} (${ed50Features.length} rows)`);
   return [
     await localEntry(geojsonPath, {
       dataset: 'wells',
@@ -400,12 +515,26 @@ async function downloadWells() {
       license: LICENSES.nsta,
       source_crs: 'EPSG:4326',
     }),
+    await localEntry(ed50Path, {
+      dataset: 'wells',
+      source: 'NSTA UKCS offshore wellbore top holes (ED50)',
+      url: WELLS_ED50_QUERY,
+      license: LICENSES.nsta,
+      source_crs: 'EPSG:4230 (ED50 geographic)',
+    }),
+    await localEntry(ed50CsvPath, {
+      dataset: 'wells',
+      source: 'Derived from NSTA UKCS offshore wellbore top holes (ED50)',
+      url: WELLS_ED50_QUERY,
+      license: LICENSES.nsta,
+      source_crs: 'EPSG:4230 (ED50 geographic)',
+    }),
     await localEntry(metadataPath, {
       dataset: 'wells',
       source: 'NSTA wellbore index metadata',
       url: WELLS_QUERY,
       license: LICENSES.nsta,
-      source_crs: 'EPSG:4326',
+      source_crs: 'EPSG:4326 and EPSG:4230',
     }),
   ];
 }
@@ -603,11 +732,10 @@ async function downloadSeismic() {
       where: "OPEN_DATA='Y'",
       outFields: SEISMIC_2D_FIELDS.join(','),
       returnGeometry: 'true',
-      outSR: '4326',
     },
     2000,
     lineLimit,
-    'geojson',
+    'json',
   );
   const outlines = await arcgisFeaturesAll(
     SEISMIC_3D_QUERY,
@@ -615,27 +743,53 @@ async function downloadSeismic() {
       where: '1=1',
       outFields: SEISMIC_3D_FIELDS.join(','),
       returnGeometry: 'true',
-      outSR: '4326',
     },
     2000,
     Number.POSITIVE_INFINITY,
-    'geojson',
+    'json',
   );
   if (!lines.length || !outlines.length) throw new Error('NSTA returned no seismic survey metadata');
+
+  const [info2d, info3d] = await Promise.all([
+    fetchJson(SEISMIC_2D_LAYER, {}),
+    fetchJson(SEISMIC_3D_LAYER, {}),
+  ]);
+  const sr2d = info2d.spatialReference;
+  const sr3d = info3d.spatialReference;
   if (dryRun) {
-    console.log(`would write ${lines.length} 2D line records and ${outlines.length} 3D outline records`);
+    console.log(`would write ${lines.length} 2D line records and ${outlines.length} 3D outline records in EPSG:${sr2d?.latestWkid || sr2d?.wkid}`);
     return [];
   }
 
-  const linesPath = 'seismic-2d/nsta-2d-line-index.geojson';
+  const linesPath = 'seismic-2d/nsta-2d-line-index.ed50.json';
   await writeFile(
     path.join(outputRoot, linesPath),
-    JSON.stringify({ type: 'FeatureCollection', features: lines }, null, 2),
+    JSON.stringify(
+      {
+        type: 'NSTA NDR 2D seismic line index',
+        source_url: SEISMIC_2D_QUERY,
+        source_crs: sr2d,
+        retrieved_at: new Date().toISOString(),
+        features: lines,
+      },
+      null,
+      2,
+    ),
   );
-  const outlinesPath = 'seismic-3d/nsta-3d-outline-index.geojson';
+  const outlinesPath = 'seismic-3d/nsta-3d-outline-index.ed50.json';
   await writeFile(
     path.join(outputRoot, outlinesPath),
-    JSON.stringify({ type: 'FeatureCollection', features: outlines }, null, 2),
+    JSON.stringify(
+      {
+        type: 'NSTA NDR 3D survey outline index',
+        source_url: SEISMIC_3D_QUERY,
+        source_crs: sr3d,
+        retrieved_at: new Date().toISOString(),
+        features: outlines,
+      },
+      null,
+      2,
+    ),
   );
 
   const note2d = `# NSTA 2D seismic index
@@ -645,7 +799,8 @@ This folder contains survey-line geometry only, sampled from the NSTA NDR 2D SDS
 Raw NSTA offshore SEG-Y is held in the UK National Data Repository at https://ndr.nstauthority.co.uk/ and requires a free NDR account plus download-access approval. It is not available from the anonymous NSTA open-data services.
 
 Source: ${SEISMIC_2D_QUERY}
-Source CRS: ED50 (the service name carries the source CRS; this export was requested in WGS 84 for map use).
+Source CRS: EPSG:4230 (ED50 geographic), the native service CRS. No WGS 84 conversion has been applied.
+File format: Esri JSON with an explicit \`spatialReference\`; this is not RFC 7946 GeoJSON.
 Licence: ${LICENSES.nsta}
 `;
   const note3d = `# NSTA 3D seismic index
@@ -655,7 +810,8 @@ This folder contains survey outline geometry only, from the NSTA NDR 3D survey o
 Raw NSTA offshore SEG-Y is held in the UK National Data Repository at https://ndr.nstauthority.co.uk/ and requires a free NDR account plus download-access approval. It is not available from the anonymous NSTA open-data services.
 
 Source: ${SEISMIC_3D_QUERY}
-Source CRS: ED50 (the service name carries the source CRS; this export was requested in WGS 84 for map use).
+Source CRS: EPSG:4230 (ED50 geographic), the native service CRS. No WGS 84 conversion has been applied.
+File format: Esri JSON with an explicit \`spatialReference\`; this is not RFC 7946 GeoJSON.
 Licence: ${LICENSES.nsta}
 `;
   await writeFile(path.join(directory2d, 'README.md'), note2d);
@@ -669,14 +825,14 @@ Licence: ${LICENSES.nsta}
       source: 'NSTA NDR 2D SDS seismic line index',
       url: SEISMIC_2D_QUERY,
       license: LICENSES.nsta,
-      source_crs: 'ED50 source, exported in EPSG:4326',
+      source_crs: 'EPSG:4230 (ED50 geographic)',
     }),
     await localEntry(outlinesPath, {
       dataset: 'seismic',
       source: 'NSTA NDR 3D survey outline index',
       url: SEISMIC_3D_QUERY,
       license: LICENSES.nsta,
-      source_crs: 'ED50 source, exported in EPSG:4326',
+      source_crs: 'EPSG:4230 (ED50 geographic)',
     }),
     await localEntry('seismic-2d/README.md', {
       dataset: 'seismic',
@@ -729,9 +885,10 @@ async function readCount(relativePath) {
 
 async function writeReadme(files) {
   const wells = await readCount('wells/nsta-wellbores.geojson');
+  const wellsEd50 = await readCount('wells/nsta-wellbores.ed50.json');
   const production = await readCount('production/pprs-field-monthly.metadata.json');
-  const lines = await readCount('seismic-2d/nsta-2d-line-index.geojson');
-  const outlines = await readCount('seismic-3d/nsta-3d-outline-index.geojson');
+  const lines = await readCount('seismic-2d/nsta-2d-line-index.ed50.json');
+  const outlines = await readCount('seismic-3d/nsta-3d-outline-index.ed50.json');
   const logs = files.filter((file) => file.dataset === 'logs').length;
   const deviations = files.filter((file) => file.dataset === 'deviation').length;
   const content = `# NSTA open-data demo package
@@ -745,12 +902,13 @@ ${summarize(files)}
 
 ## Contents
 
-- \`wells/\` — ${wells ?? 'the'} open UKCS top-hole headers in EPSG:4326 (GeoJSON, CSV, metadata).
+- \`wells/nsta-wellbores.geojson\` and \`nsta-wellbores.csv\` — ${wells ?? 'the'} open UKCS top-hole headers in the published WGS 84 layer (EPSG:4326), matching the wells already loaded in Atlasio.
+- \`wells/nsta-wellbores.ed50.json\` and \`nsta-wellbores.ed50.csv\` — ${wellsEd50 ?? 'the'} same well headers in the native ED50 layer (EPSG:4230), kept for import-time transformation tests. The JSON is Esri JSON with an explicit spatial reference.
 - \`production/\` — ${production ?? 'the'} PPRS field-month rows in the CSV, plus metadata. Geometry is the field centre in the source service; the CSV is attribute-only.
 - \`logs/\` — ${logs} LAS files extracted from the NSTA CGG Additional JDWLs release.
 - \`deviation/\` — ${deviations} deviation documents extracted from the same CGG release.
-- \`seismic-2d/\` — ${lines ?? 'a sample of'} 2D survey-line records and an access note. Metadata only; no SEG-Y.
-- \`seismic-3d/\` — ${outlines ?? 'the'} 3D survey outlines and an access note. Metadata only; no SEG-Y cube.
+- \`seismic-2d/\` — ${lines ?? 'a sample of'} 2D survey-line records in native EPSG:4230 Esri JSON, plus an access note. Metadata only; no SEG-Y.
+- \`seismic-3d/\` — ${outlines ?? 'the'} 3D survey outlines in native EPSG:4230 Esri JSON, plus an access note. Metadata only; no SEG-Y cube.
 - \`cgg/\` — the CGG source archive and its release narrative.
 
 ## Sources and licences
@@ -763,8 +921,8 @@ ${summarize(files)}
 
 ## Coordinate and content notes
 
-- NSTA well headers and PPRS production are WGS 84 (EPSG:4326).
-- The 2D/3D survey services are named ED50; this export requested EPSG:4326 for map use, so the source CRS is ED50 / UTM zone 31N (EPSG:23031).
+- NSTA well headers and PPRS production are published in WGS 84 (EPSG:4326); no transformation was applied.
+- The NSTA 2D/3D survey indexes are kept in the native ED50 geographic CRS (EPSG:4230). They are Esri JSON with an explicit \`spatialReference\`, not RFC 7946 GeoJSON, and have not been converted to WGS 84.
 - The 12 NSTA wells already loaded in Atlasio are CCS wells (Liverpool Bay, Net Zero North Sea, Bacton) and have no target field. The CGG logs and deviation surveys belong to other UK wells, and PPRS production is field-level rather than tied to the loaded 12.
 - Raw NSTA offshore SEG-Y is not included. It is available through the NDR after a free account and download-access approval. Use the Volve cube for a ready SEG-Y test, or UKOGL for open UK onshore seismic.
 
@@ -803,7 +961,11 @@ async function main() {
     return;
   }
 
-  const byPath = new Map((previous.files || []).map((file) => [file.path, file]));
+  const byPath = new Map(
+    (previous.files || [])
+      .filter((file) => existsSync(path.join(outputRoot, file.path)))
+      .map((file) => [file.path, file]),
+  );
   for (const file of files) byPath.set(file.path, file);
   const manifest = {
     package: 'NSTA open-data demo',

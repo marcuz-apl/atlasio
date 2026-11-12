@@ -70,12 +70,12 @@ The current ingest API still accepts one well-header JSON and one original file 
 
 | Data | Source | Contents | Size |
 | --- | --- | --- | ---: |
-| Well headers | NSTA UKCS top holes, `OPEN_DATA='Y'` | 13,367 WGS84 wellbores (GeoJSON, CSV, metadata) | 10.4 MiB |
+| Well headers | NSTA UKCS top holes, `OPEN_DATA='Y'` | 13,367 WGS84 wellbores plus 13,367 native ED50 wellbores (GeoJSON/CSV and Esri JSON/CSV) | 23.4 MiB |
 | Production | NSTA PPRS field-month points (WGS84) | 136,201 rows, 556 fields, June 1975 to August 2026 | 5.6 MiB |
 | Logs | NSTA CGG Additional JDWLs | 28 LAS files | 111.5 MiB |
 | Deviation | NSTA CGG Additional JDWLs | 48 deviation documents (XLSX/XLS/TIF/PDF/CSV) | 156.9 MiB |
-| 2D seismic index | NSTA NDR 2D SDS line index | 200 line records, WGS84 export | 820 KiB |
-| 3D seismic index | NSTA NDR 3D outline index | 716 survey outlines, WGS84 export | 36 MiB |
+| 2D seismic index | NSTA NDR 2D SDS line index | 200 line records, native EPSG:4230 Esri JSON | 820 KiB |
+| 3D seismic index | NSTA NDR 3D outline index | 716 survey outlines, native EPSG:4230 Esri JSON | 36 MiB |
 
 ```sh
 node scripts/fetch-demo-nsta.mjs --dataset all
@@ -87,7 +87,8 @@ node scripts/fetch-demo-nsta.mjs --dataset all --dry-run
 
 Key endpoints:
 
-- NSTA top holes: `https://services-eu1.arcgis.com/OZMfUznmLTnWccBc/arcgis/rest/services/UKCS_offshore_wellbore_top_holes_(WGS84)/FeatureServer/0/query`
+- NSTA top holes (WGS84): `https://services-eu1.arcgis.com/OZMfUznmLTnWccBc/arcgis/rest/services/UKCS_offshore_wellbore_top_holes_(WGS84)/FeatureServer/0/query`
+- NSTA top holes (ED50): `https://services-eu1.arcgis.com/OZMfUznmLTnWccBc/arcgis/rest/services/UKCS_offshore_wellbore_top_holes_(ED50)/FeatureServer/0/query`
 - NSTA PPRS production: `https://services-eu1.arcgis.com/OZMfUznmLTnWccBc/arcgis/rest/services/UKCS_hydrocarbon_field_production_reports_PPRS_points_(WGS84)/FeatureServer/0/query`
 - NSTA CGG Additional JDWLs: `https://datanstauthority.blob.core.windows.net/external/DataReleases/CGG/CGG_Additional_JDWLs.zip`
 - NSTA 2D line index: `https://services-eu1.arcgis.com/OZMfUznmLTnWccBc/arcgis/rest/services/UKCS_NDR_2D_SDS_seismic_lines_(ED50)/FeatureServer/0/query`
@@ -95,7 +96,9 @@ Key endpoints:
 
 The 2D/3D folders contain survey geometry only, not SEG-Y. Raw NSTA offshore SEG-Y lives in the UK National Data Repository at <https://ndr.nstauthority.co.uk/> and needs a free NDR account plus download-access approval; it is not anonymously downloadable like the OSDU Volve bucket. Use the Volve 3D cube for a ready SEG-Y test, or UKOGL for open UK onshore seismic.
 
-The 12 NSTA wells already loaded in Atlasio are CCS wells (Liverpool Bay, Net Zero North Sea, Bacton) with no target field. The CGG logs and deviation documents belong to other UK wells, and the PPRS production is field-level rather than tied to those 12 wells. NSTA open data uses the Open Government Licence v3.0; read the CGG release narrative for any additional terms. The 2D/3D services are named ED50, but this package exports them in WGS 84 for map use, so the source CRS is ED50 / UTM zone 31N (`EPSG:23031`).
+The 12 NSTA wells already loaded in Atlasio are CCS wells (Liverpool Bay, Net Zero North Sea, Bacton) with no target field. The CGG logs and deviation documents belong to other UK wells, and the PPRS production is field-level rather than tied to those 12 wells. NSTA open data uses the Open Government Licence v3.0; read the CGG release narrative for any additional terms.
+
+NSTA publishes both WGS 84 and ED50 well-header layers. The package stores both as published: the `.geojson`/`.csv` files use the WGS 84 layer that matches the twelve loaded wells, and the `.ed50.json`/`.ed50.csv` files preserve the native ED50 layer for import-time transformation tests. PPRS production is WGS 84 in the source service. The 2D/3D survey indexes are natively ED50 geographic (`EPSG:4230`) and are kept in that CRS as Esri JSON with an explicit `spatialReference`, not RFC 7946 GeoJSON. No layer has been reprojected.
 
 ## Datasets deferred for now
 
