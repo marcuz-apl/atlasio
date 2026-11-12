@@ -1,6 +1,6 @@
 /* ---------- Landing heading ---------- */
 .landing .page-wrap {
-  padding-block: 16px 34px;
+  padding-block: 22px 34px;
 }
 
 .landing-head {
@@ -8,25 +8,15 @@
   grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
   align-items: end;
   gap: 32px;
-  padding-bottom: 16px;
+  padding-bottom: 18px;
   border-bottom: 1px solid var(--line);
 }
 
-.landing-intro {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  column-gap: 18px;
-  row-gap: 2px;
-}
-
 .landing-intro .eyebrow {
-  flex: none;
-  margin-bottom: 0;
+  margin-bottom: 10px;
 }
 
 .landing-intro h1 {
-  flex: 0 1 auto;
   font-size: clamp(22px, 3.4vw, 32px);
   font-weight: 600;
   line-height: 1.05;
@@ -50,7 +40,6 @@
 }
 
 .landing-intro .lede {
-  flex: 1 0 100%;
   max-width: none;
   margin-top: 8px;
   font-size: var(--text-sm);
@@ -108,7 +97,7 @@
   grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.18fr);
   gap: 16px;
   align-items: stretch;
-  margin-top: 8px;
+  margin-top: 12px;
 }
 
 /* ---------- Coverage ledger ---------- */
@@ -120,7 +109,7 @@
 }
 
 .coverage-panel .panel-head {
-  padding: 14px 20px 0;
+  padding: 17px 20px 0;
 }
 
 .scope-chip {
@@ -134,7 +123,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 7px 20px 9px;
+  padding: 9px 20px 11px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -152,15 +141,15 @@
 .coverage-body {
   flex: 1;
   min-height: 0;
-  padding: 2px 14px 8px;
+  padding: 3px 14px 10px;
 }
 
 .coverage-group {
-  padding-top: 3px;
+  padding-top: 5px;
 }
 
 .coverage-group + .coverage-group {
-  margin-top: 2px;
+  margin-top: 3px;
   border-top: 1px solid var(--line);
 }
 
@@ -168,7 +157,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 7px 1px;
+  padding: 1px 7px 2px;
   color: var(--muted);
 }
 
@@ -198,7 +187,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  min-height: 26px;
+  min-height: 29px;
   padding: 3px 7px;
   border: 1px solid transparent;
   border-radius: var(--radius-xs);
