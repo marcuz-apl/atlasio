@@ -7,11 +7,13 @@ edition = "2024"
 atlasio-domain = { path = "../domain" }
 axum = { version = "0.8.9", features = ["json"] }
 base64 = "0.22"
+chrono = { version = "0.4", features = ["serde"] }
 object_store = { version = "0.14.2", features = ["aws"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
 sqlx = { version = "0.8.6", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "json"] }
 tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["io"] }
 tower-http = { version = "0.7.1", features = ["fs"] }
 uuid = { version = "1", features = ["serde", "v4"] }

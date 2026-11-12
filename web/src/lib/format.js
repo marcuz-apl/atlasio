@@ -15,7 +15,13 @@ const dateTimeFormat = new Intl.DateTimeFormat(undefined, {
 export const formatCount = (value) => (Number.isFinite(value) ? countFormat.format(value) : '—');
 
 export const roleLabel = (role) =>
-  ({ reader: 'Viewer', importer: 'Importer', reviewer: 'Reviewer' })[role] || 'Not connected';
+  ({
+    reader: 'Viewer',
+    importer: 'Importer',
+    reviewer: 'Reviewer',
+    admin: 'Administrator',
+    datamgr: 'Data Manager',
+  })[role] || 'Not connected';
 
 export const statusLabel = (status) =>
   ({ staged: 'Staged', submitted: 'Submitted', published: 'Published', rejected: 'Rejected' })[status] || status;
