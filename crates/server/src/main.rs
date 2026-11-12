@@ -596,6 +596,7 @@ async fn dashboard(
         "counts": {
             "wells": { "value": wells, "state": "available" },
             "well_versions": { "value": versions, "state": "available" },
+            "deviation_surveys": { "value": null, "state": "not_cataloged" },
             "source_files": { "value": originals, "state": "available" },
             "logs": { "value": null, "state": "not_cataloged" },
             "formation_tops": { "value": null, "state": "not_cataloged" },
@@ -615,7 +616,6 @@ async fn dashboard(
             "dst_records": { "value": null, "state": "not_cataloged" },
             "completion_records": { "value": null, "state": "not_cataloged" },
             "workover_records": { "value": null, "state": "not_cataloged" },
-            "horizontal_wells": { "value": null, "state": "not_cataloged" },
             "production_records": { "value": null, "state": "not_cataloged" },
             "production_tests": { "value": null, "state": "not_cataloged" },
             "injection_records": { "value": null, "state": "not_cataloged" }

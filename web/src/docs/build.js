@@ -4,7 +4,7 @@ export const BUILD_DOCS_HTML = `
   <h2>Why this page exists</h2>
   <p>Atlasio is built around choices that are easy to lose: why coordinates are stored the way they are, why a published version never changes, why a category shows a dash instead of a zero, and why the catalog is grouped into six domains. This page keeps those choices beside the product so a client, reviewer, or future maintainer can understand the reasoning without reconstructing it from commits or conversations.</p>
   <p>Read it in three ways. The <a href="#/docs" data-doc-link="docs-invariants">invariants</a> are the rules we do not break. The <a href="#/docs" data-doc-link="docs-decisions">decision log</a> records what we chose, when, and what it costs. The <a href="#/docs" data-doc-link="docs-glossary">glossary</a> fixes the vocabulary used by the interface and the API.</p>
-  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.31. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
+  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.32. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
 </section>
 
 <section class="docs-section" id="docs-architecture" data-doc-section>
@@ -108,7 +108,7 @@ export const BUILD_DOCS_HTML = `
       <thead><tr><th>Domain</th><th>Categories</th><th>Why it is separate</th></tr></thead>
       <tbody>
         <tr><td>Culture &amp; Lands</td><td>GIS &amp; Basemaps, Concession Maps, Permits &amp; Licenses, Land &amp; Lease Records</td><td>Surface context and land rights carry dates, issuing authorities, and confidentiality rules that documents do not.</td></tr>
-        <tr><td>Well Data</td><td>Wells, Well Versions, Core &amp; Sample Records, Horizontal Wells, Well Logs, Formation Tops, Well Interpretations</td><td>Registry, content, and interpretations share a well identity and version history.</td></tr>
+        <tr><td>Well Data</td><td>Wells, Well Versions, Deviation Surveys, Core &amp; Sample Records, Well Logs, Formation Tops, Well Interpretations</td><td>Registry, trajectory, content, and interpretations share a well identity and version history.</td></tr>
         <tr><td>Seismic Data</td><td>Seismic Surveys, 2D Seismic Lines, 3D Seismic Cubes, Seismic Interpretations</td><td>Survey identity, footprint, navigation, volumes, and interpretations follow a different access and storage pattern.</td></tr>
         <tr><td>Drilling &amp; Completions</td><td>Drilling Records, DST Records, Completion Records, Workover Records</td><td>Operational records describe what happened at the wellbore and need their own timeline.</td></tr>
         <tr><td>Production Data</td><td>Production Tests, Production Records, Injection Records</td><td>Time-series volumes and tests have units, allocations, and QC that differ from well headers.</td></tr>
@@ -116,7 +116,7 @@ export const BUILD_DOCS_HTML = `
       </tbody>
     </table>
   </div>
-  <p><strong>Wells</strong> counts current wells; <strong>Well Versions</strong> counts every published version, including earlier corrections, so a reissued well raises the version count without adding another well. <strong>Source Files</strong> counts the original uploads preserved behind published packages. DST Records and Core &amp; Sample Records are planned categories and show a dash until their data contract exists.</p>
+  <p><strong>Wells</strong> counts current wells; <strong>Well Versions</strong> counts every published version, including earlier corrections, so a reissued well raises the version count without adding another well. <strong>Deviation Surveys</strong> holds the borehole path; vertical, deviated, or horizontal is an attribute derived from that path, not a separate category. <strong>Source Files</strong> counts the original uploads preserved behind published packages. DST Records and Core &amp; Sample Records are planned categories and show a dash until their data contract exists.</p>
   <div class="docs-note"><strong>Cataloged is not the same as planned.</strong> An item with data shows a count. An item without data shows a dash and participates in the “planned” legend. It is never rendered as zero, because zero would claim that none exist.</div>
 </section>
 
@@ -185,6 +185,7 @@ export const BUILD_DOCS_HTML = `
         <tr><td>0.1.29</td><td>GIS &amp; Basemaps leads Culture &amp; Lands; Production Tests leads Production Data.</td></tr>
         <tr><td>0.1.30</td><td>E&amp;P Projects removed; Source Files replaces Original Files; DST Records and Core &amp; Sample Records join the catalog as planned categories, with a Wells-versus-Versions explanation.</td></tr>
         <tr><td>0.1.31</td><td>Viewer demo key is <code>viewer-demo</code>; the seeded staff passwords are <code>admin-initial</code> and <code>datamgr-initial</code>.</td></tr>
+        <tr><td>0.1.32</td><td>Deviation Surveys replaces Horizontal Wells; orientation is derived from the survey as a well attribute.</td></tr>
       </tbody>
     </table>
   </div>
@@ -347,6 +348,17 @@ export const BUILD_DOCS_HTML = `
       <dt>Decision</dt><dd>Each tile must name a record type with an API state. Remove E&amp;P Projects; keep project or asset grouping for a future filter or domain rather than a tile. Rename Original Files to Source Files. Add DST Records under Drilling &amp; Completions and Core &amp; Sample Records under Well Data as planned categories. Explain in both guides that Wells counts current wells while Well Versions counts every published version, including corrections. Lead Culture &amp; Lands with GIS &amp; Basemaps and Production Data with Production Tests.</dd>
       <dt>Why</dt><dd>Every tile now maps to something the catalog can count, planned categories are honest about missing data, and the two well counts stop reading as duplicates. Ordering follows how people approach the data: basemaps establish context, tests lead production evidence.</dd>
       <dt>Trade-off</dt><dd>The catalog grows to twenty-five categories, so more tiles show a dash until their data contracts exist. Project grouping needs a separate interaction later, and the static category count in the guides must change with the API contract.</dd>
+    </dl>
+  </article>
+
+  <article class="decision">
+    <div class="decision-head"><span class="decision-id">D-0015</span><span class="decision-tag">Accepted</span><span class="decision-tag">v0.1.32</span></div>
+    <h3>Well orientation is an attribute, not a category</h3>
+    <dl>
+      <dt>Context</dt><dd>Horizontal Wells sat beside Wells as if it were a separate record type. Once Deviation Surveys became the home of the borehole path, “horizontal” read as a second classification of the same wells with no record behind it.</dd>
+      <dt>Decision</dt><dd>Remove the Horizontal Wells category and add Deviation Surveys under Well Data. Treat vertical, deviated, and horizontal as a well attribute or filter derived from the deviation survey, not as ledger rows. The catalog stays at twenty-five categories.</dd>
+      <dt>Why</dt><dd>Every tile names a record type, trajectory has one authoritative source, and the same well cannot appear under two competing classifications.</dd>
+      <dt>Trade-off</dt><dd>There is no direct horizontal-wells list until trajectory data exists and the filter is built. Until then, orientation is a documented attribute rather than a browsable category.</dd>
     </dl>
   </article>
 </section>
