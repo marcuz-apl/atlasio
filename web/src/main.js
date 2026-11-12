@@ -292,6 +292,18 @@ function initChrome() {
     await signInStaff(username, password, code);
   });
 
+  for (const selector of ['#staff-username', '#staff-password']) {
+    const field = $(selector);
+    if (!field) continue;
+    const unlock = () => field.removeAttribute('readonly');
+    field.addEventListener('focus', unlock);
+    field.addEventListener('pointerdown', unlock);
+  }
+
+  window.addEventListener('pageshow', () => {
+    if (!state.session && !state.key) clearStaffFields();
+  });
+
   $('#password-form')?.addEventListener('submit', submitPassword);
   $('#password-signout')?.addEventListener('click', async () => {
     $('#password-dialog')?.close();
