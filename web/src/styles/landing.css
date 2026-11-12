@@ -98,13 +98,12 @@
 .coverage-panel {
   display: flex;
   flex-direction: column;
-  height: var(--landing-h);
-  min-height: 0;
+  min-height: var(--landing-h);
   overflow: hidden;
 }
 
 .coverage-panel .panel-head {
-  padding: 19px 20px 0;
+  padding: 17px 20px 0;
 }
 
 .scope-chip {
@@ -118,7 +117,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 11px 20px 13px;
+  padding: 9px 20px 11px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -136,18 +135,15 @@
 .coverage-body {
   flex: 1;
   min-height: 0;
-  overflow: auto;
-  padding: 4px 14px 14px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
+  padding: 3px 14px 10px;
 }
 
 .coverage-group {
-  padding-top: 12px;
+  padding-top: 5px;
 }
 
 .coverage-group + .coverage-group {
-  margin-top: 8px;
+  margin-top: 3px;
   border-top: 1px solid var(--line);
 }
 
@@ -155,7 +151,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 2px 7px 6px;
+  padding: 1px 7px 2px;
   color: var(--muted);
 }
 
@@ -170,24 +166,23 @@
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .coverage-items {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 3px 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px 5px;
 }
 
 .metric {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  min-height: 40px;
-  padding: 6px 9px;
+  gap: 6px;
+  min-height: 29px;
+  padding: 3px 7px;
   border: 1px solid transparent;
   border-radius: var(--radius-xs);
 }
@@ -195,10 +190,10 @@
 .metric-label {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   min-width: 0;
   color: var(--ink-2);
-  font-size: 13px;
+  font-size: 12.5px;
   line-height: 1.25;
 }
 
@@ -213,7 +208,7 @@
 
 .metric-value {
   color: var(--ink);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.03em;
