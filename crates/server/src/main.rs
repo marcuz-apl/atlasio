@@ -305,9 +305,16 @@ async fn dashboard(
             "reports": { "value": null, "state": "not_cataloged" },
             "ma_reports": { "value": null, "state": "not_cataloged" },
             "concession_maps": { "value": null, "state": "not_cataloged" },
+            "permits_licenses": { "value": null, "state": "not_cataloged" },
+            "land_leases": { "value": null, "state": "not_cataloged" },
+            "gis_basemaps": { "value": null, "state": "not_cataloged" },
             "drilling_records": { "value": null, "state": "not_cataloged" },
+            "completion_records": { "value": null, "state": "not_cataloged" },
+            "workover_records": { "value": null, "state": "not_cataloged" },
             "horizontal_wells": { "value": null, "state": "not_cataloged" },
-            "production_records": { "value": null, "state": "not_cataloged" }
+            "production_records": { "value": null, "state": "not_cataloged" },
+            "production_tests": { "value": null, "state": "not_cataloged" },
+            "injection_records": { "value": null, "state": "not_cataloged" }
         }
     })))
 }

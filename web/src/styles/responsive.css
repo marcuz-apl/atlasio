@@ -4,6 +4,10 @@
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
   }
 
+  .coverage-items {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .ws-explore {
     grid-template-columns: minmax(0, 286px) minmax(0, 1fr);
   }
@@ -39,8 +43,7 @@
   }
 
   .coverage-panel {
-    height: auto;
-    max-height: 580px;
+    max-height: none;
   }
 
   .landing-map {
