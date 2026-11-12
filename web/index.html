@@ -635,8 +635,8 @@
         <div class="gate-brand">
           <svg class="brand-mark" aria-hidden="true"><use href="#i-logo" /></svg>
           <span class="brand-name">atlasio<span class="brand-dot">.</span></span>
+          <span class="brand-tag">Governed subsurface data, in place</span>
         </div>
-        <p class="eyebrow">GOVERNED SUBSURFACE WORKSPACE</p>
         <h1 id="gate-title">Enter the workspace</h1>
         <p class="gate-lede">Choose a demo role to explore the catalog, use an access key, or sign in with a staff account. Every view is scoped to what that role may see.</p>
         <div class="gate-roles">
@@ -664,13 +664,13 @@
             <button class="btn btn-primary" type="submit">Connect</button>
           </form>
         </details>
-        <form id="staff-form" class="gate-staff">
+        <form id="staff-form" class="gate-staff" autocomplete="off">
           <p class="gate-staff-label">Administrator or Data Manager</p>
           <div class="gate-staff-row">
             <label class="sr-only" for="staff-username">Username</label>
-            <input id="staff-username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Username" />
+            <input id="staff-username" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Username" />
             <label class="sr-only" for="staff-password">Password</label>
-            <input id="staff-password" type="password" autocomplete="current-password" placeholder="Password" />
+            <input id="staff-password" type="password" autocomplete="off" placeholder="Password" />
             <label class="sr-only" for="staff-code">Authenticator code</label>
             <input id="staff-code" inputmode="numeric" autocomplete="one-time-code" placeholder="Code" hidden />
             <button class="btn btn-primary" type="submit">Sign in</button>

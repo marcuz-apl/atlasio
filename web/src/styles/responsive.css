@@ -354,6 +354,10 @@
     padding: 24px 18px;
   }
 
+  .gate-brand .brand-tag {
+    display: none;
+  }
+
   .gate-card h1 {
     font-size: 29px;
   }
