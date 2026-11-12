@@ -4,6 +4,12 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.5.8 — 2026-11-12
+Build: v0.5.8+261112w
+Type: fix
+- Records now refreshes with the active query every time it is opened, so returning from the inspector bridge or another tab never shows stale rows or a broken table.
+- A denied full-screen request shows a calm notice instead of an unhandled promise error.
+
 ## 0.5.7 — 2026-11-12
 Build: v0.5.7+261112v
 Type: feat
