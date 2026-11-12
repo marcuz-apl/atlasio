@@ -4,3 +4,4 @@ web/dist/
 .env
 .playwright-cli/
 backups/
+demo-data/
