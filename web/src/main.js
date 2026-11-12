@@ -10,6 +10,7 @@ import { $, $$, toast } from './lib/ui.js';
 import { roleLabel } from './lib/format.js';
 import * as dashboard from './views/dashboard.js';
 import * as workspace from './views/workspace.js';
+import { initDocs } from './views/docs.js';
 import { initIngest, loadQueue as loadIngestQueue } from './views/ingest.js';
 import { initReview, loadReview as loadReviewQueue } from './views/review.js';
 
@@ -34,7 +35,9 @@ if (!location.hash) {
   history.replaceState(null, '', '#/');
 }
 
-if (state.key) {
+if (isDocsRoute()) {
+  applyRoute().catch((error) => toast(error.message, 'error'));
+} else if (state.key) {
   connect(state.key, { fromGate: true, announce: false });
 } else {
   showGate();
@@ -43,8 +46,13 @@ if (state.key) {
 function initModules() {
   dashboard.initDashboard({ onNavigate: navigate });
   workspace.initWorkspace({ onNavigate: navigate });
+  initDocs();
   initIngest();
   initReview({ onMutation: refreshData });
+}
+
+function isDocsRoute() {
+  return parseRoute().view === 'docs';
 }
 
 function initTheme() {
@@ -322,11 +330,21 @@ function parseRoute() {
       well: new URLSearchParams(queryPart).get('well'),
     };
   }
+  if (segments[0] === 'docs') {
+    return { view: 'docs', tab: 'explore', well: null };
+  }
   return { view: 'landing', tab: 'explore', well: null };
 }
 
 async function applyRoute() {
   const route = parseRoute();
+
+  // Reference material stays readable without a workspace key.
+  if (route.view === 'docs') {
+    showDocs();
+    return;
+  }
+
   if (!state.role) {
     showGate();
     return;
@@ -367,8 +385,10 @@ async function applyRoute() {
 function showLanding() {
   const landing = $('#view-landing');
   const workspaceView = $('#view-workspace');
+  const docsView = $('#view-docs');
   if (landing) landing.hidden = false;
   if (workspaceView) workspaceView.hidden = true;
+  if (docsView) docsView.hidden = true;
   dashboard.hidePreview();
   setNav('dashboard');
   document.title = 'Atlasio · Subsurface workspace';
@@ -377,11 +397,27 @@ function showLanding() {
 function showWorkspaceView(tab) {
   const landing = $('#view-landing');
   const workspaceView = $('#view-workspace');
+  const docsView = $('#view-docs');
   if (landing) landing.hidden = true;
   if (workspaceView) workspaceView.hidden = false;
+  if (docsView) docsView.hidden = true;
   dashboard.hidePreview();
   setNav('workspace');
   document.title = `Atlasio · Workspace · ${tab.charAt(0).toUpperCase()}${tab.slice(1)}`;
+  if (window.scrollY > 0) window.scrollTo({ top: 0, behavior: 'auto' });
+}
+
+function showDocs() {
+  const landing = $('#view-landing');
+  const workspaceView = $('#view-workspace');
+  const docsView = $('#view-docs');
+  if (landing) landing.hidden = true;
+  if (workspaceView) workspaceView.hidden = true;
+  if (docsView) docsView.hidden = false;
+  hideGate();
+  dashboard.hidePreview();
+  setNav('docs');
+  document.title = 'Atlasio · Build notes & decisions';
   if (window.scrollY > 0) window.scrollTo({ top: 0, behavior: 'auto' });
 }
 

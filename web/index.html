@@ -171,6 +171,7 @@
               <span class="status-dot" aria-hidden="true"></span>
               <span id="access-label">Not connected</span>
             </button>
+            <a class="docs-link" href="#/docs" data-nav="docs">Docs</a>
             <button class="theme-toggle" id="theme-toggle" type="button" data-mode="auto" aria-label="Color theme: automatic, light now. Switch to light." title="Automatic — light now · click for light only">
               <svg class="theme-glyph" data-glyph="auto" viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="12" cy="12" r="8.25" fill="none" stroke="currentColor" stroke-width="1.6" />
@@ -255,6 +256,28 @@
                 </div>
                 <div class="map-preview" id="map-preview" hidden></div>
               </section>
+            </div>
+          </div>
+        </section>
+
+        <section class="view docs" id="view-docs" hidden>
+          <div class="page-wrap shell-width docs-page">
+            <header class="docs-hero">
+              <p class="eyebrow"><span class="rule"></span>ATLASIO <span class="slash">/</span> REFERENCE</p>
+              <h1>Build notes &amp; decisions</h1>
+              <p class="lede">How Atlasio is put together, what we chose not to compromise, and the evidence a future owner needs to extend it safely.</p>
+              <dl class="docs-meta">
+                <div><dt>Audience</dt><dd>Clients, data managers, geoscientists, engineers</dd></div>
+                <div><dt>Scope</dt><dd>Release 1 · through v0.1.16</dd></div>
+                <div><dt>Evidence</dt><dd>PRD, decision records, schema, release history</dd></div>
+              </dl>
+            </header>
+            <div class="docs-layout">
+              <aside class="docs-toc" id="docs-toc">
+                <p class="eyebrow">ON THIS PAGE</p>
+                <nav id="docs-toc-nav" aria-label="Document sections"></nav>
+              </aside>
+              <article class="docs-content" id="docs-content"></article>
             </div>
           </div>
         </section>
@@ -492,6 +515,7 @@
         </details>
         <p class="gate-error" id="gate-error" role="alert" hidden></p>
         <p class="gate-note">Local demo environment · synthetic fixtures only</p>
+        <p class="gate-docs"><a href="#/docs">Read the build notes &amp; decisions</a></p>
       </div>
       <div class="gate-foot">Atlasio · an Alfazen platform</div>
     </section>
