@@ -1,21 +1,25 @@
 /* ---------- Landing heading ---------- */
+.landing .page-wrap {
+  padding-block: 22px 34px;
+}
+
 .landing-head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
   align-items: end;
-  gap: 40px;
-  padding-bottom: 26px;
+  gap: 32px;
+  padding-bottom: 18px;
   border-bottom: 1px solid var(--line);
 }
 
 .landing-intro .eyebrow {
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .landing-intro h1 {
-  font-size: clamp(24px, 4.2vw, 40px);
+  font-size: clamp(22px, 3.4vw, 32px);
   font-weight: 600;
-  line-height: 1.1;
+  line-height: 1.05;
   letter-spacing: -0.05em;
   white-space: nowrap;
   color: var(--ink);
@@ -36,15 +40,17 @@
 }
 
 .landing-intro .lede {
-  max-width: 58ch;
-  margin-top: 15px;
+  max-width: none;
+  margin-top: 8px;
+  font-size: var(--text-sm);
+  line-height: 1.4;
 }
 
 .area-control {
   justify-self: end;
   width: 100%;
-  max-width: 340px;
-  padding: 14px 16px 13px;
+  max-width: 320px;
+  padding: 11px 14px 10px;
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
   background: var(--surface);
@@ -53,7 +59,7 @@
 
 .area-control > label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: 11px;
@@ -68,21 +74,21 @@
 }
 
 .area-row select {
-  min-height: 42px;
+  min-height: 38px;
   font-size: var(--text-md);
   font-weight: 500;
 }
 
 .area-row .btn {
-  min-height: 42px;
-  padding: 0 12px;
+  min-height: 38px;
+  padding: 0 11px;
 }
 
 .area-source {
-  margin-top: 8px;
+  margin-top: 6px;
   color: var(--muted);
-  font-size: 11.5px;
-  line-height: 1.45;
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 /* ---------- Landing grid ---------- */
@@ -91,7 +97,7 @@
   grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.18fr);
   gap: 16px;
   align-items: stretch;
-  margin-top: 20px;
+  margin-top: 12px;
 }
 
 /* ---------- Coverage ledger ---------- */

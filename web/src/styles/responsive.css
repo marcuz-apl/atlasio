@@ -24,8 +24,8 @@
   }
 
   .landing-head {
-    grid-template-columns: minmax(0, 1fr) minmax(250px, 300px);
-    gap: 26px;
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
+    gap: 24px;
   }
 }
 
