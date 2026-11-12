@@ -4,7 +4,7 @@ export const BUILD_DOCS_HTML = `
   <h2>Why this page exists</h2>
   <p>Atlasio is built around choices that are easy to lose: why coordinates are stored the way they are, why a published version never changes, why a category shows a dash instead of a zero, and why the catalog is grouped into six domains. This page keeps those choices beside the product so a client, reviewer, or future maintainer can understand the reasoning without reconstructing it from commits or conversations.</p>
   <p>Read it in three ways. The <a href="#/docs" data-doc-link="docs-invariants">invariants</a> are the rules we do not break. The <a href="#/docs" data-doc-link="docs-decisions">decision log</a> records what we chose, when, and what it costs. The <a href="#/docs" data-doc-link="docs-glossary">glossary</a> fixes the vocabulary used by the interface and the API.</p>
-  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.27. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
+  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.28. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
 </section>
 
 <section class="docs-section" id="docs-architecture" data-doc-section>
@@ -180,6 +180,7 @@ export const BUILD_DOCS_HTML = `
         <tr><td>0.1.25</td><td>MFA gets its own account-menu entry beside Change password: Set up MFA, then Manage MFA once enrolled.</td></tr>
         <tr><td>0.1.26</td><td>The sign-in gate carries the product tagline and always presents empty, non-autocompleted staff fields.</td></tr>
         <tr><td>0.1.27</td><td>Staff fields stay read-only until focused, so Chrome cannot restore the previous username or password on the gate.</td></tr>
+        <tr><td>0.1.28</td><td>Operator-only <code>atlasio-server reset-mfa &lt;username&gt;</code> clears a lost authenticator, recovery codes, lockout, and sessions without changing the password or restarting the service.</td></tr>
       </tbody>
     </table>
   </div>
@@ -320,6 +321,17 @@ export const BUILD_DOCS_HTML = `
       <dt>Decision</dt><dd><code>#/docs</code> is now the signed-in user guide for viewers, importers, and reviewers. The build notes moved to <code>#/admin/docs</code>, linked from the Administration panel and limited to Administrators and Data Managers. The sign-in gate no longer links to either guide.</dd>
       <dt>Why</dt><dd>Each audience gets the material it needs without wading through the other, and implementation detail is no longer exposed before sign-in.</dd>
       <dt>Trade-off</dt><dd>Staff maintain two documents. A shared section can drift, so the release row and decision log must be updated in the same commit that changes either guide.</dd>
+    </dl>
+  </article>
+
+  <article class="decision">
+    <div class="decision-head"><span class="decision-id">D-0013</span><span class="decision-tag">Accepted</span><span class="decision-tag">v0.1.28</span></div>
+    <h3>MFA recovery is a command, not a standing flag</h3>
+    <dl>
+      <dt>Context</dt><dd>Losing both the authenticator and the recovery codes locks a staff account out of MFA-protected actions. A startup flag such as <code>ATLASIO_RESET_MFA=1</code> would clear MFA, but environment flags stay in unit files and would re-fire on every restart, silently removing the second factor.</dd>
+      <dt>Decision</dt><dd>Provide the operator-only command <code>atlasio-server reset-mfa &lt;username&gt;</code>. It clears that account's authenticator secret, recovery codes, failed-attempt lockout, and sessions, keeps the password, records an <code>auth.mfa.reset</code> audit entry, and exits. The running service is untouched, and no reset state persists in the environment.</dd>
+      <dt>Why</dt><dd>Recovery becomes explicit, one-off, and attributable to a person with database access, and it cannot be left armed by accident. It also works while the service is running, so no downtime is needed.</dd>
+      <dt>Trade-off</dt><dd>Recovery requires shell and database access rather than an environment toggle. There is still no self-service bypass, which is the point: a password alone must never remove the second factor.</dd>
     </dl>
   </article>
 </section>
