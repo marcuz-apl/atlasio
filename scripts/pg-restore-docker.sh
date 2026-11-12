@@ -11,8 +11,8 @@ dump=""
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --dbname) db="${2:-$default_db}"; db="${db##*/}"; shift 2 ;;
-    --dbname=*) db="${1#--dbname=}"; db="${db##*/}"; shift ;;
+    --dbname) db="${2:-$default_db}"; db="${db##*/}"; db="${db%%\?*}"; shift 2 ;;
+    --dbname=*) db="${1#--dbname=}"; db="${db##*/}"; db="${db%%\?*}"; shift ;;
     --clean|--if-exists|--no-owner|--no-privileges) shift ;;
     --*) shift ;;
     *) dump="$1"; shift ;;

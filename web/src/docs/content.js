@@ -4,7 +4,7 @@ export const DOCS_HTML = `
   <h2>Why this page exists</h2>
   <p>Atlasio is built around choices that are easy to lose: why coordinates are stored the way they are, why a published version never changes, why a category shows a dash instead of a zero, and why the catalog is grouped into six domains. This page keeps those choices beside the product so a client, reviewer, or future maintainer can understand the reasoning without reconstructing it from commits or conversations.</p>
   <p>Read it in three ways. The <a href="#/docs" data-doc-link="docs-invariants">invariants</a> are the rules we do not break. The <a href="#/docs" data-doc-link="docs-decisions">decision log</a> records what we chose, when, and what it costs. The <a href="#/docs" data-doc-link="docs-glossary">glossary</a> fixes the vocabulary used by the interface and the API.</p>
-  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.17. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
+  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.18. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
 </section>
 
 <section class="docs-section" id="docs-architecture" data-doc-section>
@@ -167,6 +167,7 @@ export const DOCS_HTML = `
         <tr><td>0.1.15</td><td>Catalog regrouped into six domains and twenty-four categories.</td></tr>
         <tr><td>0.1.16</td><td>This reference page, linked from the header and the access gate.</td></tr>
         <tr><td>0.1.17</td><td>Admin panel: managed access profiles, demo-key rotation, verified backups, guarded restore, and an administrative audit trail.</td></tr>
+        <tr><td>0.1.18</td><td>Backup adapter honours the configured database, so verification and restore compare the same dataset.</td></tr>
       </tbody>
     </table>
   </div>
