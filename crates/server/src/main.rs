@@ -41,6 +41,7 @@ struct AppState {
     object_dir: Option<PathBuf>,
     storage_mode: &'static str,
     app_version: String,
+    changelog_path: PathBuf,
     started_at: Instant,
     maintenance: Arc<AtomicBool>,
     admin_job: Arc<tokio::sync::Mutex<()>>,
@@ -331,6 +332,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         object_dir,
         storage_mode,
         app_version,
+        changelog_path: PathBuf::from(
+            env::var("ATLASIO_CHANGELOG").unwrap_or_else(|_| "CHANGELOG.md".to_string()),
+        ),
         started_at: Instant::now(),
         maintenance: Arc::new(AtomicBool::new(false)),
         admin_job: Arc::new(tokio::sync::Mutex::new(())),
@@ -379,6 +383,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             post(admin::restore_backup),
         )
         .route("/api/admin/audit", get(admin::audit_log))
+        .route("/api/admin/changelog", get(admin::changelog))
         .route("/", get(index))
         .route("/favicon.svg", get(favicon))
         .nest_service("/assets", ServeDir::new("web/dist/assets"))

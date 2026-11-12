@@ -289,7 +289,7 @@
               <p class="lede">How Atlasio is put together, what we chose not to compromise, and the evidence a future owner needs to extend it safely.</p>
               <dl class="docs-meta">
                 <div><dt>Audience</dt><dd>Clients, data managers, geoscientists, engineers</dd></div>
-                <div><dt>Scope</dt><dd>Release 1 · through v0.1.18</dd></div>
+                <div><dt>Scope</dt><dd>Release 1 · through v0.1.19</dd></div>
                 <div><dt>Evidence</dt><dd>PRD, decision records, schema, release history</dd></div>
               </dl>
             </header>
@@ -378,6 +378,18 @@
               <div class="admin-backup-note" id="admin-storage-note"></div>
               <div class="table-wrap admin-table-wrap" id="admin-backups-table"></div>
               <p class="admin-foot">Verify restores the archive into a scratch database and compares counts. Restore takes a fresh pre-restore backup first, then requires typed confirmation.</p>
+            </section>
+
+            <section class="panel admin-panel" aria-labelledby="admin-changelog-title">
+              <header class="panel-head admin-panel-head">
+                <div>
+                  <p class="eyebrow">HISTORY</p>
+                  <h2 id="admin-changelog-title">Change log <span class="count-badge" id="admin-changelog-count">—</span></h2>
+                  <p class="panel-lede">Every released build, read from the repository change log. Dates are release dates; build identifiers are the UTC stamps recorded in each commit trailer.</p>
+                </div>
+              </header>
+              <div class="changelog" id="admin-changelog" aria-live="polite"></div>
+              <p class="admin-foot" id="admin-changelog-foot">Source: CHANGELOG.md</p>
             </section>
 
             <section class="panel admin-panel" aria-labelledby="admin-audit-title">

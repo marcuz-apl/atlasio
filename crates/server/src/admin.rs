@@ -544,6 +544,230 @@ pub(crate) async fn audit_log(State(state): State<AppState>, headers: HeaderMap)
     Ok(Json(json!(items)))
 }
 
+/// Build history, read from the repository change log at request time so a
+/// deployment can update it without rebuilding the server.
+pub(crate) async fn changelog(State(state): State<AppState>, headers: HeaderMap) -> ApiResult {
+    role(&headers, &state, &["admin", "datamgr"]).await?;
+    let metadata = tokio::fs::metadata(&state.changelog_path)
+        .await
+        .map_err(|_| {
+            ApiError::new(
+                StatusCode::NOT_FOUND,
+                "The change log is not available on this deployment",
+            )
+        })?;
+    if metadata.len() > 1024 * 1024 {
+        return Err(ApiError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "The change log file is unexpectedly large",
+        ));
+    }
+    let content = tokio::fs::read_to_string(&state.changelog_path)
+        .await
+        .map_err(|_| {
+            ApiError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Could not read the change log",
+            )
+        })?;
+    let entries = parse_changelog(&content);
+    let source = state
+        .changelog_path
+        .file_name()
+        .map(|name| name.to_string_lossy().to_string())
+        .unwrap_or_else(|| "CHANGELOG.md".to_string());
+    let latest = entries.first().map(|entry| entry.version.clone());
+    Ok(Json(json!({
+        "source": source,
+        "app_version": state.app_version,
+        "latest": latest,
+        "entries": entries,
+    })))
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+struct ChangeEntry {
+    version: String,
+    date: String,
+    build: Option<String>,
+    kind: Option<String>,
+    commit: Option<String>,
+    summary: Option<String>,
+    highlights: Vec<String>,
+}
+
+/// Parse a `CHANGELOG.md` whose sections look like:
+///
+/// ```text
+/// ## 0.1.19 — 2026-11-12
+/// Build: v0.1.19+2611125
+/// Type: feat
+/// Commit: 1234abc
+/// - A user-visible change.
+/// ```
+fn parse_changelog(content: &str) -> Vec<ChangeEntry> {
+    let mut entries = Vec::new();
+    let mut current: Option<ChangeEntry> = None;
+    let mut open_bullet: Option<usize> = None;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if let Some((version, date)) = parse_changelog_heading(trimmed) {
+            if let Some(entry) = current.take() {
+                entries.push(entry);
+            }
+            current = Some(ChangeEntry {
+                version,
+                date,
+                build: None,
+                kind: None,
+                commit: None,
+                summary: None,
+                highlights: Vec::new(),
+            });
+            open_bullet = None;
+            continue;
+        }
+        let Some(entry) = current.as_mut() else {
+            continue;
+        };
+        if trimmed.is_empty() {
+            open_bullet = None;
+            continue;
+        }
+        if let Some(value) = trimmed.strip_prefix("Build:") {
+            entry.build = non_empty(value);
+            open_bullet = None;
+        } else if let Some(value) = trimmed.strip_prefix("Type:") {
+            entry.kind = non_empty(value).map(|kind| kind.to_lowercase());
+            open_bullet = None;
+        } else if let Some(value) = trimmed.strip_prefix("Commit:") {
+            entry.commit = non_empty(value);
+            open_bullet = None;
+        } else if let Some(value) = trimmed.strip_prefix("- ").or_else(|| trimmed.strip_prefix("* ")) {
+            entry.highlights.push(value.trim().to_string());
+            open_bullet = Some(entry.highlights.len() - 1);
+        } else if trimmed.starts_with('#') {
+            open_bullet = None;
+        } else if let Some(index) = open_bullet {
+            if let Some(highlight) = entry.highlights.get_mut(index) {
+                highlight.push(' ');
+                highlight.push_str(trimmed);
+            }
+        } else if entry.summary.is_none() {
+            entry.summary = Some(trimmed.to_string());
+        }
+    }
+    if let Some(entry) = current.take() {
+        entries.push(entry);
+    }
+    entries
+}
+
+fn parse_changelog_heading(line: &str) -> Option<(String, String)> {
+    let rest = line.strip_prefix("## ")?;
+    let (version, remainder) = rest.split_once(char::is_whitespace)?;
+    let version = version.trim_start_matches('v');
+    if version.split('.').count() < 2
+        || !version
+            .split('.')
+            .all(|part| !part.is_empty() && part.chars().all(|digit| digit.is_ascii_digit()))
+    {
+        return None;
+    }
+    let date = remainder.split_whitespace().last()?;
+    let bytes = date.as_bytes();
+    let looks_like_date = bytes.len() == 10
+        && bytes[4] == b'-'
+        && bytes[7] == b'-'
+        && bytes
+            .iter()
+            .enumerate()
+            .all(|(index, byte)| index == 4 || index == 7 || byte.is_ascii_digit());
+    looks_like_date.then(|| (version.to_string(), date.to_string()))
+}
+
+fn non_empty(value: &str) -> Option<String> {
+    let value = value.trim();
+    (!value.is_empty()).then(|| value.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{parse_changelog, ChangeEntry};
+
+    #[test]
+    fn parses_sections_metadata_and_bullets() {
+        let content = "\
+# Atlasio change log
+
+Intro prose is ignored.
+
+## 0.2.0 — 2026-12-01
+Build: v0.2.0+2612011
+Type: feat
+Commit: abc1234
+- First change that wraps
+  onto a second line.
+- Second change.
+
+## 0.1.9 - 2026-11-11
+Type: fix
+- Older change.
+";
+
+        let entries = parse_changelog(content);
+        assert_eq!(entries.len(), 2);
+        assert_eq!(
+            entries[0],
+            ChangeEntry {
+                version: "0.2.0".into(),
+                date: "2026-12-01".into(),
+                build: Some("v0.2.0+2612011".into()),
+                kind: Some("feat".into()),
+                commit: Some("abc1234".into()),
+                summary: None,
+                highlights: vec![
+                    "First change that wraps onto a second line.".into(),
+                    "Second change.".into()
+                ],
+            }
+        );
+        assert_eq!(entries[1].version, "0.1.9");
+        assert_eq!(entries[1].kind.as_deref(), Some("fix"));
+        assert_eq!(entries[1].highlights, vec!["Older change."]);
+    }
+
+    #[test]
+    fn keeps_paragraphs_as_summary_and_ignores_other_headings() {
+        let content = "\
+## 0.3.0 — 2026-12-02
+A short summary.
+
+### Details
+- One item.
+";
+        let entries = parse_changelog(content);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].summary.as_deref(), Some("A short summary."));
+        assert_eq!(entries[0].highlights, vec!["One item."]);
+    }
+
+    #[test]
+    fn skips_prose_headings_and_accepts_short_versions() {
+        let content = "\
+## Change log
+## Future work
+## 0.4 — 2026-12-03
+- A release with a major and minor version only.
+";
+        let entries = parse_changelog(content);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].version, "0.4");
+        assert_eq!(entries[0].date, "2026-12-03");
+    }
+}
+
 async fn run_backup(state: &AppState, actor: &str) -> Result<BackupManifest, ApiError> {
     let id = format!(
         "{}_{}",
