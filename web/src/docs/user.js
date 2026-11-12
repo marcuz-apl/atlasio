@@ -40,7 +40,7 @@ export const USER_DOCS_HTML = `
     <li>Use the <strong>Published wells</strong> map to see verified positions. Select a well to inspect its record.</li>
   </ol>
   <p>Coverage counts describe records this role may see. Planned categories are never shown as zero, so a dash and a zero mean different things.</p>
-  <p><strong>Wells</strong> counts current wells. <strong>Well Versions</strong> counts every published version, including earlier corrections, so a reissued well raises that number without adding another well. <strong>Source Files</strong> counts the original uploads preserved behind published packages.</p>
+  <p><strong>Wells</strong> counts current wells. <strong>Well Versions</strong> counts every published version, including earlier corrections, so a reissued well raises that number without adding another well. <strong>Deviation Surveys</strong> records the well path; whether a well is vertical, deviated, or horizontal is derived from it. <strong>Source Files</strong> counts the original uploads preserved behind published packages.</p>
 </section>
 
 <section class="docs-section" id="user-explore" data-doc-section>

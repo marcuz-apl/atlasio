@@ -30,8 +30,8 @@ const groups = [
     items: [
       ['wells', 'Wells'],
       ['well_versions', 'Well Versions'],
+      ['deviation_surveys', 'Deviation Surveys'],
       ['core_samples', 'Core & Sample Records'],
-      ['horizontal_wells', 'Horizontal Wells'],
       ['logs', 'Well Logs'],
       ['formation_tops', 'Formation Tops'],
       ['interpretations', 'Well Interpretations'],

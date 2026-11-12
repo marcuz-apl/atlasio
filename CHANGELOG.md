@@ -4,6 +4,12 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.32 — 2026-11-12
+Build: v0.1.32+261112k
+Type: feat
+- Replace the Horizontal Wells tile with Deviation Surveys under Well Data. Well orientation becomes an attribute derived from the survey rather than a separate category.
+- Document the change in both guides without changing the twenty-five-category count.
+
 ## 0.1.31 — 2026-11-12
 Build: v0.1.31+261112i
 Type: feat
