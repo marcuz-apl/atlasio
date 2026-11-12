@@ -24,7 +24,7 @@ const THEME_REFRESH_MS = 30000;
 const NIGHT_START_HOUR = 19;
 const NIGHT_END_HOUR = 7;
 const TABS = new Set(['explore', 'records', 'ingest', 'review']);
-const DEMO_DEFAULTS = { reader: 'reader-demo', importer: 'importer-demo', reviewer: 'reviewer-demo' };
+const DEMO_DEFAULTS = { reader: 'viewer-demo', importer: 'importer-demo', reviewer: 'reviewer-demo' };
 const DEMO_NAMES = { reader: 'Viewer', importer: 'Importer', reviewer: 'Reviewer' };
 
 let themeMode = 'auto';

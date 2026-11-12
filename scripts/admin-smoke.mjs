@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 
 const host = process.env.ATLASIO_URL || 'http://localhost:8000';
 const adminUser = process.env.ATLASIO_ADMIN_USERNAME || 'admin';
-const adminInitial = process.env.ATLASIO_ADMIN_INITIAL_PASSWORD || 'atlasio-admin-initial';
+const adminInitial = process.env.ATLASIO_ADMIN_INITIAL_PASSWORD || 'admin-initial';
 const adminPassword = process.env.ATLASIO_ADMIN_PASSWORD || 'atlasio-staff-smoke-pass';
 const datamgrUser = process.env.ATLASIO_DATAMGR_USERNAME || 'datamgr';
-const datamgrInitial = process.env.ATLASIO_DATAMGR_INITIAL_PASSWORD || 'atlasio-datamgr-initial';
+const datamgrInitial = process.env.ATLASIO_DATAMGR_INITIAL_PASSWORD || 'datamgr-initial';
 const datamgrPassword = process.env.ATLASIO_DATAMGR_PASSWORD || 'atlasio-staff-smoke-pass';
 
 async function request(path, auth, method = 'GET', body) {

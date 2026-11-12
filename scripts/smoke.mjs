@@ -8,7 +8,7 @@ const keys = await resolveDemoKeys();
 
 // Demo keys are managed records and may be rotated from the admin panel.
 async function resolveDemoKeys() {
-  const fallback = { importer: 'importer-demo', reviewer: 'reviewer-demo', reader: 'reader-demo' };
+  const fallback = { importer: 'importer-demo', reviewer: 'reviewer-demo', reader: 'viewer-demo' };
   try {
     const response = await fetch(`${host}/api/demo-profiles`);
     const items = await response.json();

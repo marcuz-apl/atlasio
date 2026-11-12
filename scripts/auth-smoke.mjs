@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 
 const host = process.env.ATLASIO_URL || 'http://localhost:8000';
 const username = process.env.ATLASIO_ADMIN_USERNAME || 'admin';
-const initial = process.env.ATLASIO_ADMIN_INITIAL_PASSWORD || 'atlasio-admin-initial';
+const initial = process.env.ATLASIO_ADMIN_INITIAL_PASSWORD || 'admin-initial';
 const password = process.env.ATLASIO_ADMIN_PASSWORD || 'atlasio-staff-ui-pass';
 
 async function request(path, auth, method = 'GET', body) {
