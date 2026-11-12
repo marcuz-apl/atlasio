@@ -46,12 +46,6 @@
     height: clamp(440px, 58vw, 540px);
   }
 
-  .workspace-head {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 16px;
-  }
-
   .workspace-tabs {
     max-width: 100%;
     overflow-x: auto;
@@ -92,6 +86,10 @@
 
   .page-wrap {
     padding-block: 24px 34px;
+  }
+
+  .workspace-page {
+    padding-top: 0;
   }
 
   .landing-head {
@@ -170,31 +168,40 @@
   }
 
   .explore-toolbar {
-    top: 56px;
+    top: 70px;
     left: 10px;
   }
 
+  .workspace-head {
+    padding-inline: 10px;
+  }
+
+  .is-explore .workspace-head {
+    left: 10px;
+    right: 10px;
+  }
+
   .explore-search {
-    top: 10px;
+    top: 16px;
     right: 10px;
     width: 170px;
   }
 
   .explore-catalog {
-    top: 56px;
+    top: 70px;
     left: 54px;
     bottom: 46px;
     width: calc(100% - 64px);
   }
 
   .explore-display {
-    top: 56px;
+    top: 70px;
     right: 10px;
     width: min(260px, calc(100% - 70px));
   }
 
   .explore-stage .inspector {
-    top: 56px;
+    top: 70px;
     left: 10px;
     right: 10px;
     bottom: 46px;
@@ -416,10 +423,6 @@
 
   .workspace-tabs {
     gap: 0;
-  }
-
-  .workspace-intro .lede {
-    font-size: var(--text-sm);
   }
 
   .records-head h2,

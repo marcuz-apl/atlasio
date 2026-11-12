@@ -850,25 +850,10 @@ function applyRole() {
   const label = roleLabel(state.role);
   const access = $('#access-label');
   if (access) access.textContent = label;
-  const badge = $('#workspace-role');
-  if (badge) {
-    badge.textContent = state.role ? `${label} access` : '—';
-    badge.classList.toggle('role-importer', state.role === 'importer');
-  }
   const adminLink = $('#admin-link');
   if (adminLink) adminLink.hidden = !admin.isAdminRole();
   const docsLink = $('.docs-link[data-nav="docs"]');
   if (docsLink) docsLink.hidden = !state.role;
-  const lede = $('#workspace-lede');
-  if (lede) {
-    lede.textContent = {
-      reader: 'Search approved wells and inspect the evidence behind every record.',
-      importer: 'Stage packages, correct metadata, and track them through review.',
-      reviewer: 'Resolve identity, publish approved packages, and inspect the record.',
-      admin: 'Inspect the catalog and govern access, backups, and recovery.',
-      datamgr: 'Inspect the catalog and manage profiles, demo keys, and backups.',
-    }[state.role] || 'Search approved wells and inspect the evidence behind every record.';
-  }
   const accessButton = $('#access-button');
   if (accessButton) {
     accessButton.title = state.role ? `Connected as ${label} · manage access` : 'Connect to the workspace';

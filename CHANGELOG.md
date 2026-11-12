@@ -4,6 +4,12 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.38 — 2026-11-12
+Build: v0.1.38+261112x
+Type: fix
+- The Workspace mode control (Explore / Records / Ingest / Review) now sits at the same top-left position with the same 16px padding below the header in every mode, instead of jumping to the top-right outside Explore.
+- Remove the Workspace hero title and lede; the mode bar is the workspace's only head, with the map chrome re-spaced beneath it.
+
 ## 0.1.37 — 2026-11-12
 Build: v0.1.37+261112w
 Type: fix
