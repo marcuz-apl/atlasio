@@ -1,6 +1,6 @@
 # Free Public Well, Seismic, and Production Data for Open-Source Software Demos
 
-> **Verified 2026-11-12 for Atlasio.** For the current well-header slice (EPSG:4326, one file up to 5 MiB), use **Sodir FactMaps WGS84 wellbores** (Norway) and **NSTA UKCS top holes WGS84** (United Kingdom). Curated **Volve** and **NSTA** subsets are now staged under `demo-data/volve/` and `demo-data/nsta/` for log, deviation, production, and seismic-index testing, but they are not ingestible by the header-only API yet. Raw NSTA offshore SEG-Y remains NDR-gated. F3, Teapot Dome, and NLOG remain deferred until LAS, SEG-Y, or CRS transformation is implemented. The recipes are in [operations/demo-data.md](operations/demo-data.md), `scripts/fetch-demo-wells.mjs`, `scripts/fetch-demo-volve.mjs`, and `scripts/fetch-demo-nsta.mjs`.
+> **Verified 2026-11-12 for Atlasio.** For the current well-header slice (EPSG:4326, one file up to 5 MiB), use **Sodir FactMaps WGS84 wellbores** (Norway) and **NSTA UKCS top holes WGS84** (United Kingdom). Curated **Volve** and **NSTA** subsets are staged under `demo-data/volve/` and `demo-data/nsta/`, and the full openly published **Sodir** FactMaps/DataService/FactPages collection is staged under `demo-data/sodir/` for log, deviation, production, survey, licence, and CRS testing. None of these packages is ingestible by the header-only API yet. Raw NSTA offshore SEG-Y remains NDR-gated, and raw Norwegian SEG-Y remains in Diskos. F3, Teapot Dome, and NLOG remain deferred until LAS, SEG-Y, or CRS transformation is implemented. The recipes are in [operations/demo-data.md](operations/demo-data.md), `scripts/fetch-demo-wells.mjs`, `scripts/fetch-demo-volve.mjs`, `scripts/fetch-demo-nsta.mjs`, and `scripts/fetch-demo-sodir.mjs`.
 
 
 
@@ -38,6 +38,27 @@ The full release is still delivered through Databricks or Azure, but the OSDU op
 
 ---
 
+## 1a- Sodir Open Data (Norway)
+
+The Norwegian Offshore Directorate publishes its FactMaps, DataService, and FactPages data as open ArcGIS services. This covers the whole Norwegian Continental Shelf, not just the Volve field.
+
+### Includes
+- 9,876 wellbores with headers, dates, depths, operators, fields, discoveries, and fact-page links, published in WGS 84, ED50 / UTM zone 32N, and native ED50 geographic.
+- 68 FactMaps feature layers per service: facilities, pipelines, seismic/EM/other surveys, fields, discoveries, plays, production and CO2 licences, licence documents, blocks, quadrants, faults, structural elements, and resource-estimate areas.
+- 39 DataService layers: the source-database versions of the block, licence, seismic-acquisition, wellbore, facility, discovery, field, and play layers.
+- 102 attribute tables: 41,537 stratigraphy intervals, 41,537 formation tops, 20,105 log records, 8,758 casing/leak-off records, 1,187 DST records, 36,761 mud records, 103,922 palynology slides, 8,544 cores, 22,489 core photos, 2,311 cuttings, 3,919 thin sections, 10,569 well documents, 101,820 seismic-acquisition polygons, 44,068 acquisition progress notes, 32,434 profiles, plus companies, reserves, and the petroleum register.
+- 28,562 monthly and 2,417 yearly field-production rows from FactPages, June 1971 to August 2026.
+
+### Local package
+`scripts/fetch-demo-sodir.mjs` writes 839 files, about 1.9 GiB, under `demo-data/sodir/`. It keeps all three published coordinate systems: WGS 84 as GeoJSON/CSV, ED50 / UTM zone 32N as Esri JSON/CSV, and DataService ED50 geographic as Esri JSON/CSV. No transformation is applied. The 68 FactMaps layers, 39 DataService layers, and 102 tables are listed in `metadata/inventory.json`.
+
+### Limits
+- No raw SEG-Y. Norwegian seismic is in Diskos; members download released data directly and non-members order it through the Diskos public portal.
+- The current Atlasio API cannot ingest these files yet.
+- Licence: NLOD 2.0.
+
+---
+
 ## 1b- NSTA UKCS Open Data (United Kingdom)
 
 The North Sea Transition Authority publishes a broad UKCS open-data collection, but it is not one downloadable field package.
@@ -45,7 +66,7 @@ The North Sea Transition Authority publishes a broad UKCS open-data collection, 
 ### Freely downloadable
 - 13,367 open wellbore top holes in WGS 84, including the twelve NSTA wells already loaded in Atlasio.
 - PPRS field-month production points in WGS 84: 136,201 rows covering 556 fields from June 1975 to August 2026.
-- CGG Additional JDWLs: 188 MB archive with 28 LAS files and 48 deviation documents. The separate CGG digital log archive is 16 GB.
+- CGG releases on the NSTA blob: the Additional JDWLs archive (188 MB) holds the 28 LAS files and 48 deviation documents; the separate digital well-log archive is 15.0 GiB, the pressure database 11.0 GiB, and the core-analysis database 40.9 GiB. All are directly downloadable without a key.
 - 2D and 3D NDR survey indexes: line and outline geometry in ED50 (`EPSG:4230`), useful for map display but not raw seismic. The local package keeps the native ED50 coordinates instead of reprojecting them to WGS 84.
 
 ### Gated

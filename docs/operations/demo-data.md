@@ -100,6 +100,42 @@ The 12 NSTA wells already loaded in Atlasio are CCS wells (Liverpool Bay, Net Ze
 
 NSTA publishes both WGS 84 and ED50 well-header layers. The package stores both as published: the `.geojson`/`.csv` files use the WGS 84 layer that matches the twelve loaded wells, and the `.ed50.json`/`.ed50.csv` files preserve the native ED50 layer for import-time transformation tests. PPRS production is WGS 84 in the source service. The 2D/3D survey indexes are natively ED50 geographic (`EPSG:4230`) and are kept in that CRS as Esri JSON with an explicit `spatialReference`, not RFC 7946 GeoJSON. No layer has been reprojected.
 
+## Sodir open-data package
+
+`scripts/fetch-demo-sodir.mjs` stages the openly published Sodir data under `demo-data/sodir/` (ignored by git). It reads the two FactMaps services (WGS 84 and native ED50 / UTM zone 32N) and the DataService FeatureServer in native ED50 geographic. The script pages through every feature layer and attribute table, retries transient errors, skips complete files, and records SHA-256 provenance in `manifest.json`. The full package is 839 files, about 1.9 GiB.
+
+| Data | Source | Contents | Size |
+| --- | --- | --- | ---: |
+| Wellbores | FactMaps layer 201; DataService layer 5000 | 9,876 wellbores in each of the three services (GeoJSON/CSV in WGS 84; Esri JSON/CSV in ED50 / UTM 32N and ED50 geographic) | 125.0 MiB |
+| FactMaps layers | FactMaps, all 68 layers per service | Wellbores, facilities, pipelines, surveys, fields, discoveries, plays, production and CO2 licences, blocks, quadrants, faults, structural elements, licence documents | 1.0 GiB |
+| DataService layers | DataService, all 39 layers | Source-database layers for blocks, quadrants, licences and licence history, seismic acquisition, wellbores, facilities, discoveries, fields, and plays | 375.2 MiB |
+| FactMaps tables | FactMaps, all 29 tables | 20,105 log records, 8,758 casing/leak-off records, 1,187 DST records, 36,761 mud records, 103,922 palynology slides, 1,073 oil samples, plus companies, field history/reserves, licence operators, tasks, transfers, and licensees | 3.7 MiB |
+| DataService tables | DataService, all 73 tables | 41,537 stratigraphy intervals, 41,537 formation tops, 8,544 cores, 22,489 core photos, 2,311 cuttings, 3,919 thin sections, 10,569 well documents, 101,820 seismic-acquisition polygons, 44,068 progress notes, 32,434 profiles, and the petroleum register | 508.2 MiB |
+| Production | FactPages | 28,562 monthly field rows (June 1971 to August 2026) and 2,417 yearly rows | 2.1 MiB |
+
+```sh
+node scripts/fetch-demo-sodir.mjs --dataset all
+node scripts/fetch-demo-sodir.mjs --dataset layers --service wgs84
+node scripts/fetch-demo-sodir.mjs --dataset layers,tables --service data
+node scripts/fetch-demo-sodir.mjs --dataset tables
+node scripts/fetch-demo-sodir.mjs --dataset production
+node scripts/fetch-demo-sodir.mjs --dataset layers --only 5000 --service data --force
+node scripts/fetch-demo-sodir.mjs --dataset all --dry-run
+```
+
+Key endpoints:
+
+- FactMaps WGS 84: `https://factmaps.sodir.no/api/rest/services/Factmaps/FactMapsWGS84/FeatureServer`
+- FactMaps ED50 / UTM 32N: `https://factmaps.sodir.no/api/rest/services/Factmaps/FactMapsED50UTM32/FeatureServer`
+- DataService ED50 geographic: `https://factmaps.sodir.no/api/rest/services/DataService/Data/FeatureServer`
+- FactPages production monthly: `https://factpages.sodir.no/public?/Factpages/external/tableview/field_production_monthly&rs:Format=CSV`
+- FactPages production yearly: `https://factpages.sodir.no/public?/Factpages/external/tableview/field_production_yearly&rs:Format=CSV`
+- Sodir open data: <https://www.sodir.no/en/facts/data-and-analyses/open-data/>
+
+Coordinate notes: the WGS 84 service is Sodir's own transformed product (`EPSG:4326`), FactMaps ED50 is kept in native `EPSG:23032`, and DataService is kept in native `EPSG:4230`. The script does not transform any of them. ED50 layers are stored as Esri JSON with an explicit `spatialReference` because a GeoJSON request against those services silently reprojects to WGS 84; GeoJSON is written only for the WGS 84 layers. Tables and production CSVs carry no geometry. The package uses NLOD 2.0.
+
+Sodir does not publish raw SEG-Y. Its open services cover wells, production, surveys, facilities, licences, and subsurface metadata; raw Norwegian seismic is held in Diskos and needs membership or an order through the Diskos public portal. The current ingest API cannot load these layers, tables, or production series yet; the package is staged evidence for forthcoming importers.
+
 ## Datasets deferred for now
 
 - **Volve full release** — roughly 40,000 files under Equinor's data-sharing licence, normally delivered through Databricks. The curated OSDU subset above is now the local demo; the full package remains out of scope.
@@ -107,6 +143,8 @@ NSTA publishes both WGS 84 and ED50 well-header layers. The package stores both 
 - **Teapot Dome** — well logs in LAS, tops, and 3D seismic in a tar archive, but its positions are not in WGS84 and the current slice does not transform CRS or parse LAS.
 - **NLOG Netherlands** — rich wells, logs, and production, but downloads are manual per well and coordinates are commonly RD (`EPSG:28992`), which would need a verified transformation before publication.
 - **NSTA offshore SEG-Y** — raw 2D/3D seismic is held in the NDR behind a free account and download-access approval; the open package carries survey geometry only.
+- **Sodir raw SEG-Y** — Sodir publishes well, production, survey, and licence data, but not raw seismic. Norwegian SEG-Y is in Diskos; members download it directly and non-members order released data through the Diskos public portal.
+- **NSTA CGG remaining releases** — `CGG_Digital_Well_Logs.zip` (15.0 GiB), `Pressure.zip` (11.0 GiB), `CoreAnalysis.zip` (40.9 GiB), `CGG_Seeps_Database.zip` (4.9 GiB), and `CGG_GeoThermal.zip` (1.3 MiB) are openly downloadable from the NSTA blob but not staged; the app has no log, pressure, or core ingestion yet.
 - **Production parser** — Sodir and NSTA production CSVs are staged as evidence, but the app has no production time-series parser or view yet.
 
 ## Caveats
