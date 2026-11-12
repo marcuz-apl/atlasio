@@ -10,6 +10,7 @@ import { $, $$, toast } from './lib/ui.js';
 import { roleLabel } from './lib/format.js';
 import * as dashboard from './views/dashboard.js';
 import * as workspace from './views/workspace.js';
+import * as admin from './views/admin.js';
 import { initDocs } from './views/docs.js';
 import { initIngest, loadQueue as loadIngestQueue } from './views/ingest.js';
 import { initReview, loadReview as loadReviewQueue } from './views/review.js';
@@ -23,13 +24,17 @@ const THEME_REFRESH_MS = 30000;
 const NIGHT_START_HOUR = 19;
 const NIGHT_END_HOUR = 7;
 const TABS = new Set(['explore', 'records', 'ingest', 'review']);
+const DEMO_DEFAULTS = { reader: 'reader-demo', importer: 'importer-demo', reviewer: 'reviewer-demo' };
+const DEMO_NAMES = { reader: 'Viewer', importer: 'Importer', reviewer: 'Reviewer' };
 
 let themeMode = 'auto';
 let resolvedTheme = null;
+let demoKeys = { ...DEMO_DEFAULTS };
 
 initTheme();
 initModules();
 initChrome();
+void refreshDemoProfiles();
 
 if (!location.hash) {
   history.replaceState(null, '', '#/');
@@ -46,6 +51,7 @@ if (isDocsRoute()) {
 function initModules() {
   dashboard.initDashboard({ onNavigate: navigate });
   workspace.initWorkspace({ onNavigate: navigate });
+  admin.initAdmin();
   initDocs();
   initIngest();
   initReview({ onMutation: refreshData });
@@ -146,6 +152,10 @@ function initChrome() {
     button.addEventListener('click', () => button.closest('dialog')?.close());
   });
 
+  $$('[data-dialog-close]').forEach((button) => {
+    button.addEventListener('click', () => button.closest('dialog')?.close());
+  });
+
   $$('dialog').forEach((dialog) => {
     dialog.addEventListener('click', (event) => {
       if (event.target === dialog) dialog.close();
@@ -215,6 +225,52 @@ function initChrome() {
   window.addEventListener('hashchange', () => {
     applyRoute().catch((error) => toast(error.message, 'error'));
   });
+
+  window.addEventListener('atlasio:demo-profiles', () => {
+    void refreshDemoProfiles();
+  });
+}
+
+async function refreshDemoProfiles() {
+  let items = null;
+  try {
+    const response = await fetch('/api/demo-profiles', { headers: { Accept: 'application/json' } });
+    if (response.ok) {
+      const data = await response.json();
+      if (Array.isArray(data)) items = data;
+    }
+  } catch (error) {
+    /* The API may be offline; keep the published demo keys. */
+  }
+  if (items) {
+    const next = {};
+    for (const item of items) {
+      if (item && DEMO_NAMES[item.role] && typeof item.key === 'string' && item.key) {
+        next[item.role] = item.key;
+      }
+    }
+    demoKeys = next;
+  }
+  applyDemoProfiles(items !== null);
+}
+
+function applyDemoProfiles(known) {
+  $$('.gate-role[data-role]').forEach((button) => {
+    const key = demoKeys[button.dataset.role];
+    if (key) {
+      button.dataset.demoKey = key;
+      button.hidden = false;
+    } else if (known) {
+      button.hidden = true;
+    }
+  });
+  const note = $('#demo-key-note');
+  if (note) {
+    const keys = Object.keys(DEMO_NAMES).filter((role) => demoKeys[role]).map((role) => demoKeys[role]);
+    note.textContent = keys.length
+      ? `Demo keys: ${keys.join(' · ')}`
+      : 'Demo keys are disabled. Use an access key.';
+  }
 }
 
 async function connect(key, { fromGate = false, announce = false } = {}) {
@@ -286,12 +342,16 @@ function applyRole() {
     badge.textContent = state.role ? `${label} access` : '—';
     badge.classList.toggle('role-importer', state.role === 'importer');
   }
+  const adminLink = $('#admin-link');
+  if (adminLink) adminLink.hidden = !admin.isAdminRole();
   const lede = $('#workspace-lede');
   if (lede) {
     lede.textContent = {
       reader: 'Search approved wells and inspect the evidence behind every record.',
       importer: 'Stage packages, correct metadata, and track them through review.',
       reviewer: 'Resolve identity, publish approved packages, and inspect the record.',
+      admin: 'Inspect the catalog and govern access, backups, and recovery.',
+      datamgr: 'Inspect the catalog and manage profiles, demo keys, and backups.',
     }[state.role] || 'Search approved wells and inspect the evidence behind every record.';
   }
   const accessButton = $('#access-button');
@@ -333,6 +393,9 @@ function parseRoute() {
   if (segments[0] === 'docs') {
     return { view: 'docs', tab: 'explore', well: null };
   }
+  if (segments[0] === 'admin') {
+    return { view: 'admin', tab: 'explore', well: null };
+  }
   return { view: 'landing', tab: 'explore', well: null };
 }
 
@@ -350,6 +413,16 @@ async function applyRoute() {
     return;
   }
   hideGate();
+
+  if (route.view === 'admin') {
+    if (!admin.isAdminRole()) {
+      toast('Administration is available to Administrators and Data Managers.', 'error');
+      navigate('#/', { replace: true });
+      return;
+    }
+    await showAdminView();
+    return;
+  }
 
   if (route.view === 'landing') {
     showLanding();
@@ -386,9 +459,11 @@ function showLanding() {
   const landing = $('#view-landing');
   const workspaceView = $('#view-workspace');
   const docsView = $('#view-docs');
+  const adminView = $('#view-admin');
   if (landing) landing.hidden = false;
   if (workspaceView) workspaceView.hidden = true;
   if (docsView) docsView.hidden = true;
+  if (adminView) adminView.hidden = true;
   dashboard.hidePreview();
   setNav('dashboard');
   document.title = 'Atlasio · Subsurface workspace';
@@ -398,9 +473,11 @@ function showWorkspaceView(tab) {
   const landing = $('#view-landing');
   const workspaceView = $('#view-workspace');
   const docsView = $('#view-docs');
+  const adminView = $('#view-admin');
   if (landing) landing.hidden = true;
   if (workspaceView) workspaceView.hidden = false;
   if (docsView) docsView.hidden = true;
+  if (adminView) adminView.hidden = true;
   dashboard.hidePreview();
   setNav('workspace');
   document.title = `Atlasio · Workspace · ${tab.charAt(0).toUpperCase()}${tab.slice(1)}`;
@@ -411,14 +488,32 @@ function showDocs() {
   const landing = $('#view-landing');
   const workspaceView = $('#view-workspace');
   const docsView = $('#view-docs');
+  const adminView = $('#view-admin');
   if (landing) landing.hidden = true;
   if (workspaceView) workspaceView.hidden = true;
   if (docsView) docsView.hidden = false;
+  if (adminView) adminView.hidden = true;
   hideGate();
   dashboard.hidePreview();
   setNav('docs');
   document.title = 'Atlasio · Build notes & decisions';
   if (window.scrollY > 0) window.scrollTo({ top: 0, behavior: 'auto' });
+}
+
+async function showAdminView() {
+  const landing = $('#view-landing');
+  const workspaceView = $('#view-workspace');
+  const docsView = $('#view-docs');
+  const adminView = $('#view-admin');
+  if (landing) landing.hidden = true;
+  if (workspaceView) workspaceView.hidden = true;
+  if (docsView) docsView.hidden = true;
+  if (adminView) adminView.hidden = false;
+  dashboard.hidePreview();
+  setNav('admin');
+  document.title = 'Atlasio · Administration';
+  if (window.scrollY > 0) window.scrollTo({ top: 0, behavior: 'auto' });
+  await admin.showAdmin();
 }
 
 function setNav(name) {
@@ -432,6 +527,7 @@ function showGate() {
   const gate = $('#access-gate');
   if (gate) gate.hidden = false;
   document.body.classList.add('gate-open');
+  void refreshDemoProfiles();
 }
 
 function hideGate() {
@@ -457,6 +553,7 @@ function disconnect() {
   }
   applyRole();
   workspace.resetWorkspace();
+  $('#view-admin').hidden = true;
   $('#access-dialog')?.close();
   showGate();
   gateError('');

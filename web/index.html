@@ -152,6 +152,26 @@
         <rect x="5" y="10" width="14" height="10" rx="2" />
         <path d="M8 10V7a4 4 0 0 1 8 0v3" />
       </symbol>
+      <symbol id="i-database" viewBox="0 0 24 24">
+        <ellipse cx="12" cy="6" rx="7.5" ry="3" />
+        <path d="M4.5 6v12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3V6" />
+        <path d="M4.5 12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3" />
+      </symbol>
+      <symbol id="i-key" viewBox="0 0 24 24">
+        <circle cx="8" cy="8" r="4" />
+        <path d="m11 11 9 9" />
+        <path d="m17 17 2-2M14 14l2-2" />
+      </symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24">
+        <path d="M4 7h16" />
+        <path d="M9 7V4h6v3" />
+        <path d="m6 7 1 13h10l1-13" />
+        <path d="M10 11v6M14 11v6" />
+      </symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="M12 7v5l3 2" />
+      </symbol>
     </svg>
 
     <div id="app" class="app">
@@ -171,6 +191,7 @@
               <span class="status-dot" aria-hidden="true"></span>
               <span id="access-label">Not connected</span>
             </button>
+            <a class="docs-link" id="admin-link" href="#/admin" data-nav="admin" hidden>Admin</a>
             <a class="docs-link" href="#/docs" data-nav="docs">Docs</a>
             <button class="theme-toggle" id="theme-toggle" type="button" data-mode="auto" aria-label="Color theme: automatic, light now. Switch to light." title="Automatic — light now · click for light only">
               <svg class="theme-glyph" data-glyph="auto" viewBox="0 0 24 24" aria-hidden="true">
@@ -268,7 +289,7 @@
               <p class="lede">How Atlasio is put together, what we chose not to compromise, and the evidence a future owner needs to extend it safely.</p>
               <dl class="docs-meta">
                 <div><dt>Audience</dt><dd>Clients, data managers, geoscientists, engineers</dd></div>
-                <div><dt>Scope</dt><dd>Release 1 · through v0.1.16</dd></div>
+                <div><dt>Scope</dt><dd>Release 1 · through v0.1.17</dd></div>
                 <div><dt>Evidence</dt><dd>PRD, decision records, schema, release history</dd></div>
               </dl>
             </header>
@@ -279,6 +300,96 @@
               </aside>
               <article class="docs-content" id="docs-content"></article>
             </div>
+          </div>
+        </section>
+
+        <section class="view admin" id="view-admin" hidden>
+          <div class="page-wrap shell-width admin-page">
+            <header class="admin-hero">
+              <div class="admin-intro">
+                <p class="eyebrow"><span class="rule"></span>ATLASIO <span class="slash">/</span> ADMINISTRATION</p>
+                <div class="workspace-title-row">
+                  <h1>Operations</h1>
+                  <span class="role-badge" id="admin-role">—</span>
+                </div>
+                <p class="lede">Access profiles, database backups, and the audit trail behind every governed change.</p>
+                <p class="admin-scope" id="admin-scope" hidden></p>
+              </div>
+              <div class="admin-actions">
+                <button class="btn btn-secondary" id="admin-refresh" type="button">
+                  <svg aria-hidden="true"><use href="#i-refresh" /></svg>Refresh
+                </button>
+                <button class="btn btn-primary" id="admin-backup-create" type="button">
+                  <svg aria-hidden="true"><use href="#i-database" /></svg>Back up now
+                </button>
+              </div>
+            </header>
+
+            <div class="maintenance-banner" id="maintenance-banner" hidden role="status">
+              <span class="spinner" aria-hidden="true"></span>
+              <span><strong>Maintenance in progress.</strong> Writes are blocked while a restore runs. Only Administrators can sign in until it finishes.</span>
+            </div>
+
+            <section class="admin-stats" id="admin-stats" aria-label="System status" aria-live="polite"></section>
+
+            <section class="panel admin-panel" aria-labelledby="admin-access-title">
+              <header class="panel-head admin-panel-head">
+                <div>
+                  <p class="eyebrow">ACCESS</p>
+                  <h2 id="admin-access-title">Profiles <span class="count-badge" id="admin-profile-count">—</span></h2>
+                  <p class="panel-lede">Administrator and Data Manager keys come from the server environment. Managed profiles cover viewers, importers, and reviewers; custom keys are stored as hashes and shown once.</p>
+                </div>
+                <button class="btn btn-secondary btn-small" id="admin-profile-new" type="button">
+                  <svg aria-hidden="true"><use href="#i-plus" /></svg>New key
+                </button>
+              </header>
+              <form class="admin-create" id="admin-create-form" hidden>
+                <label class="field"><span>Role</span>
+                  <div class="select-wrap">
+                    <select name="role" id="admin-create-role">
+                      <option value="reader">Viewer</option>
+                      <option value="importer">Importer</option>
+                      <option value="reviewer">Reviewer</option>
+                    </select>
+                    <svg class="select-arrow" aria-hidden="true"><use href="#i-chevron-down" /></svg>
+                  </div>
+                </label>
+                <label class="field"><span>Label</span>
+                  <input name="label" id="admin-create-label" placeholder="e.g. Field team, June" maxlength="80" autocomplete="off" />
+                </label>
+                <div class="admin-create-actions">
+                  <button class="btn btn-primary btn-small" type="submit">Create key</button>
+                  <button class="btn btn-ghost btn-small" type="button" id="admin-create-cancel">Cancel</button>
+                </div>
+              </form>
+              <div class="show-once" id="show-once" hidden aria-live="polite"></div>
+              <div class="table-wrap admin-table-wrap" id="admin-profiles-table"></div>
+              <p class="admin-foot">Revoke a key and it stops working on the next request. Rotate a demo key and the sign-in gate picks it up immediately.</p>
+            </section>
+
+            <section class="panel admin-panel" aria-labelledby="admin-backups-title">
+              <header class="panel-head admin-panel-head">
+                <div>
+                  <p class="eyebrow">RECOVERY</p>
+                  <h2 id="admin-backups-title">Backups <span class="count-badge" id="admin-backup-count">—</span></h2>
+                  <p class="panel-lede">Each backup pairs a PostgreSQL custom-format dump with a manifest, its SHA-256 checksum, and record counts. With local object storage, original files are copied into the same archive.</p>
+                </div>
+              </header>
+              <div class="admin-backup-note" id="admin-storage-note"></div>
+              <div class="table-wrap admin-table-wrap" id="admin-backups-table"></div>
+              <p class="admin-foot">Verify restores the archive into a scratch database and compares counts. Restore takes a fresh pre-restore backup first, then requires typed confirmation.</p>
+            </section>
+
+            <section class="panel admin-panel" aria-labelledby="admin-audit-title">
+              <header class="panel-head admin-panel-head">
+                <div>
+                  <p class="eyebrow">TRAIL</p>
+                  <h2 id="admin-audit-title">Admin audit</h2>
+                  <p class="panel-lede">The latest 100 administrative actions. Import and review events remain on each package's audit trail.</p>
+                </div>
+              </header>
+              <div class="admin-audit" id="admin-audit-list" aria-live="polite"></div>
+            </section>
           </div>
         </section>
 
@@ -489,17 +600,17 @@
         <h1 id="gate-title">Enter the workspace</h1>
         <p class="gate-lede">Choose a demo role to explore the catalog, or use an access key. Every view is scoped to what that role may see.</p>
         <div class="gate-roles">
-          <button class="gate-role" type="button" data-demo-key="reader-demo">
+          <button class="gate-role" type="button" data-role="reader" data-demo-key="reader-demo">
             <span class="gate-role-icon"><svg aria-hidden="true"><use href="#i-search" /></svg></span>
             <span><strong>Viewer</strong><small>Search and inspect approved data</small></span>
             <svg class="gate-arrow" aria-hidden="true"><use href="#i-arrow-right" /></svg>
           </button>
-          <button class="gate-role" type="button" data-demo-key="importer-demo">
+          <button class="gate-role" type="button" data-role="importer" data-demo-key="importer-demo">
             <span class="gate-role-icon"><svg aria-hidden="true"><use href="#i-upload" /></svg></span>
             <span><strong>Importer</strong><small>Stage packages and correct metadata</small></span>
             <svg class="gate-arrow" aria-hidden="true"><use href="#i-arrow-right" /></svg>
           </button>
-          <button class="gate-role" type="button" data-demo-key="reviewer-demo">
+          <button class="gate-role" type="button" data-role="reviewer" data-demo-key="reviewer-demo">
             <span class="gate-role-icon"><svg aria-hidden="true"><use href="#i-shield" /></svg></span>
             <span><strong>Reviewer</strong><small>Resolve identity and publish versions</small></span>
             <svg class="gate-arrow" aria-hidden="true"><use href="#i-arrow-right" /></svg>
@@ -520,6 +631,37 @@
       <div class="gate-foot">Atlasio · an Alfazen platform</div>
     </section>
 
+    <dialog id="restore-dialog" class="dialog admin-dialog">
+      <button class="dialog-close icon-btn" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-close" /></svg></button>
+      <p class="eyebrow">RESTORE</p>
+      <h2>Restore this backup?</h2>
+      <p class="dialog-lede" id="restore-lede">Choose a backup from the table to restore it.</p>
+      <ul class="restore-steps">
+        <li>A fresh pre-restore backup is created before anything is replaced.</li>
+        <li>Writes are blocked and non-admin sessions stop until the restore finishes.</li>
+        <li>The archive checksum is verified first; a mismatch stops the restore.</li>
+      </ul>
+      <label class="field"><span>Type <code id="restore-phrase">RESTORE</code> to confirm</span>
+        <input id="restore-confirm" autocomplete="off" spellcheck="false" />
+      </label>
+      <p class="dialog-error" id="restore-error" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <button class="btn btn-danger" id="restore-submit" type="button" disabled>Restore database</button>
+        <button class="btn btn-ghost" type="button" data-dialog-close>Cancel</button>
+      </div>
+    </dialog>
+
+    <dialog id="confirm-dialog" class="dialog admin-dialog">
+      <button class="dialog-close icon-btn" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-close" /></svg></button>
+      <p class="eyebrow" id="confirm-eyebrow">CONFIRM</p>
+      <h2 id="confirm-title">Delete this item?</h2>
+      <p class="dialog-lede" id="confirm-message"></p>
+      <div class="dialog-actions">
+        <button class="btn btn-danger" id="confirm-accept" type="button">Delete</button>
+        <button class="btn btn-ghost" type="button" data-dialog-close>Cancel</button>
+      </div>
+    </dialog>
+
     <dialog id="access-dialog" class="dialog access-dialog">
       <button class="dialog-close icon-btn" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-close" /></svg></button>
       <p class="eyebrow">ACCESS</p>
@@ -532,7 +674,7 @@
           <button class="btn btn-ghost" type="button" id="disconnect-button">Disconnect</button>
         </div>
       </form>
-      <p class="dialog-note">Demo keys: reader-demo · importer-demo · reviewer-demo</p>
+      <p class="dialog-note" id="demo-key-note">Demo keys: reader-demo · importer-demo · reviewer-demo</p>
     </dialog>
 
     <dialog id="about-dialog" class="dialog info-dialog">

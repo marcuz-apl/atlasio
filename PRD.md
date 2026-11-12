@@ -32,6 +32,7 @@ Atlasio's initial differentiation is a modern, map-led interface over rigorous, 
 | Geomatics specialist | Define source CRS and transformation, inspect coordinates, review exceptions, reproduce transformations. |
 | Asset team lead | See data coverage and gaps for a field or area, understand which datasets are approved. |
 | Administrator | Manage users, access, storage, reference vocabularies, and audit records. |
+| Data Manager | Manage access profiles, demo keys, and verified backups; restore remains an Administrator action. |
 
 ## 4. Product principles
 
@@ -106,8 +107,17 @@ The signed-in landing page is a dashboard paired with a map scoped to an explici
 
 **A-01** Authenticate users and apply role-based permissions to viewing, importing, reviewing, publishing, and administration. Allow dataset or project restrictions for confidential data.  
 **A-02** Support an on-premises or private-cloud deployment path, including storage and services under the customer's control. Do not require public cloud access for core use.  
-**A-03** Back up database metadata and object storage together with a documented restore procedure.  
+**A-03** Back up database metadata and object storage together with a documented restore procedure. The in-product backup and restore path is defined in §6.7.  
 **A-04** Record license, confidentiality, and permitted use for every source package; pilot data must be owned, licensed, or explicitly authorized for use.
+
+### 6.7 Administration and recovery
+
+**ADM-01** Authenticate Administrator and Data Manager roles from environment bootstrap keys. Managed viewer, importer, and reviewer profiles live in PostgreSQL; custom keys are stored as hashes, shown once at creation or rotation, and can be revoked immediately.  
+**ADM-02** Provide an administration panel at `#/admin`, linked in the header only for Administrators and Data Managers. It shows application version, uptime, database size, connections, applied migrations, storage mode and originals, profile count, backup directory, access profiles, backups, and the administrative audit trail.  
+**ADM-03** Treat demo keys as managed records. Rotating or revoking a demo key must update the public sign-in gate without a client rebuild, and a revoked demo key must leave the gate.  
+**ADM-04** Define a backup as a PostgreSQL custom-format dump plus a manifest containing the archive checksum, record counts, application version, and object-set summary. With local object storage, copy original files into the archive; with S3, require a provider snapshot or bucket copy alongside the dump. Data Managers may create, download, and verify backups; verification restores into a scratch database and compares counts.  
+**ADM-05** Restrict database restore to Administrators. Require typed confirmation of the backup identifier, take a fresh pre-restore backup, verify the archive checksum, pause non-admin sessions for the duration, and record the restore in the audit trail. A failed restore must leave maintenance mode on so the pre-restore backup remains the recovery path.  
+**ADM-06** Record profile creation, rotation, activation changes, backup creation and deletion, and restores as administrative audit events, and show the most recent events in the panel. Deleting a backup is an Administrator action.
 
 ## 7. Subsequent releases
 

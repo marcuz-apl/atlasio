@@ -4,7 +4,20 @@ import { randomUUID } from 'node:crypto';
 
 const root = new URL('../', import.meta.url);
 const host = process.env.ATLASIO_URL || 'http://localhost:8000';
-const keys = { importer: 'importer-demo', reviewer: 'reviewer-demo', reader: 'reader-demo' };
+const keys = await resolveDemoKeys();
+
+// Demo keys are managed records and may be rotated from the admin panel.
+async function resolveDemoKeys() {
+  const fallback = { importer: 'importer-demo', reviewer: 'reviewer-demo', reader: 'reader-demo' };
+  try {
+    const response = await fetch(`${host}/api/demo-profiles`);
+    const items = await response.json();
+    const resolved = Object.fromEntries(items.map((item) => [item.role, item.key]));
+    return { ...fallback, ...resolved };
+  } catch (error) {
+    return fallback;
+  }
+}
 
 async function request(path, role, method = 'GET', body) {
   const response = await fetch(`${host}/api${path}`, {

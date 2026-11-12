@@ -1,6 +1,8 @@
 # Backup and restore rehearsal
 
-Atlasio metadata and original objects form one recoverable dataset. Stop writes or take coordinated database and object-store snapshots before a production backup. Retain the database dump and the corresponding object-store version or snapshot together; verify checksums after restore.
+Atlasio exposes the routine path in the admin panel at `#/admin`. Administrators and Data Managers can create a backup, download the dump, and verify it; re-verification restores the archive into a scratch database and compares record counts. Only an Administrator can delete a backup or restore the live database, and a restore requires typing `RESTORE <backup id>`, takes a fresh pre-restore backup, verifies the archive checksum, and pauses non-admin sessions until it finishes. With local object storage the archive also contains the original files; with S3 it contains the database dump, so pair it with a provider snapshot.
+
+The procedure below remains the manual rehearsal for a production environment. Atlasio metadata and original objects form one recoverable dataset. Stop writes or take coordinated database and object-store snapshots before a production backup. Retain the database dump and the corresponding object-store version or snapshot together; verify checksums after restore.
 
 The local rehearsal used the synthetic integration stack. It restored a `pg_dump -Fc` snapshot into a separate database, compared well/version/migration counts, copied an original object into a separate S3Mock bucket, and checked its SHA-256 against `file_assets.sha256`. It also confirmed that SQL triggers reject edits to published versions, batches, and files. This proves a local recovery path for the tested data; it does not validate backup consistency under concurrent writes or a production object-store recovery process.
 
