@@ -233,6 +233,10 @@ pub(crate) async fn migrate(pool: &PgPool) -> Result<(), sqlx::Error> {
             "004_accounts.sql",
             include_str!("../../../migrations/004_accounts.sql"),
         ),
+        (
+            "005_viewer_demo_key.sql",
+            include_str!("../../../migrations/005_viewer_demo_key.sql"),
+        ),
     ];
     for (version, sql) in migrations {
         let applied: bool =

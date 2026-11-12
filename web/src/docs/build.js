@@ -4,7 +4,7 @@ export const BUILD_DOCS_HTML = `
   <h2>Why this page exists</h2>
   <p>Atlasio is built around choices that are easy to lose: why coordinates are stored the way they are, why a published version never changes, why a category shows a dash instead of a zero, and why the catalog is grouped into six domains. This page keeps those choices beside the product so a client, reviewer, or future maintainer can understand the reasoning without reconstructing it from commits or conversations.</p>
   <p>Read it in three ways. The <a href="#/docs" data-doc-link="docs-invariants">invariants</a> are the rules we do not break. The <a href="#/docs" data-doc-link="docs-decisions">decision log</a> records what we chose, when, and what it costs. The <a href="#/docs" data-doc-link="docs-glossary">glossary</a> fixes the vocabulary used by the interface and the API.</p>
-  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.30. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
+  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.31. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
 </section>
 
 <section class="docs-section" id="docs-architecture" data-doc-section>
@@ -184,6 +184,7 @@ export const BUILD_DOCS_HTML = `
         <tr><td>0.1.28</td><td>Operator-only <code>atlasio-server reset-mfa &lt;username&gt;</code> clears a lost authenticator, recovery codes, lockout, and sessions without changing the password or restarting the service.</td></tr>
         <tr><td>0.1.29</td><td>GIS &amp; Basemaps leads Culture &amp; Lands; Production Tests leads Production Data.</td></tr>
         <tr><td>0.1.30</td><td>E&amp;P Projects removed; Source Files replaces Original Files; DST Records and Core &amp; Sample Records join the catalog as planned categories, with a Wells-versus-Versions explanation.</td></tr>
+        <tr><td>0.1.31</td><td>Viewer demo key is <code>viewer-demo</code>; the seeded staff passwords are <code>admin-initial</code> and <code>datamgr-initial</code>.</td></tr>
       </tbody>
     </table>
   </div>
@@ -337,6 +338,17 @@ export const BUILD_DOCS_HTML = `
       <dt>Trade-off</dt><dd>Recovery requires shell and database access rather than an environment toggle. There is still no self-service bypass, which is the point: a password alone must never remove the second factor.</dd>
     </dl>
   </article>
+
+  <article class="decision">
+    <div class="decision-head"><span class="decision-id">D-0014</span><span class="decision-tag">Accepted</span><span class="decision-tag">v0.1.30</span></div>
+    <h3>Catalog tiles are record types, not projects</h3>
+    <dl>
+      <dt>Context</dt><dd>The Well Data domain carried an E&amp;P Projects tile with no underlying record, “Original Files” read like a document type, and core and drill-stem-test records had no home. Wells and Well Versions also sat side by side without explaining why their counts differ.</dd>
+      <dt>Decision</dt><dd>Each tile must name a record type with an API state. Remove E&amp;P Projects; keep project or asset grouping for a future filter or domain rather than a tile. Rename Original Files to Source Files. Add DST Records under Drilling &amp; Completions and Core &amp; Sample Records under Well Data as planned categories. Explain in both guides that Wells counts current wells while Well Versions counts every published version, including corrections. Lead Culture &amp; Lands with GIS &amp; Basemaps and Production Data with Production Tests.</dd>
+      <dt>Why</dt><dd>Every tile now maps to something the catalog can count, planned categories are honest about missing data, and the two well counts stop reading as duplicates. Ordering follows how people approach the data: basemaps establish context, tests lead production evidence.</dd>
+      <dt>Trade-off</dt><dd>The catalog grows to twenty-five categories, so more tiles show a dash until their data contracts exist. Project grouping needs a separate interaction later, and the static category count in the guides must change with the API contract.</dd>
+    </dl>
+  </article>
 </section>
 
 <section class="docs-section" id="docs-references" data-doc-section>
@@ -378,6 +390,10 @@ export const BUILD_DOCS_HTML = `
     <div><dt>Culture data</dt><dd>Human-made surface context such as roads, pipelines, facilities, boundaries, and settlements.</dd></div>
     <div><dt>Concession</dt><dd>A licensed area with boundaries, terms, and an issuing authority.</dd></div>
     <div><dt>Cataloged / planned</dt><dd>Cataloged has managed records and a count; planned is acknowledged but not yet managed.</dd></div>
+    <div><dt>Well version</dt><dd>An immutable published snapshot of a well's registry data. A correction creates another version; the earlier version is kept.</dd></div>
+    <div><dt>Source file</dt><dd>The original uploaded file behind a published package, retained with its checksum and provenance. It is evidence, not a derived report.</dd></div>
+    <div><dt>DST</dt><dd>Drill stem test: a transient pressure and flow test run during drilling or completion to evaluate a formation.</dd></div>
+    <div><dt>Core / sample record</dt><dd>Recovered core and sample descriptions or analyses, tied to a well and depth interval; planned in Release 1.</dd></div>
   </dl>
 </section>
 

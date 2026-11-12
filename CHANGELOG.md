@@ -4,6 +4,13 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.31 — 2026-11-12
+Build: v0.1.31+261112i
+Type: feat
+- Rename the viewer demo key to `viewer-demo`, with a migration that updates the seeded profile.
+- Shorten the seeded staff passwords to `admin-initial` and `datamgr-initial`.
+- Record the catalog taxonomy decision and add glossary entries for well versions, source files, DST, and core samples.
+
 ## 0.1.30 — 2026-11-12
 Build: v0.1.30+261112h
 Type: feat
