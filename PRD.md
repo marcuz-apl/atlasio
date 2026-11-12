@@ -99,7 +99,8 @@ The signed-in landing page is a dashboard paired with a map scoped to an explici
 **D-02** Show well points, fields/blocks, seismic lines/footprints, and simple approved structure grids on a responsive map. A selected item opens its record and available datasets.  
 **D-03** Offer clear layer control, legend, scale, coordinate display, and CRS-aware readout. Signal approximate or unresolved locations visually.  
 **D-04** Provide a record detail view that is useful without a map: metadata, versions, files, related records, QC, lineage, and actions allowed for the user's role.  
-**D-05** Permit export/download only when the user's access rights and the source data's license allow it.
+**D-05** Permit export/download only when the user's access rights and the source data's license allow it.  
+**D-06** Provide an in-app reference page at `#/docs` recording architecture, domain invariants, catalog taxonomy, interface decisions, release history, decision records, references, and glossary. It must be readable without a workspace key and linked from the application header.
 
 ### 6.6 Security and deployment
 

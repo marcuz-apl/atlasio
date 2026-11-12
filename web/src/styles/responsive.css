@@ -277,6 +277,10 @@
     font-size: 12.5px;
   }
 
+  .docs-link {
+    padding: 0 8px;
+  }
+
   .appnav .nav-arrow {
     display: none;
   }
@@ -395,6 +399,13 @@
 
   .dialog {
     padding: 24px 20px;
+  }
+}
+
+/* ---------- Narrow phones ---------- */
+@media (max-width: 520px) {
+  .appnav a[data-nav='dashboard'] {
+    display: none;
   }
 }
 
