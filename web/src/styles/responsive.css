@@ -172,10 +172,6 @@
     left: 10px;
   }
 
-  .workspace-head {
-    padding-inline: 10px;
-  }
-
   .is-explore .workspace-head {
     left: 10px;
     right: 10px;
