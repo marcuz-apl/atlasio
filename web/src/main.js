@@ -316,6 +316,7 @@ function initChrome() {
     $('#password-dialog')?.close();
     $('#mfa-dialog')?.close();
     showGate();
+    clearStaffFields();
     gateError('Your session expired. Sign in again.');
   });
 
@@ -477,6 +478,7 @@ async function restoreSession() {
     applyRole();
     applyAccountChrome();
     showGate();
+    clearStaffFields();
     gateError(error.status === 401 ? 'Your session expired. Sign in again.' : error.message);
     return false;
   }
@@ -1041,6 +1043,15 @@ function showGate() {
   void refreshDemoProfiles();
 }
 
+function clearStaffFields() {
+  for (const id of ['#staff-username', '#staff-password', '#staff-code']) {
+    const field = $(id);
+    if (field) field.value = '';
+  }
+  const code = $('#staff-code');
+  if (code) code.hidden = true;
+}
+
 function hideGate() {
   const gate = $('#access-gate');
   if (gate) gate.hidden = true;
@@ -1078,6 +1089,7 @@ async function disconnect() {
   $('#access-dialog')?.close();
   $('#password-dialog')?.close();
   showGate();
+  clearStaffFields();
   gateError('');
   toast(wasStaff ? 'Signed out.' : 'Disconnected from the workspace.', 'info');
 }

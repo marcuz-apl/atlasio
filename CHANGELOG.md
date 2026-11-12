@@ -4,6 +4,12 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.26 — 2026-11-12
+Build: v0.1.26+261112d
+Type: feat
+- Show the header tagline "Governed subsurface data, in place" beside the logo on the sign-in gate.
+- Clear the staff username, password, and authenticator fields whenever the sign-in gate reappears, and turn off browser autocomplete for them.
+
 ## 0.1.25 — 2026-11-12
 Build: v0.1.25+261112c
 Type: feat

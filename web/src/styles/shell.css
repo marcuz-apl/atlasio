@@ -378,6 +378,10 @@ body[data-role='reviewer'] .status-dot {
   font-size: 24px;
 }
 
+.gate-brand .brand-tag {
+  display: inline;
+}
+
 .gate-card h1 {
   margin: 8px 0 10px;
   font-size: clamp(30px, 4vw, 37px);
