@@ -4,6 +4,11 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.27 — 2026-11-12
+Build: v0.1.27+261112e
+Type: fix
+- Stop Chrome from restoring the previous staff username or password on the sign-in gate. The fields stay read-only until you click or tab into them, so autofill has nothing to fill.
+
 ## 0.1.26 — 2026-11-12
 Build: v0.1.26+261112d
 Type: feat
