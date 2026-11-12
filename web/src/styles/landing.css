@@ -84,13 +84,6 @@
   padding: 0 11px;
 }
 
-.area-source {
-  margin-top: 6px;
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.35;
-}
-
 /* ---------- Landing grid ---------- */
 .landing-grid {
   display: grid;

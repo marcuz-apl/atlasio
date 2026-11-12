@@ -132,12 +132,10 @@ export function setWells(collection) {
     visibleWells = wellsWithin(state.wells, state.area.country);
     map.setWells(visibleWells);
     updateVisibleCount();
-    updateAreaSource();
   } else if (state.area.mode === 'nearby' && state.area.point) {
     visibleWells = nearbyWells(state.wells, state.area.point[0], state.area.point[1], 150);
     map.setWells(visibleWells);
     updateVisibleCount();
-    updateAreaSource();
   } else {
     visibleWells = state.wells;
     map.setWells(state.wells);
@@ -175,15 +173,13 @@ function applyGlobal() {
   if (select) select.value = 'global';
   const scope = $('#coverage-scope');
   if (scope) scope.textContent = 'GLOBAL';
-  const source = $('#area-source');
-  if (source) source.textContent = 'Global catalog · all records visible to your role';
   const title = $('#map-area-title');
   if (title) title.textContent = 'Published wells';
   updateVisibleCount();
   refreshCounts();
 }
 
-function applyCountry(country, { point = null, origin = 'select' } = {}) {
+function applyCountry(country, { point = null } = {}) {
   const visible = wellsWithin(state.wells, country);
   visibleWells = visible;
   state.area = {
@@ -206,7 +202,6 @@ function applyCountry(country, { point = null, origin = 'select' } = {}) {
   const title = $('#map-area-title');
   if (title) title.textContent = country.properties.name;
   updateVisibleCount();
-  updateAreaSource(origin);
   refreshCounts();
 }
 
@@ -233,7 +228,6 @@ function applyNearby(longitude, latitude) {
   const title = $('#map-area-title');
   if (title) title.textContent = 'Near your location';
   updateVisibleCount();
-  updateAreaSource('location');
   refreshCounts();
 }
 
@@ -241,22 +235,6 @@ function updateVisibleCount() {
   const count = visibleWells.features.length;
   const target = $('#landing-well-count');
   if (target) target.textContent = formatCount(count);
-}
-
-function updateAreaSource(origin = 'select') {
-  const source = $('#area-source');
-  if (!source) return;
-  const count = visibleWells.features.length;
-  if (state.area.mode === 'country') {
-    source.textContent =
-      origin === 'location'
-        ? `${state.area.country.properties.name} · area detected from your current location`
-        : `${state.area.country.properties.name} · country boundary · ${formatCount(count)} wells inside`;
-  } else if (state.area.mode === 'nearby') {
-    source.textContent = `Within 150 km of your location · ${formatCount(count)} wells nearby`;
-  } else {
-    source.textContent = 'Global catalog · all records visible to your role';
-  }
 }
 
 async function locate() {
@@ -275,7 +253,7 @@ async function locate() {
     ({ coords }) => {
       const country = findCountryAt(coords.longitude, coords.latitude);
       if (country) {
-        applyCountry(country, { point: [coords.longitude, coords.latitude], origin: 'location' });
+        applyCountry(country, { point: [coords.longitude, coords.latitude] });
         map?.map.easeTo({
           center: [coords.longitude, coords.latitude],
           zoom: Math.max(map?.map.getZoom() || 0, 3.6),
