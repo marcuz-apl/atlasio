@@ -1,4 +1,6 @@
 mod admin;
+mod auth;
+mod mfa;
 
 use std::{
     env,
@@ -32,8 +34,6 @@ use uuid::Uuid;
 struct AppState {
     db: PgPool,
     objects: Arc<dyn ObjectStore>,
-    admin_key: String,
-    datamgr_key: String,
     db_url: String,
     backup_dir: PathBuf,
     pg_dump: String,
@@ -42,6 +42,9 @@ struct AppState {
     storage_mode: &'static str,
     app_version: String,
     changelog_path: PathBuf,
+    dummy_hash: String,
+    mfa_required: bool,
+    mfa_key: Option<Vec<u8>>,
     started_at: Instant,
     maintenance: Arc<AtomicBool>,
     admin_job: Arc<tokio::sync::Mutex<()>>,
@@ -93,8 +96,6 @@ fn static_role(value: &str) -> Option<&'static str> {
         "reader" => Some("reader"),
         "importer" => Some("importer"),
         "reviewer" => Some("reviewer"),
-        "admin" => Some("admin"),
-        "datamgr" => Some("datamgr"),
         _ => None,
     }
 }
@@ -104,6 +105,24 @@ async fn role(
     state: &AppState,
     allowed: &[&str],
 ) -> Result<&'static str, ApiError> {
+    if let Some(account) = auth::session_account(&state.db, headers).await? {
+        let current = account.role_label();
+        if state.maintenance.load(Ordering::Relaxed) && current != "admin" {
+            return Err(ApiError::new(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "Maintenance in progress. Try again after the restore completes.",
+            ));
+        }
+        return if allowed.contains(&current) {
+            Ok(current)
+        } else {
+            Err(ApiError::new(
+                StatusCode::FORBIDDEN,
+                "This role cannot perform this action",
+            ))
+        };
+    }
+
     let key = headers
         .get("x-atlasio-key")
         .and_then(|value| value.to_str().ok())
@@ -111,52 +130,29 @@ async fn role(
     if key.is_empty() {
         return Err(ApiError::new(
             StatusCode::UNAUTHORIZED,
-            "A valid Atlasio API key is required",
+            "A valid Atlasio API key or account session is required",
         ));
     }
-
-    let current = if key == state.admin_key {
-        Some("admin")
-    } else if key == state.datamgr_key {
-        Some("datamgr")
-    } else if state.maintenance.load(Ordering::Relaxed) {
-        // Do not touch access_profiles while a restore is replacing it; every
-        // non-admin session is paused for the duration.
-        None
-    } else {
-        let stored: Option<String> = sqlx::query_scalar(
-            "UPDATE access_profiles SET last_used_at = now() WHERE active AND (demo_key = $1 OR key_hash = $2) RETURNING role",
-        )
-        .bind(key)
-        .bind(key_hash(key))
-        .fetch_optional(&state.db)
-        .await?;
-        stored.as_deref().and_then(static_role)
-    };
-
-    let Some(current) = current else {
-        let maintenance = state.maintenance.load(Ordering::Relaxed);
-        return Err(ApiError::new(
-            if maintenance {
-                StatusCode::SERVICE_UNAVAILABLE
-            } else {
-                StatusCode::UNAUTHORIZED
-            },
-            if maintenance {
-                "Maintenance in progress. Try again after the restore completes."
-            } else {
-                "A valid Atlasio API key is required"
-            },
-        ));
-    };
-
-    if state.maintenance.load(Ordering::Relaxed) && current != "admin" {
+    if state.maintenance.load(Ordering::Relaxed) {
         return Err(ApiError::new(
             StatusCode::SERVICE_UNAVAILABLE,
             "Maintenance in progress. Try again after the restore completes.",
         ));
     }
 
+    let stored: Option<String> = sqlx::query_scalar(
+        "UPDATE access_profiles SET last_used_at = now() WHERE active AND (demo_key = $1 OR key_hash = $2) RETURNING role",
+    )
+    .bind(key)
+    .bind(key_hash(key))
+    .fetch_optional(&state.db)
+    .await?;
+    let Some(current) = stored.as_deref().and_then(static_role) else {
+        return Err(ApiError::new(
+            StatusCode::UNAUTHORIZED,
+            "A valid Atlasio API key is required",
+        ));
+    };
     if allowed.contains(&current) {
         Ok(current)
     } else {
@@ -200,6 +196,23 @@ async fn audit(
     Ok(())
 }
 
+pub(crate) async fn record_audit(
+    pool: &PgPool,
+    actor: &str,
+    action: &str,
+    details: Value,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO audit_events (batch_id, actor, action, details) VALUES (NULL, $1, $2, $3)",
+    )
+    .bind(actor)
+    .bind(action)
+    .bind(DbJson(details))
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 pub(crate) async fn migrate(pool: &PgPool) -> Result<(), sqlx::Error> {
     sqlx::query("CREATE TABLE IF NOT EXISTS schema_migrations (version text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())")
         .execute(pool).await?;
@@ -215,6 +228,10 @@ pub(crate) async fn migrate(pool: &PgPool) -> Result<(), sqlx::Error> {
         (
             "003_access_profiles.sql",
             include_str!("../../../migrations/003_access_profiles.sql"),
+        ),
+        (
+            "004_accounts.sql",
+            include_str!("../../../migrations/004_accounts.sql"),
         ),
     ];
     for (version, sql) in migrations {
@@ -310,9 +327,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pool = PgPool::connect(&db_url).await?;
     migrate(&pool).await?;
     let (objects, object_dir, storage_mode) = object_store()?;
-    let backup_dir = PathBuf::from(
-        env::var("ATLASIO_BACKUP_DIR").unwrap_or_else(|_| "backups".to_string()),
-    );
+    let backup_dir =
+        PathBuf::from(env::var("ATLASIO_BACKUP_DIR").unwrap_or_else(|_| "backups".to_string()));
     tokio::fs::create_dir_all(&backup_dir).await?;
     let app_version = std::fs::read_to_string("VERSION")
         .map(|value| value.trim().to_string())
@@ -320,11 +336,56 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| env!("CARGO_PKG_VERSION").to_string());
 
+    let admin_username = env::var("ATLASIO_ADMIN_USERNAME").unwrap_or_else(|_| "admin".to_string());
+    let datamgr_username =
+        env::var("ATLASIO_DATAMGR_USERNAME").unwrap_or_else(|_| "datamgr".to_string());
+    let admin_initial = env::var("ATLASIO_ADMIN_INITIAL_PASSWORD").map_err(
+        |_| "ATLASIO_ADMIN_INITIAL_PASSWORD is required to seed the Administrator account",
+    )?;
+    let datamgr_initial = env::var("ATLASIO_DATAMGR_INITIAL_PASSWORD").map_err(
+        |_| "ATLASIO_DATAMGR_INITIAL_PASSWORD is required to seed the Data Manager account",
+    )?;
+    let reset_passwords = env::var("ATLASIO_RESET_PASSWORDS")
+        .map(|value| value == "1")
+        .unwrap_or(false);
+    auth::bootstrap_accounts(
+        &pool,
+        [
+            auth::BootstrapAccount {
+                username: &admin_username,
+                password: &admin_initial,
+                role: "admin",
+            },
+            auth::BootstrapAccount {
+                username: &datamgr_username,
+                password: &datamgr_initial,
+                role: "datamgr",
+            },
+        ],
+        reset_passwords,
+    )
+    .await?;
+    let dummy_hash = auth::hash_password("atlasio-dummy-password-for-timing".to_string())
+        .await
+        .map_err(|_| "Could not prepare the login timing verifier")?;
+    let mfa_required = env::var("ATLASIO_MFA_REQUIRED")
+        .map(|value| value == "1")
+        .unwrap_or(false);
+    let mfa_key = match env::var("ATLASIO_MFA_KEY") {
+        Ok(value) => Some(
+            mfa::decode_key(&value)
+                .map_err(|message| format!("{message} (ATLASIO_MFA_KEY)"))?
+                .to_vec(),
+        ),
+        Err(_) => None,
+    };
+    if mfa_required && mfa_key.is_none() {
+        return Err("ATLASIO_MFA_KEY is required when ATLASIO_MFA_REQUIRED=1".into());
+    }
+
     let state = AppState {
         db: pool,
         objects,
-        admin_key: env::var("ATLASIO_ADMIN_KEY")?,
-        datamgr_key: env::var("ATLASIO_DATAMGR_KEY")?,
         db_url,
         backup_dir,
         pg_dump: env::var("ATLASIO_PG_DUMP").unwrap_or_else(|_| "pg_dump".to_string()),
@@ -335,6 +396,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         changelog_path: PathBuf::from(
             env::var("ATLASIO_CHANGELOG").unwrap_or_else(|_| "CHANGELOG.md".to_string()),
         ),
+        dummy_hash,
+        mfa_required,
+        mfa_key,
         started_at: Instant::now(),
         maintenance: Arc::new(AtomicBool::new(false)),
         admin_job: Arc::new(tokio::sync::Mutex::new(())),
@@ -342,6 +406,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = Router::new()
         .route("/api/health", get(health))
         .route("/api/me", get(me))
+        .route("/api/auth/login", post(auth::login))
+        .route("/api/auth/logout", post(auth::logout))
+        .route("/api/auth/password", post(auth::change_password))
+        .route("/api/auth/mfa/start", post(mfa::start))
+        .route("/api/auth/mfa/enable", post(mfa::enable))
+        .route("/api/auth/mfa/disable", post(mfa::disable))
         .route("/api/demo-profiles", get(admin::demo_profiles))
         .route("/api/dashboard", get(dashboard))
         .route("/api/imports", post(stage).get(imports))
@@ -361,23 +431,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "/api/admin/profiles/{id}",
             axum::routing::patch(admin::update_profile),
         )
-        .route("/api/admin/profiles/{id}/rotate", post(admin::rotate_profile))
+        .route(
+            "/api/admin/profiles/{id}/rotate",
+            post(admin::rotate_profile),
+        )
         .route(
             "/api/admin/backups",
             get(admin::backups).post(admin::create_backup),
         )
-        .route(
-            "/api/admin/backups/{id}",
-            delete(admin::delete_backup),
-        )
+        .route("/api/admin/backups/{id}", delete(admin::delete_backup))
         .route(
             "/api/admin/backups/{id}/download",
             get(admin::download_backup),
         )
-        .route(
-            "/api/admin/backups/{id}/verify",
-            post(admin::verify_backup),
-        )
+        .route("/api/admin/backups/{id}/verify", post(admin::verify_backup))
         .route(
             "/api/admin/backups/{id}/restore",
             post(admin::restore_backup),
@@ -421,8 +488,17 @@ async fn health(State(state): State<AppState>) -> ApiResult {
 }
 
 async fn me(State(state): State<AppState>, headers: HeaderMap) -> ApiResult {
-    let who = role(&headers, &state, &["importer", "reviewer", "reader", "admin", "datamgr"]).await?;
-    Ok(Json(json!({ "role": who })))
+    let who = role(
+        &headers,
+        &state,
+        &["importer", "reviewer", "reader", "admin", "datamgr"],
+    )
+    .await?;
+    let account = auth::session_account(&state.db, &headers).await?;
+    Ok(Json(json!({
+        "role": who,
+        "account": account.map(|account| mfa::account_json(&account, state.mfa_required, account.mfa_enabled)),
+    })))
 }
 
 #[derive(Deserialize)]
@@ -436,7 +512,12 @@ async fn dashboard(
     headers: HeaderMap,
     Query(params): Query<DashboardParams>,
 ) -> ApiResult {
-    let who = role(&headers, &state, &["importer", "reviewer", "reader", "admin", "datamgr"]).await?;
+    let who = role(
+        &headers,
+        &state,
+        &["importer", "reviewer", "reader", "admin", "datamgr"],
+    )
+    .await?;
     let well_ids = if params.area.unwrap_or(false) {
         Some(
             params
@@ -567,7 +648,12 @@ async fn stage(
 }
 
 async fn imports(State(state): State<AppState>, headers: HeaderMap) -> ApiResult {
-    role(&headers, &state, &["importer", "reviewer", "admin", "datamgr"]).await?;
+    role(
+        &headers,
+        &state,
+        &["importer", "reviewer", "admin", "datamgr"],
+    )
+    .await?;
     let rows = sqlx::query("SELECT id, status, manifest, qc, created_at, reviewer, review_reason, well_id FROM import_batches ORDER BY created_at DESC LIMIT 100")
         .fetch_all(&state.db).await?;
     let values: Vec<Value> = rows.into_iter().map(|row| json!({
@@ -586,7 +672,12 @@ async fn import_detail(
     headers: HeaderMap,
     Path(id): Path<Uuid>,
 ) -> ApiResult {
-    role(&headers, &state, &["importer", "reviewer", "admin", "datamgr"]).await?;
+    role(
+        &headers,
+        &state,
+        &["importer", "reviewer", "admin", "datamgr"],
+    )
+    .await?;
     let row = sqlx::query("SELECT b.id, b.status, b.manifest, b.qc, b.created_at, b.reviewer, b.review_reason, b.well_id, f.id AS file_id, f.original_name, f.sha256, f.size_bytes, f.license, f.confidentiality FROM import_batches b JOIN file_assets f ON f.batch_id=b.id WHERE b.id=$1")
         .bind(id).fetch_optional(&state.db).await?.ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "Import batch not found"))?;
     Ok(Json(json!({
@@ -854,7 +945,12 @@ async fn search(
     headers: HeaderMap,
     Query(query): Query<SearchQuery>,
 ) -> ApiResult {
-    let who = role(&headers, &state, &["importer", "reviewer", "reader", "admin", "datamgr"]).await?;
+    let who = role(
+        &headers,
+        &state,
+        &["importer", "reviewer", "reader", "admin", "datamgr"],
+    )
+    .await?;
     let pattern = format!("%{}%", query.q.trim());
     let rows = sqlx::query("SELECT w.id, v.id AS version_id, v.version_no, v.name, v.aliases, v.external_id, v.source, v.source_crs, ST_X(v.display_point) AS longitude, ST_Y(v.display_point) AS latitude FROM wells w JOIN well_versions v ON v.id=w.current_version_id JOIN file_assets f ON f.batch_id=v.batch_id WHERE ($2 OR f.confidentiality='public') AND (v.name ILIKE $1 OR v.external_id ILIKE $1 OR EXISTS (SELECT 1 FROM unnest(v.aliases) a WHERE a ILIKE $1)) ORDER BY v.name LIMIT 100")
         .bind(pattern).bind(who != "reader").fetch_all(&state.db).await?;
@@ -871,7 +967,12 @@ async fn well_detail(
     headers: HeaderMap,
     Path(id): Path<Uuid>,
 ) -> ApiResult {
-    let who = role(&headers, &state, &["importer", "reviewer", "reader", "admin", "datamgr"]).await?;
+    let who = role(
+        &headers,
+        &state,
+        &["importer", "reviewer", "reader", "admin", "datamgr"],
+    )
+    .await?;
     let current_row = sqlx::query("SELECT w.current_version_id, f.confidentiality FROM wells w JOIN well_versions v ON v.id=w.current_version_id JOIN file_assets f ON f.batch_id=v.batch_id WHERE w.id=$1")
         .bind(id).fetch_optional(&state.db).await?.ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "Well not found"))?;
     if who == "reader" && current_row.get::<String, _>("confidentiality") != "public" {
@@ -900,7 +1001,12 @@ async fn well_detail(
 }
 
 async fn map_wells(State(state): State<AppState>, headers: HeaderMap) -> ApiResult {
-    let who = role(&headers, &state, &["importer", "reviewer", "reader", "admin", "datamgr"]).await?;
+    let who = role(
+        &headers,
+        &state,
+        &["importer", "reviewer", "reader", "admin", "datamgr"],
+    )
+    .await?;
     let rows = sqlx::query("SELECT w.id, v.id AS version_id, v.name, v.version_no, ST_X(v.display_point) AS longitude, ST_Y(v.display_point) AS latitude FROM wells w JOIN well_versions v ON v.id=w.current_version_id JOIN file_assets f ON f.batch_id=v.batch_id WHERE $1 OR f.confidentiality='public'")
         .bind(who != "reader").fetch_all(&state.db).await?;
     let features: Vec<Value> = rows.into_iter().map(|row| json!({
@@ -919,7 +1025,12 @@ async fn download(
     headers: HeaderMap,
     Path(id): Path<Uuid>,
 ) -> Result<Response, ApiError> {
-    let who = role(&headers, &state, &["importer", "reviewer", "reader", "admin", "datamgr"]).await?;
+    let who = role(
+        &headers,
+        &state,
+        &["importer", "reviewer", "reader", "admin", "datamgr"],
+    )
+    .await?;
     let row = sqlx::query("SELECT f.object_key, f.original_name, f.sha256, f.confidentiality, b.manifest, b.status FROM file_assets f JOIN import_batches b ON b.id=f.batch_id WHERE f.id=$1")
         .bind(id).fetch_optional(&state.db).await?.ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "File not found"))?;
     let manifest = row.get::<DbJson<Manifest>, _>("manifest").0;

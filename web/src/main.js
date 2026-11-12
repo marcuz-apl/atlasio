@@ -4,9 +4,9 @@ import '@fontsource/ibm-plex-mono/500.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './style.css';
 
-import { api } from './lib/api.js';
-import { state } from './lib/state.js';
-import { $, $$, toast } from './lib/ui.js';
+import { api, changePassword, disableMfa, enableMfa, login, logout, startMfa } from './lib/api.js';
+import { state, setSession, updateAccount } from './lib/state.js';
+import { $, $$, copyText, setButtonBusy, toast } from './lib/ui.js';
 import { roleLabel } from './lib/format.js';
 import * as dashboard from './views/dashboard.js';
 import * as workspace from './views/workspace.js';
@@ -40,7 +40,9 @@ if (!location.hash) {
   history.replaceState(null, '', '#/');
 }
 
-if (isDocsRoute()) {
+if (state.session) {
+  void restoreSession();
+} else if (isDocsRoute()) {
   applyRoute().catch((error) => toast(error.message, 'error'));
 } else if (state.key) {
   connect(state.key, { fromGate: true, announce: false });
@@ -169,14 +171,45 @@ function initChrome() {
     }
     const dialog = $('#access-dialog');
     const lede = $('#access-lede');
-    if (lede) {
-      lede.textContent = `You are connected as a ${roleLabel(state.role)}. Reconnect with another key to change what you can see and do.`;
+    const account = $('#access-account');
+    const keyField = $('#access-key-field');
+    const reconnect = $('#access-reconnect');
+    const change = $('#change-password-button');
+    const mfaButton = $('#mfa-button');
+    const disconnectButton = $('#disconnect-button');
+    const note = $('#demo-key-note');
+    const staff = Boolean(state.session);
+    if (staff) {
+      if (lede) lede.textContent = 'You are signed in with a staff account.';
+      if (account) {
+        account.hidden = false;
+        account.textContent = `${state.account?.username || 'account'} · ${roleLabel(state.role)}${state.account?.mfa_enabled ? ' · MFA on' : ''}`;
+      }
+      if (keyField) keyField.hidden = true;
+      if (reconnect) reconnect.hidden = true;
+      if (change) change.hidden = false;
+      if (mfaButton) {
+        mfaButton.hidden = false;
+        mfaButton.textContent = state.account?.mfa_enabled ? 'Manage MFA' : 'Set up MFA';
+      }
+      if (disconnectButton) disconnectButton.textContent = 'Sign out';
+      if (note) note.hidden = true;
+    } else {
+      if (lede) lede.textContent = `You are connected as a ${roleLabel(state.role)}. Reconnect with another key to change what you can see and do.`;
+      if (account) account.hidden = true;
+      if (keyField) keyField.hidden = false;
+      if (reconnect) reconnect.hidden = false;
+      if (change) change.hidden = true;
+      if (mfaButton) mfaButton.hidden = true;
+      if (disconnectButton) disconnectButton.textContent = 'Disconnect';
+      if (note) note.hidden = false;
     }
     if (dialog && !dialog.open) dialog.showModal();
   });
 
   $('#access-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (state.session) return;
     const key = $('#access-key')?.value.trim() || '';
     if (!key) {
       toast('Enter an access key to reconnect.', 'error');
@@ -193,6 +226,57 @@ function initChrome() {
   });
 
   $('#disconnect-button')?.addEventListener('click', disconnect);
+  $('#change-password-button')?.addEventListener('click', () => {
+    $('#access-dialog')?.close();
+    openPasswordDialog();
+  });
+  $('#mfa-button')?.addEventListener('click', () => {
+    $('#access-dialog')?.close();
+    openMfaDialog();
+  });
+  $('#security-banner-action')?.addEventListener('click', () => {
+    if (state.account?.must_change_password) openPasswordDialog({ forced: true });
+    else openMfaDialog();
+  });
+
+  $('#staff-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const username = $('#staff-username')?.value.trim() || '';
+    const password = $('#staff-password')?.value || '';
+    const code = $('#staff-code')?.value.trim() || '';
+    if (!username || !password) {
+      gateError('Enter the account username and password.');
+      return;
+    }
+    await signInStaff(username, password, code);
+  });
+
+  $('#password-form')?.addEventListener('submit', submitPassword);
+  $('#password-signout')?.addEventListener('click', async () => {
+    $('#password-dialog')?.close();
+    await disconnect();
+  });
+
+  $('#mfa-start')?.addEventListener('click', startEnrollment);
+  $('#mfa-enable')?.addEventListener('click', confirmEnrollment);
+  $('#mfa-disable')?.addEventListener('click', disableEnrollment);
+  $('#mfa-copy-recovery')?.addEventListener('click', async () => {
+    const codes = [...document.querySelectorAll('#mfa-recovery li')].map((node) => node.textContent);
+    if (await copyText(codes.join('\n'))) toast('Recovery codes copied.', 'success');
+    else toast('Copy failed. Select the codes and copy them manually.', 'error');
+  });
+
+  window.addEventListener('atlasio:session-expired', () => {
+    state.role = null;
+    applyRole();
+    applyAccountChrome();
+    workspace.resetWorkspace();
+    $('#access-dialog')?.close();
+    $('#password-dialog')?.close();
+    $('#mfa-dialog')?.close();
+    showGate();
+    gateError('Your session expired. Sign in again.');
+  });
 
   $$('[data-demo-key]').forEach((button) => {
     button.addEventListener('click', async () => {
@@ -280,16 +364,21 @@ async function connect(key, { fromGate = false, announce = false } = {}) {
     return false;
   }
   const previousKey = state.key;
+  const previousSession = state.session;
+  const previousAccount = state.account;
+  if (previousSession) setSession('', null);
   state.key = trimmed;
   try {
-    const { role } = await api('/me');
+    const { role, account } = await api('/me');
     state.role = role;
+    if (account) updateAccount(account);
     try {
       sessionStorage.setItem('atlasio-key', trimmed);
     } catch (error) {
       /* Session storage is optional. */
     }
     applyRole();
+    applyAccountChrome();
     hideGate();
     gateError('');
     workspace.resetWorkspace();
@@ -299,6 +388,7 @@ async function connect(key, { fromGate = false, announce = false } = {}) {
     return true;
   } catch (error) {
     state.key = previousKey;
+    if (previousSession) setSession(previousSession, previousAccount);
     if (fromGate) {
       if (error.status === 401 && !previousKey) {
         state.key = '';
@@ -318,6 +408,318 @@ async function connect(key, { fromGate = false, announce = false } = {}) {
       toast(error.message, 'error');
     }
     return false;
+  }
+}
+
+async function restoreSession() {
+  try {
+    const { role, account } = await api('/me');
+    state.role = role;
+    if (account) updateAccount(account);
+    applyRole();
+    applyAccountChrome();
+    hideGate();
+    workspace.resetWorkspace();
+    await loadCore();
+    await applyRoute();
+    if (state.account?.must_change_password) {
+      openPasswordDialog({ forced: true });
+      toast('This account still uses its initial password. Set your own to unlock administrative changes.', 'info', { timeout: 8000 });
+    } else if (state.account?.must_enroll_mfa) {
+      openMfaDialog();
+      toast('Multi-factor authentication is required. Add an authenticator to unlock administrative changes.', 'info', { timeout: 8000 });
+    }
+    return true;
+  } catch (error) {
+    state.role = null;
+    applyRole();
+    applyAccountChrome();
+    showGate();
+    gateError(error.status === 401 ? 'Your session expired. Sign in again.' : error.message);
+    return false;
+  }
+}
+
+async function signInStaff(username, password, code = '') {
+  gateError('');
+  const submit = $('#staff-form button[type="submit"]');
+  setButtonBusy(submit, true, 'Signing in…');
+  try {
+    const result = await login(username, password, code);
+    // A staff session replaces any access key held in this tab.
+    state.key = '';
+    try {
+      sessionStorage.removeItem('atlasio-key');
+    } catch (error) {
+      /* ignore */
+    }
+    state.role = result.account.role;
+    applyRole();
+    applyAccountChrome();
+    hideGate();
+    gateError('');
+    const codeField = $('#staff-code');
+    if (codeField) {
+      codeField.hidden = true;
+      codeField.value = '';
+    }
+    $('#staff-form')?.reset();
+    workspace.resetWorkspace();
+    await loadCore();
+    await applyRoute();
+    if (result.account.must_change_password) {
+      openPasswordDialog({ forced: true });
+      toast('Set your own password to unlock administrative changes.', 'info', { timeout: 8000 });
+    } else if (result.account.must_enroll_mfa) {
+      openMfaDialog();
+      toast('Multi-factor authentication is required. Add an authenticator to unlock administrative changes.', 'info', { timeout: 8000 });
+    } else {
+      toast(`Signed in as ${result.account.username}.`, 'success');
+    }
+    return true;
+  } catch (error) {
+    if (error.status === 428) {
+      const field = $('#staff-code');
+      if (field) {
+        field.hidden = false;
+        field.focus();
+      }
+      gateError('Enter the 6-digit authenticator code, or one of your recovery codes.');
+      return false;
+    }
+    showGate();
+    gateError(
+      error.status === 401
+        ? code
+          ? 'That authenticator or recovery code was not accepted.'
+          : 'Incorrect username or password.'
+        : error.message || 'Sign-in failed. Try again.',
+    );
+    return false;
+  } finally {
+    setButtonBusy(submit, false);
+  }
+}
+
+function openPasswordDialog({ forced = false } = {}) {
+  if (!state.session) return;
+  const lede = $('#password-lede');
+  if (lede) {
+    lede.textContent = forced
+      ? 'This account still uses its initial password. Choose your own password now to unlock administrative changes. Other signed-in sessions will be revoked.'
+      : 'Choose a new password for this account. Other signed-in sessions will be revoked.';
+  }
+  const form = $('#password-form');
+  form?.reset();
+  const error = $('#password-error');
+  if (error) {
+    error.hidden = true;
+    error.textContent = '';
+  }
+  const dialog = $('#password-dialog');
+  if (dialog && !dialog.open) dialog.showModal();
+  $('#password-current')?.focus();
+}
+
+async function submitPassword(event) {
+  event.preventDefault();
+  const current = $('#password-current')?.value || '';
+  const next = $('#password-new')?.value || '';
+  const repeat = $('#password-repeat')?.value || '';
+  const error = $('#password-error');
+  const fail = (message) => {
+    if (error) {
+      error.textContent = message;
+      error.hidden = false;
+    }
+  };
+  if (error) error.hidden = true;
+  if (next !== repeat) {
+    fail('The new passwords do not match.');
+    return;
+  }
+  if (next.length < 12) {
+    fail('Use at least 12 characters.');
+    return;
+  }
+  const submit = $('#password-submit');
+  setButtonBusy(submit, true, 'Saving…');
+  try {
+    await changePassword(current, next);
+    applyAccountChrome();
+    $('#password-dialog')?.close();
+    toast('Password changed. Administrative changes are unlocked.', 'success');
+  } catch (failure) {
+    fail(failure.message || 'The password could not be changed.');
+  } finally {
+    setButtonBusy(submit, false);
+  }
+}
+
+function applyAccountChrome() {
+  const passwordPending = Boolean(state.session && state.account?.must_change_password);
+  const mfaPending = Boolean(state.session && state.account?.must_enroll_mfa);
+  const pending = passwordPending || mfaPending;
+  const banner = $('#security-banner');
+  if (banner) banner.hidden = !pending;
+  const title = $('#security-banner-title');
+  const text = $('#security-banner-text');
+  const action = $('#security-banner-action');
+  if (passwordPending) {
+    if (title) title.textContent = 'Initial password still in use.';
+    if (text) text.textContent = 'Set your own password to unlock administrative changes.';
+    if (action) action.textContent = 'Change password';
+  } else if (mfaPending) {
+    if (title) title.textContent = 'Multi-factor authentication is required.';
+    if (text) text.textContent = 'Add an authenticator app to unlock administrative changes.';
+    if (action) action.textContent = 'Set up MFA';
+  }
+  document.body.classList.toggle('has-security-banner', pending);
+}
+
+function showMfaStep(step) {
+  for (const name of ['password', 'enroll', 'done', 'disable']) {
+    const node = $(`#mfa-step-${name}`);
+    if (node) node.hidden = name !== step;
+  }
+}
+
+function clearMfaErrors() {
+  for (const id of ['#mfa-error', '#mfa-enroll-error', '#mfa-done-error', '#mfa-disable-error']) {
+    const node = $(id);
+    if (node) {
+      node.hidden = true;
+      node.textContent = '';
+    }
+  }
+}
+
+function openMfaDialog() {
+  if (!state.session) return;
+  clearMfaErrors();
+  const form = $('#mfa-current');
+  if (form) form.value = '';
+  const disablePassword = $('#mfa-disable-password');
+  if (disablePassword) disablePassword.value = '';
+  const disableCode = $('#mfa-disable-code');
+  if (disableCode) disableCode.value = '';
+  const code = $('#mfa-code');
+  if (code) code.value = '';
+  const title = $('#mfa-title');
+  if (state.account?.mfa_enabled) {
+    if (title) title.textContent = 'Authenticator enabled';
+    showMfaStep('disable');
+    disablePassword?.focus();
+  } else {
+    if (title) title.textContent = 'Add an authenticator';
+    showMfaStep('password');
+    form?.focus();
+  }
+  const dialog = $('#mfa-dialog');
+  if (dialog && !dialog.open) dialog.showModal();
+}
+
+async function startEnrollment() {
+  const password = $('#mfa-current')?.value || '';
+  const error = $('#mfa-error');
+  if (error) error.hidden = true;
+  if (!password) {
+    if (error) {
+      error.textContent = 'Enter your current password.';
+      error.hidden = false;
+    }
+    return;
+  }
+  const button = $('#mfa-start');
+  setButtonBusy(button, true, 'Preparing…');
+  try {
+    const result = await startMfa(password);
+    const secret = $('#mfa-secret');
+    if (secret) secret.textContent = result.secret;
+    const host = $('#mfa-qr');
+    if (host) {
+      host.replaceChildren();
+      const parsed = new DOMParser().parseFromString(result.qr_svg, 'image/svg+xml');
+      const svg = parsed.documentElement;
+      if (svg && svg.nodeName.toLowerCase() === 'svg') host.append(document.importNode(svg, true));
+    }
+    showMfaStep('enroll');
+    $('#mfa-code')?.focus();
+  } catch (failure) {
+    if (error) {
+      error.textContent = failure.message || 'The authenticator setup could not start.';
+      error.hidden = false;
+    }
+  } finally {
+    setButtonBusy(button, false);
+  }
+}
+
+async function confirmEnrollment() {
+  const code = $('#mfa-code')?.value.trim() || '';
+  const error = $('#mfa-enroll-error');
+  if (error) error.hidden = true;
+  if (!code) {
+    if (error) {
+      error.textContent = 'Enter the code from your authenticator app.';
+      error.hidden = false;
+    }
+    return;
+  }
+  const button = $('#mfa-enable');
+  setButtonBusy(button, true, 'Turning on…');
+  try {
+    const result = await enableMfa(code);
+    const list = $('#mfa-recovery');
+    if (list) {
+      list.replaceChildren();
+      for (const value of result.recovery_codes) {
+        const item = document.createElement('li');
+        item.textContent = value;
+        list.append(item);
+      }
+    }
+    showMfaStep('done');
+    const title = $('#mfa-title');
+    if (title) title.textContent = 'Authenticator enabled';
+    applyAccountChrome();
+    toast('MFA is on. Store the recovery codes somewhere safe.', 'success', { timeout: 9000 });
+  } catch (failure) {
+    if (error) {
+      error.textContent = failure.message || 'That code was not accepted.';
+      error.hidden = false;
+    }
+  } finally {
+    setButtonBusy(button, false);
+  }
+}
+
+async function disableEnrollment() {
+  const password = $('#mfa-disable-password')?.value || '';
+  const code = $('#mfa-disable-code')?.value.trim() || '';
+  const error = $('#mfa-disable-error');
+  if (error) error.hidden = true;
+  if (!password) {
+    if (error) {
+      error.textContent = 'Enter your current password.';
+      error.hidden = false;
+    }
+    return;
+  }
+  const button = $('#mfa-disable');
+  setButtonBusy(button, true, 'Turning off…');
+  try {
+    await disableMfa(password, code);
+    $('#mfa-dialog')?.close();
+    applyAccountChrome();
+    toast('MFA is off for this account. Sessions other than this one were signed out.', 'success');
+  } catch (failure) {
+    if (error) {
+      error.textContent = failure.message || 'MFA could not be turned off.';
+      error.hidden = false;
+    }
+  } finally {
+    setButtonBusy(button, false);
   }
 }
 
@@ -364,6 +766,7 @@ function applyRole() {
   const reviewTab = $('[data-tab="review"]');
   if (ingestTab) ingestTab.hidden = state.role !== 'importer';
   if (reviewTab) reviewTab.hidden = state.role !== 'reviewer';
+  applyAccountChrome();
 }
 
 function navigate(path, { replace = false } = {}) {
@@ -543,7 +946,16 @@ function gateError(message) {
   node.hidden = !message;
 }
 
-function disconnect() {
+async function disconnect() {
+  const wasStaff = Boolean(state.session);
+  if (wasStaff) {
+    try {
+      await logout();
+    } catch (error) {
+      /* Signing out locally is enough if the server is unreachable. */
+    }
+  }
+  setSession('', null);
   state.key = '';
   state.role = null;
   try {
@@ -552,12 +964,14 @@ function disconnect() {
     /* ignore */
   }
   applyRole();
+  applyAccountChrome();
   workspace.resetWorkspace();
   $('#view-admin').hidden = true;
   $('#access-dialog')?.close();
+  $('#password-dialog')?.close();
   showGate();
   gateError('');
-  toast('Disconnected from the workspace.', 'info');
+  toast(wasStaff ? 'Signed out.' : 'Disconnected from the workspace.', 'info');
 }
 
 async function refreshData() {

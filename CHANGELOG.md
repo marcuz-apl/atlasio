@@ -4,6 +4,15 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.21 — 2026-11-12
+Build: v0.1.21+2611128
+Type: feat
+- Replace shared Administrator and Data Manager access keys with username/password accounts seeded once from the environment, hashed with Argon2id.
+- Require the initial password to be changed at first sign-in; a persistent banner blocks privileged changes until it is, and the audit trail records the person who acted.
+- Add opaque twelve-hour sessions with sign-out, a five-attempt lockout, and a gate sign-in form; viewer, importer, and reviewer keys keep working as before.
+- Add optional TOTP MFA with a QR enrolment, one-time recovery codes, and password-confirmed disable; `ATLASIO_MFA_REQUIRED=1` blocks privileged changes until an account enrols.
+- Encrypt authenticator secrets with `ATLASIO_MFA_KEY`, show account and MFA counts in the Admin Panel, and clear MFA on an explicit password reset.
+
 ## 0.1.20 — 2026-11-12
 Build: v0.1.20+2611127
 Type: fix

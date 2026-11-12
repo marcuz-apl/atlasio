@@ -206,6 +206,12 @@
         </div>
       </header>
 
+      <div class="security-banner" id="security-banner" hidden role="alert">
+        <svg aria-hidden="true"><use href="#i-lock" /></svg>
+        <span><strong id="security-banner-title">Initial password still in use.</strong> <span id="security-banner-text">Set your own password to unlock administrative changes.</span></span>
+        <button class="security-banner-action" id="security-banner-action" type="button">Change password</button>
+      </div>
+
       <main id="main">
         <section class="view landing" id="view-landing">
           <div class="page-wrap shell-width">
@@ -337,7 +343,7 @@
                 <div>
                   <p class="eyebrow">ACCESS</p>
                   <h2 id="admin-access-title">Profiles <span class="count-badge" id="admin-profile-count">—</span></h2>
-                  <p class="panel-lede">Administrator and Data Manager keys come from the server environment. Managed profiles cover viewers, importers, and reviewers; custom keys are stored as hashes and shown once.</p>
+                  <p class="panel-lede">Administrator and Data Manager accounts sign in with their own passwords and change the initial one at first use. Managed profiles cover viewers, importers, and reviewers; custom keys are stored as hashes and shown once.</p>
                 </div>
                 <button class="btn btn-secondary btn-small" id="admin-profile-new" type="button">
                   <svg aria-hidden="true"><use href="#i-plus" /></svg>New key
@@ -610,7 +616,7 @@
         </div>
         <p class="eyebrow">GOVERNED SUBSURFACE WORKSPACE</p>
         <h1 id="gate-title">Enter the workspace</h1>
-        <p class="gate-lede">Choose a demo role to explore the catalog, or use an access key. Every view is scoped to what that role may see.</p>
+        <p class="gate-lede">Choose a demo role to explore the catalog, use an access key, or sign in with a staff account. Every view is scoped to what that role may see.</p>
         <div class="gate-roles">
           <button class="gate-role" type="button" data-role="reader" data-demo-key="reader-demo">
             <span class="gate-role-icon"><svg aria-hidden="true"><use href="#i-search" /></svg></span>
@@ -636,6 +642,18 @@
             <button class="btn btn-primary" type="submit">Connect</button>
           </form>
         </details>
+        <form id="staff-form" class="gate-staff">
+          <p class="gate-staff-label">Administrator or Data Manager</p>
+          <div class="gate-staff-row">
+            <label class="sr-only" for="staff-username">Username</label>
+            <input id="staff-username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Username" />
+            <label class="sr-only" for="staff-password">Password</label>
+            <input id="staff-password" type="password" autocomplete="current-password" placeholder="Password" />
+            <label class="sr-only" for="staff-code">Authenticator code</label>
+            <input id="staff-code" inputmode="numeric" autocomplete="one-time-code" placeholder="Code" hidden />
+            <button class="btn btn-primary" type="submit">Sign in</button>
+          </div>
+        </form>
         <p class="gate-error" id="gate-error" role="alert" hidden></p>
         <p class="gate-note">Local demo environment · synthetic fixtures only</p>
         <p class="gate-docs"><a href="#/docs">Read the build notes &amp; decisions</a></p>
@@ -679,14 +697,80 @@
       <p class="eyebrow">ACCESS</p>
       <h2 id="access-title">Workspace access</h2>
       <p class="dialog-lede" id="access-lede">You are connected as a viewer.</p>
+      <p class="dialog-account" id="access-account" hidden></p>
       <form id="access-form" class="dialog-form">
-        <label class="field"><span>Access key</span><input id="access-key" type="password" autocomplete="off" placeholder="Paste an access key" /></label>
+        <label class="field" id="access-key-field"><span>Access key</span><input id="access-key" type="password" autocomplete="off" placeholder="Paste an access key" /></label>
         <div class="dialog-actions">
-          <button class="btn btn-primary" type="submit">Reconnect</button>
+          <button class="btn btn-primary" type="submit" id="access-reconnect">Reconnect</button>
+          <button class="btn btn-ghost" type="button" id="change-password-button" hidden>Change password</button>
+          <button class="btn btn-ghost" type="button" id="mfa-button" hidden>Set up MFA</button>
           <button class="btn btn-ghost" type="button" id="disconnect-button">Disconnect</button>
         </div>
       </form>
       <p class="dialog-note" id="demo-key-note">Demo keys: reader-demo · importer-demo · reviewer-demo</p>
+    </dialog>
+
+    <dialog id="password-dialog" class="dialog password-dialog">
+      <button class="dialog-close icon-btn" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-close" /></svg></button>
+      <p class="eyebrow">ACCOUNT SECURITY</p>
+      <h2>Set a new password</h2>
+      <p class="dialog-lede" id="password-lede">Administrator and Data Manager accounts use their own passwords. Changing the initial password unlocks administrative changes.</p>
+      <form id="password-form" class="dialog-form">
+        <label class="field"><span>Current password</span><input id="password-current" type="password" autocomplete="current-password" required /></label>
+        <label class="field"><span>New password</span><input id="password-new" type="password" autocomplete="new-password" minlength="12" required /></label>
+        <label class="field"><span>Repeat new password</span><input id="password-repeat" type="password" autocomplete="new-password" minlength="12" required /></label>
+        <p class="field-hint">At least 12 characters, and it must not contain the username.</p>
+        <p class="dialog-error" id="password-error" role="alert" hidden></p>
+        <div class="dialog-actions">
+          <button class="btn btn-primary" type="submit" id="password-submit">Save password</button>
+          <button class="btn btn-ghost" type="button" id="password-signout">Sign out</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="mfa-dialog" class="dialog password-dialog">
+      <button class="dialog-close icon-btn" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-close" /></svg></button>
+      <p class="eyebrow">ACCOUNT SECURITY</p>
+      <h2 id="mfa-title">Add an authenticator</h2>
+      <div id="mfa-step-password">
+        <p class="dialog-lede">Confirm your password to begin. The next screen shows a QR code for your authenticator app.</p>
+        <label class="field"><span>Current password</span><input id="mfa-current" type="password" autocomplete="current-password" /></label>
+        <p class="dialog-error" id="mfa-error" role="alert" hidden></p>
+        <div class="dialog-actions">
+          <button class="btn btn-primary" type="button" id="mfa-start">Continue</button>
+          <button class="btn btn-ghost" type="button" data-dialog-close>Cancel</button>
+        </div>
+      </div>
+      <div id="mfa-step-enroll" hidden>
+        <p class="dialog-lede">Scan the code with your authenticator app, then enter the 6-digit code it shows.</p>
+        <div class="mfa-qr" id="mfa-qr"></div>
+        <p class="mfa-secret-line">Or enter this secret: <code id="mfa-secret"></code></p>
+        <label class="field"><span>6-digit code</span><input id="mfa-code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="000000" /></label>
+        <p class="dialog-error" id="mfa-enroll-error" role="alert" hidden></p>
+        <div class="dialog-actions">
+          <button class="btn btn-primary" type="button" id="mfa-enable">Turn on MFA</button>
+          <button class="btn btn-ghost" type="button" data-dialog-close>Cancel</button>
+        </div>
+      </div>
+      <div id="mfa-step-done" hidden>
+        <p class="dialog-lede">MFA is on. Save these recovery codes somewhere safe. Each one signs you in once if you lose the authenticator.</p>
+        <ul class="mfa-recovery" id="mfa-recovery"></ul>
+        <p class="dialog-error" id="mfa-done-error" role="alert" hidden></p>
+        <div class="dialog-actions">
+          <button class="btn btn-secondary" type="button" id="mfa-copy-recovery">Copy codes</button>
+          <button class="btn btn-primary" type="button" data-dialog-close>Done</button>
+        </div>
+      </div>
+      <div id="mfa-step-disable" hidden>
+        <p class="dialog-lede">MFA is on for this account. Confirm your password, and an authenticator code, to turn it off.</p>
+        <label class="field"><span>Current password</span><input id="mfa-disable-password" type="password" autocomplete="current-password" /></label>
+        <label class="field"><span>Authenticator or recovery code</span><input id="mfa-disable-code" autocomplete="one-time-code" /></label>
+        <p class="dialog-error" id="mfa-disable-error" role="alert" hidden></p>
+        <div class="dialog-actions">
+          <button class="btn btn-danger" type="button" id="mfa-disable">Turn off MFA</button>
+          <button class="btn btn-ghost" type="button" data-dialog-close>Cancel</button>
+        </div>
+      </div>
     </dialog>
 
     <dialog id="about-dialog" class="dialog info-dialog">

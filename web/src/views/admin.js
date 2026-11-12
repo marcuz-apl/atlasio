@@ -1,4 +1,4 @@
-import { api } from '../lib/api.js';
+import { api, authHeaders } from '../lib/api.js';
 import { state } from '../lib/state.js';
 import { $, el, icon, toast, copyText, setButtonBusy, emptyState } from '../lib/ui.js';
 import { formatBytes, formatCount, formatDate, formatDateTime, roleLabel } from '../lib/format.js';
@@ -129,6 +129,8 @@ function renderStats() {
     ['Sessions', formatCount(system.database.connections), 'Open connections'],
     ['Originals', formatCount(system.storage.object_count), `${formatBytes(system.storage.object_bytes)} · ${system.storage.mode.toUpperCase()}`],
     ['Profiles', formatCount(system.profiles), 'Managed keys'],
+    ['Accounts', formatCount(system.security?.accounts), `${formatCount(system.security?.accounts_awaiting_password_change)} awaiting password change`],
+    ['MFA', formatCount(system.security?.mfa_enabled), 'Accounts with MFA on'],
   ];
   for (const [label, value, note] of tiles) {
     const tile = el('div', 'admin-stat');
@@ -541,7 +543,7 @@ async function verifyBackup(backup, button) {
 async function downloadBackup(backup) {
   try {
     const response = await fetch(`/api/admin/backups/${backup.id}/download`, {
-      headers: { 'X-Atlasio-Key': state.key },
+      headers: authHeaders(),
     });
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));

@@ -366,6 +366,35 @@
     min-height: 58px;
   }
 
+  .gate-staff-row {
+    flex-wrap: wrap;
+  }
+
+  .gate-staff-row input {
+    flex: 1 1 100%;
+  }
+
+  .gate-staff-row .btn {
+    flex: 1;
+  }
+
+  .security-banner {
+    flex-wrap: wrap;
+    padding-block: 10px;
+  }
+
+  .security-banner span {
+    flex-basis: calc(100% - 26px);
+  }
+
+  .security-banner-action {
+    margin-left: 26px;
+  }
+
+  .mfa-recovery {
+    grid-template-columns: 1fr;
+  }
+
   .workspace-map {
     height: 380px;
   }
