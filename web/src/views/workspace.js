@@ -273,10 +273,13 @@ function exportMap() {
 
 function toggleFullscreen() {
   if (document.fullscreenElement) {
-    document.exitFullscreen?.();
+    document.exitFullscreen?.().catch(() => {});
     return;
   }
-  $('#explore-stage')?.requestFullscreen?.();
+  const stage = $('#explore-stage');
+  stage?.requestFullscreen?.().catch(() => {
+    toast('Full screen is not available in this browser.', 'info');
+  });
 }
 
 function updateRailZoom() {
@@ -392,8 +395,7 @@ export async function showTab(tab) {
     if (!catalogLoaded) await loadCatalog(catalogQuery);
     else renderCatalog();
   } else if (tab === 'records') {
-    if (!recordsLoaded) await loadRecords(recordsQuery);
-    else renderRecords();
+    await loadRecords(recordsQuery);
   }
 }
 
