@@ -101,7 +101,7 @@ The signed-in landing page is a dashboard paired with a map scoped to an explici
 **D-03** Offer clear layer control, legend, scale, coordinate display, and CRS-aware readout. Signal approximate or unresolved locations visually.  
 **D-04** Provide a record detail view that is useful without a map: metadata, versions, files, related records, QC, lineage, and actions allowed for the user's role.  
 **D-05** Permit export/download only when the user's access rights and the source data's license allow it.  
-**D-06** Provide an in-app reference page at `#/docs` recording architecture, domain invariants, catalog taxonomy, interface decisions, release history, decision records, references, and glossary. It must be readable without a workspace key and linked from the application header.
+**D-06** Provide a signed-in user guide at `#/docs` for viewers, importers, and reviewers covering roles, the dashboard, map inspection, search, ingest, review, and account security. Move the builder reference material — architecture, invariants, release history, decision records, references, and glossary — to `#/admin/docs`, limited to Administrators and Data Managers and linked from the Administration panel. The sign-in gate links to neither guide; the header Docs link appears after sign-in.
 
 ### 6.6 Security and deployment
 

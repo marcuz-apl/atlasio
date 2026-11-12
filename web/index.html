@@ -199,7 +199,7 @@
               </div>
             </div>
             <a class="docs-link" id="admin-link" href="#/admin" data-nav="admin" hidden>Admin</a>
-            <a class="docs-link" href="#/docs" data-nav="docs">Docs</a>
+            <a class="docs-link" href="#/docs" data-nav="docs" hidden>Docs</a>
             <button class="theme-toggle" id="theme-toggle" type="button" data-mode="auto" aria-label="Color theme: automatic, light now. Switch to light." title="Automatic — light now · click for light only">
               <svg class="theme-glyph" data-glyph="auto" viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="12" cy="12" r="8.25" fill="none" stroke="currentColor" stroke-width="1.6" />
@@ -297,13 +297,14 @@
         <section class="view docs" id="view-docs" hidden>
           <div class="page-wrap shell-width docs-page">
             <header class="docs-hero">
-              <p class="eyebrow"><span class="rule"></span>ATLASIO <span class="slash">/</span> REFERENCE</p>
-              <h1>Build notes &amp; decisions</h1>
-              <p class="lede">How Atlasio is put together, what we chose not to compromise, and the evidence a future owner needs to extend it safely.</p>
+              <a class="docs-back" id="docs-back-admin" href="#/admin" hidden>← Administration</a>
+              <p class="eyebrow" id="docs-eyebrow"><span class="rule"></span>ATLASIO <span class="slash">/</span> REFERENCE</p>
+              <h1 id="docs-title">Build notes &amp; decisions</h1>
+              <p class="lede" id="docs-lede">How Atlasio is put together, what we chose not to compromise, and the evidence a future owner needs to extend it safely.</p>
               <dl class="docs-meta">
-                <div><dt>Audience</dt><dd>Clients, data managers, geoscientists, engineers</dd></div>
-                <div><dt>Scope</dt><dd>Release 1 · through v0.1.20</dd></div>
-                <div><dt>Evidence</dt><dd>PRD, decision records, schema, release history</dd></div>
+                <div><dt>Audience</dt><dd id="docs-audience">Clients, data managers, geoscientists, engineers</dd></div>
+                <div><dt>Scope</dt><dd id="docs-scope">Release 1</dd></div>
+                <div><dt>Evidence</dt><dd id="docs-evidence">PRD, decision records, schema, release history</dd></div>
               </dl>
             </header>
             <div class="docs-layout">
@@ -329,6 +330,9 @@
                 <p class="admin-scope" id="admin-scope" hidden></p>
               </div>
               <div class="admin-actions">
+                <a class="btn btn-secondary" id="admin-build-notes" href="#/admin/docs">
+                  <svg aria-hidden="true"><use href="#i-doc" /></svg>Build notes
+                </a>
                 <button class="btn btn-secondary" id="admin-refresh" type="button">
                   <svg aria-hidden="true"><use href="#i-refresh" /></svg>Refresh
                 </button>
@@ -673,7 +677,6 @@
         </form>
         <p class="gate-error" id="gate-error" role="alert" hidden></p>
         <p class="gate-note">Local demo environment · synthetic fixtures only</p>
-        <p class="gate-docs"><a href="#/docs">Read the build notes &amp; decisions</a></p>
       </div>
       <div class="gate-foot">Atlasio · an Alfazen platform</div>
     </section>

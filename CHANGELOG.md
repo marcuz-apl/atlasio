@@ -4,6 +4,13 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.24 — 2026-11-12
+Build: v0.1.24+261112b
+Type: feat
+- Split the reference page by audience. Signed-in viewers, importers, and reviewers now get a user guide at `#/docs` covering roles, dashboard, map inspection, search, ingest, review, and account security.
+- Move the build notes and decision records to `#/admin/docs`, linked from the Administration panel and limited to Administrators and Data Managers.
+- Show the header Docs link after sign-in only, remove the build-notes link from the sign-in gate, and add a back link from the build notes to Administration.
+
 ## 0.1.23 — 2026-11-12
 Build: v0.1.23+261112a
 Type: fix

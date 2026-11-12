@@ -11,7 +11,7 @@ import { roleLabel } from './lib/format.js';
 import * as dashboard from './views/dashboard.js';
 import * as workspace from './views/workspace.js';
 import * as admin from './views/admin.js';
-import { initDocs } from './views/docs.js';
+import { initDocs, renderDocs } from './views/docs.js';
 import { initIngest, loadQueue as loadIngestQueue } from './views/ingest.js';
 import { initReview, loadReview as loadReviewQueue } from './views/review.js';
 
@@ -42,8 +42,6 @@ if (!location.hash) {
 
 if (state.session) {
   void restoreSession();
-} else if (isDocsRoute()) {
-  applyRoute().catch((error) => toast(error.message, 'error'));
 } else if (state.key) {
   connect(state.key, { fromGate: true, announce: false });
 } else {
@@ -57,10 +55,6 @@ function initModules() {
   initDocs();
   initIngest();
   initReview({ onMutation: refreshData });
-}
-
-function isDocsRoute() {
-  return parseRoute().view === 'docs';
 }
 
 function initTheme() {
@@ -843,6 +837,8 @@ function applyRole() {
   }
   const adminLink = $('#admin-link');
   if (adminLink) adminLink.hidden = !admin.isAdminRole();
+  const docsLink = $('.docs-link[data-nav="docs"]');
+  if (docsLink) docsLink.hidden = !state.role;
   const lede = $('#workspace-lede');
   if (lede) {
     lede.textContent = {
@@ -899,7 +895,11 @@ function parseRoute() {
     return { view: 'docs', tab: 'explore', well: null };
   }
   if (segments[0] === 'admin') {
-    return { view: 'admin', tab: 'explore', well: null };
+    return {
+      view: segments[1] === 'docs' ? 'admin-docs' : 'admin',
+      tab: 'explore',
+      well: null,
+    };
   }
   return { view: 'landing', tab: 'explore', well: null };
 }
@@ -907,17 +907,26 @@ function parseRoute() {
 async function applyRoute() {
   const route = parseRoute();
 
-  // Reference material stays readable without a workspace key.
-  if (route.view === 'docs') {
-    showDocs();
-    return;
-  }
-
   if (!state.role) {
     showGate();
     return;
   }
   hideGate();
+
+  if (route.view === 'docs') {
+    showDocs('user');
+    return;
+  }
+
+  if (route.view === 'admin-docs') {
+    if (!admin.isAdminRole()) {
+      toast('Build notes are available to Administrators and Data Managers.', 'error');
+      navigate('#/docs', { replace: true });
+      return;
+    }
+    showDocs('build');
+    return;
+  }
 
   if (route.view === 'admin') {
     if (!admin.isAdminRole()) {
@@ -989,19 +998,20 @@ function showWorkspaceView(tab) {
   if (window.scrollY > 0) window.scrollTo({ top: 0, behavior: 'auto' });
 }
 
-function showDocs() {
+function showDocs(kind = 'user') {
   const landing = $('#view-landing');
   const workspaceView = $('#view-workspace');
   const docsView = $('#view-docs');
   const adminView = $('#view-admin');
+  renderDocs(kind);
   if (landing) landing.hidden = true;
   if (workspaceView) workspaceView.hidden = true;
   if (docsView) docsView.hidden = false;
   if (adminView) adminView.hidden = true;
   hideGate();
   dashboard.hidePreview();
-  setNav('docs');
-  document.title = 'Atlasio · Build notes & decisions';
+  setNav(kind === 'build' ? 'admin' : 'docs');
+  document.title = kind === 'build' ? 'Atlasio · Build notes & decisions' : 'Atlasio · User guide';
   if (window.scrollY > 0) window.scrollTo({ top: 0, behavior: 'auto' });
 }
 
