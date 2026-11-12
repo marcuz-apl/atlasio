@@ -4,7 +4,7 @@ export const DOCS_HTML = `
   <h2>Why this page exists</h2>
   <p>Atlasio is built around choices that are easy to lose: why coordinates are stored the way they are, why a published version never changes, why a category shows a dash instead of a zero, and why the catalog is grouped into six domains. This page keeps those choices beside the product so a client, reviewer, or future maintainer can understand the reasoning without reconstructing it from commits or conversations.</p>
   <p>Read it in three ways. The <a href="#/docs" data-doc-link="docs-invariants">invariants</a> are the rules we do not break. The <a href="#/docs" data-doc-link="docs-decisions">decision log</a> records what we chose, when, and what it costs. The <a href="#/docs" data-doc-link="docs-glossary">glossary</a> fixes the vocabulary used by the interface and the API.</p>
-  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.20. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
+  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.21. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
 </section>
 
 <section class="docs-section" id="docs-architecture" data-doc-section>
@@ -144,7 +144,9 @@ export const DOCS_HTML = `
     <li><strong>Fixtures are labeled.</strong> Tests use synthetic or explicitly licensed material, including a second-country fixture. Licensed customer data stays out of the repository.</li>
   </ul>
   <h3>Managed access and recovery</h3>
-  <p>Administrator and Data Manager keys bootstrap from the server environment. Viewer, importer, and reviewer profiles are records in PostgreSQL: demo keys are visible so the pilot gate can hand them out, while custom keys are stored as SHA-256 hashes and shown once at creation or rotation. Revoking a profile stops it on the next request; rotating a demo key updates the public sign-in gate without a rebuild.</p>
+  <p>Administrator and Data Manager accounts sign in with usernames and passwords. The initial password is seeded once from the server environment; later environment changes are ignored until an operator sets <code>ATLASIO_RESET_PASSWORDS=1</code>, which reissues it and clears MFA. The account must change the initial password at first sign-in, and a persistent banner blocks privileged changes until it does. Sessions are opaque bearer tokens, last twelve hours, and are revoked on sign-out; five failed attempts lock an account for five minutes.</p>
+  <p>Viewer, importer, and reviewer profiles remain records in PostgreSQL: demo keys are visible so the pilot gate can hand them out, while custom keys are stored as SHA-256 hashes and shown once at creation or rotation. Revoking a profile stops it on the next request; rotating a demo key updates the public sign-in gate without a rebuild. Shared administrator and data-manager keys are no longer honoured.</p>
+  <p>MFA is optional per staff account. Enrolment shows a TOTP QR code, confirms a six-digit code, and returns one-time recovery codes. Secrets are encrypted with <code>ATLASIO_MFA_KEY</code>; sign-in then requires the authenticator or a recovery code. Setting <code>ATLASIO_MFA_REQUIRED=1</code> requires enrolment before privileged changes. Changing a password or disabling MFA revokes the account's other sessions.</p>
   <p>The <code>#/admin</code> panel is linked in the header only for those two roles. Data Managers manage profiles and run, download, and verify backups. Restoring or deleting a backup is reserved for Administrators. A restore requires typing <code>RESTORE &lt;backup id&gt;</code>, takes a fresh pre-restore backup first, verifies the archive checksum, and pauses every non-admin session until it finishes. Verification restores the archive into a scratch database and compares record counts, which catches a truncated or mismatched dump before anyone relies on it.</p>
   <p>With local object storage, original files are copied into the backup archive. With S3, the archive holds the database dump only, so an operator must take a provider snapshot or bucket copy alongside it. A failed restore deliberately leaves maintenance on; the pre-restore backup is the recovery path, and the failure is recorded in the audit trail.</p>
   <p>The panel also renders the product's change log from the repository <code>CHANGELOG.md</code>, newest first, with version, release date, build identifier, change type, commit, and the user-visible changes. The server reads the file on request, so a deployment can update its build history without rebuilding the client. Each entry is added in the same commit that bumps <code>VERSION</code>; the published table below stays a shorter client-facing summary.</p>
@@ -171,6 +173,7 @@ export const DOCS_HTML = `
         <tr><td>0.1.18</td><td>Backup adapter honours the configured database, so verification and restore compare the same dataset.</td></tr>
         <tr><td>0.1.19</td><td>Admin change log records every released build from the repository change log.</td></tr>
         <tr><td>0.1.20</td><td>Header tagline states the product promise: governed subsurface data, in place.</td></tr>
+        <tr><td>0.1.21</td><td>Staff accounts sign in with seeded passwords and forced first change; optional TOTP MFA with recovery codes and a required-MFA deployment switch.</td></tr>
       </tbody>
     </table>
   </div>
@@ -275,7 +278,7 @@ export const DOCS_HTML = `
     <h3>Administration is a role, and recovery is a ceremony</h3>
     <dl>
       <dt>Context</dt><dd>Demo keys lived only in server configuration, access profiles could not be managed in the product, and a database restore had no guided path. PostgreSQL is an enterprise system of record, but recovery steps should not be improvised during an incident.</dd>
-      <dt>Decision</dt><dd>Add an <code>#/admin</code> panel for Administrators and Data Managers. Environment keys bootstrap the two operational roles; viewer, importer, and reviewer profiles live in PostgreSQL, with custom keys stored as SHA-256 hashes and shown once. A backup is a custom-format dump plus a manifest with checksum, record counts, and object summary; local originals are copied into the archive. Restore requires an Administrator, a typed confirmation, a fresh pre-restore backup, checksum verification, and maintenance mode that pauses non-admin sessions.</dd>
+      <dt>Decision</dt><dd>Add an <code>#/admin</code> panel for Administrators and Data Managers. Seeded staff accounts hold the two operational roles; viewer, importer, and reviewer profiles live in PostgreSQL, with custom keys stored as SHA-256 hashes and shown once. A backup is a custom-format dump plus a manifest with checksum, record counts, and object summary; local originals are copied into the archive. Restore requires an Administrator, a typed confirmation, a fresh pre-restore backup, checksum verification, and maintenance mode that pauses non-admin sessions.</dd>
       <dt>Why</dt><dd>Access changes and recovery become visible, auditable operations rather than shell history. Data Managers can run routine work; only an Administrator can replace the database.</dd>
       <dt>Trade-off</dt><dd>Custom keys are hashed without a salt because they are machine-generated with 256 bits of entropy; losing one means rotating it. S3 deployments must pair the database archive with a provider snapshot. A failed restore leaves maintenance on deliberately so the pre-restore backup stays the recovery path.</dd>
     </dl>
@@ -290,10 +293,17 @@ export const DOCS_HTML = `
       <dt>Why</dt><dd>The build history travels with the deployment, stays readable in code review, and can be corrected without a server rebuild or client release.</dd>
       <dt>Trade-off</dt><dd>A second release record beside the public docs table. The file must be updated in the same commit as the version bump, or the panel goes stale; the docs table stays the short client-facing summary while the change log is the detailed build record.</dd>
     </dl>
+  <article class="decision">
+    <div class="decision-head"><span class="decision-id">D-0011</span><span class="decision-tag">Accepted</span><span class="decision-tag">v0.1.21</span></div>
+    <h3>Staff identity is an account, not a shared key</h3>
+    <dl>
+      <dt>Context</dt><dd>Administrator and Data Manager access came from environment keys shared by everyone in the role. There was no per-person audit identity, no forced rotation, and no second factor.</dd>
+      <dt>Decision</dt><dd>Seed one account per operational role from <code>ATLASIO_ADMIN_USERNAME</code>/<code>ATLASIO_ADMIN_INITIAL_PASSWORD</code> and the Data Manager equivalents. Argon2id hashes protect passwords; the initial password must be changed at first sign-in and privileged changes stay blocked until it is. Sessions are opaque random tokens stored as SHA-256 hashes with a twelve-hour lifetime. MFA is optional TOTP, encrypted at rest with <code>ATLASIO_MFA_KEY</code>, with eight one-time recovery codes; <code>ATLASIO_MFA_REQUIRED=1</code> blocks privileged changes until enrolment. Viewer, importer, and reviewer access keys remain unchanged.</dd>
+      <dt>Why</dt><dd>Administrative actions now carry a person's username in the audit trail, a leaked key cannot be replayed indefinitely, and a deployment can require a second factor without changing the import or review workflows.</dd>
+      <dt>Trade-off</dt><dd>Operators must keep the reset flag in mind: the environment password seeds an account once, and reissuing it is an explicit action that clears MFA and sessions. Recovery codes are shown once. Account management beyond the seeded pair is still a roadmap item.</dd>
+    </dl>
   </article>
 </section>
-
-<section class="docs-section" id="docs-references" data-doc-section>
   <p class="docs-eyebrow">12 / References</p>
   <h2>Standards and prior art</h2>
   <p>These sources inform vocabulary and expectations. They are not Release 1 dependencies or endorsements; formats are adopted only when a concrete workflow needs them.</p>

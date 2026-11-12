@@ -1,7 +1,4 @@
-use std::{
-    path::Path as FsPath,
-    str::FromStr,
-};
+use std::{path::Path as FsPath, str::FromStr};
 
 use axum::{
     Json,
@@ -22,7 +19,7 @@ use tokio::io::AsyncReadExt;
 use tokio_util::io::ReaderStream;
 use uuid::Uuid;
 
-use super::{ApiError, ApiResult, AppState, key_hash, migrate, role};
+use super::{ApiError, ApiResult, AppState, auth, key_hash, migrate, record_audit, role};
 
 const BACKUP_MANIFEST: &str = "manifest.json";
 const BACKUP_DUMP: &str = "atlasio.dump";
@@ -94,10 +91,9 @@ pub(crate) async fn status(State(state): State<AppState>, headers: HeaderMap) ->
     let version: String = sqlx::query_scalar("SELECT version()")
         .fetch_one(&state.db)
         .await?;
-    let size_bytes: i64 =
-        sqlx::query_scalar("SELECT pg_database_size(current_database())::bigint")
-            .fetch_one(&state.db)
-            .await?;
+    let size_bytes: i64 = sqlx::query_scalar("SELECT pg_database_size(current_database())::bigint")
+        .fetch_one(&state.db)
+        .await?;
     let connections: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database()",
     )
@@ -114,6 +110,18 @@ pub(crate) async fn status(State(state): State<AppState>, headers: HeaderMap) ->
 
     let object_bytes: i64 =
         sqlx::query_scalar("SELECT COALESCE(SUM(size_bytes), 0)::bigint FROM file_assets")
+            .fetch_one(&state.db)
+            .await?;
+
+    let accounts: i64 = sqlx::query_scalar("SELECT count(*) FROM admin_accounts")
+        .fetch_one(&state.db)
+        .await?;
+    let mfa_enabled: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM admin_accounts WHERE mfa_enabled")
+            .fetch_one(&state.db)
+            .await?;
+    let pending_password_change: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM admin_accounts WHERE must_change_password")
             .fetch_one(&state.db)
             .await?;
 
@@ -141,9 +149,10 @@ pub(crate) async fn status(State(state): State<AppState>, headers: HeaderMap) ->
         "profiles": profiles,
         "backup_dir": state.backup_dir.display().to_string(),
         "last_backup": last_backup,
-        "bootstrap": {
-            "admin_key": "environment",
-            "datamgr_key": "environment",
+        "security": {
+            "accounts": accounts,
+            "mfa_enabled": mfa_enabled,
+            "accounts_awaiting_password_change": pending_password_change,
         }
     })))
 }
@@ -186,7 +195,8 @@ pub(crate) async fn create_profile(
     headers: HeaderMap,
     Json(request): Json<CreateProfile>,
 ) -> ApiResult {
-    let who = role(&headers, &state, &["admin", "datamgr"]).await?;
+    let account = auth::require_ready(&headers, &state, &["admin", "datamgr"]).await?;
+    let who = account.username.as_str();
     if !matches!(request.role.as_str(), "reader" | "importer" | "reviewer") {
         return Err(ApiError::new(
             StatusCode::BAD_REQUEST,
@@ -215,7 +225,13 @@ pub(crate) async fn create_profile(
     .bind(who)
     .execute(&state.db)
     .await?;
-    audit_admin(&state, who, "admin.profile.create", json!({ "role": request.role, "label": label })).await?;
+    audit_admin(
+        &state,
+        who,
+        "admin.profile.create",
+        json!({ "role": request.role, "label": label }),
+    )
+    .await?;
     let row = sqlx::query(
         "SELECT id, role, label, kind, demo_key, key_prefix, active, created_at, rotated_at, last_used_at, created_by FROM access_profiles WHERE id = $1",
     )
@@ -237,7 +253,8 @@ pub(crate) async fn update_profile(
     Path(id): Path<Uuid>,
     Json(request): Json<UpdateProfile>,
 ) -> ApiResult {
-    let who = role(&headers, &state, &["admin", "datamgr"]).await?;
+    let account = auth::require_ready(&headers, &state, &["admin", "datamgr"]).await?;
+    let who = account.username.as_str();
     if let Some(label) = request.label.as_ref() {
         if label.trim().is_empty() || label.len() > 80 {
             return Err(ApiError::new(
@@ -264,7 +281,8 @@ pub(crate) async fn rotate_profile(
     headers: HeaderMap,
     Path(id): Path<Uuid>,
 ) -> ApiResult {
-    let who = role(&headers, &state, &["admin", "datamgr"]).await?;
+    let account = auth::require_ready(&headers, &state, &["admin", "datamgr"]).await?;
+    let who = account.username.as_str();
     let existing = sqlx::query("SELECT role, kind FROM access_profiles WHERE id = $1")
         .bind(id)
         .fetch_optional(&state.db)
@@ -307,7 +325,13 @@ pub(crate) async fn rotate_profile(
         (row, key)
     };
 
-    audit_admin(&state, who, "admin.profile.rotate", json!({ "id": id, "kind": kind })).await?;
+    audit_admin(
+        &state,
+        who,
+        "admin.profile.rotate",
+        json!({ "id": id, "kind": kind }),
+    )
+    .await?;
     Ok(Json(json!({ "profile": profile_json(row), "key": key })))
 }
 
@@ -322,11 +346,9 @@ pub(crate) async fn backups(State(state): State<AppState>, headers: HeaderMap) -
     Ok(Json(json!(items)))
 }
 
-pub(crate) async fn create_backup(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-) -> ApiResult {
-    let who = role(&headers, &state, &["admin", "datamgr"]).await?;
+pub(crate) async fn create_backup(State(state): State<AppState>, headers: HeaderMap) -> ApiResult {
+    let account = auth::require_ready(&headers, &state, &["admin", "datamgr"]).await?;
+    let who = account.username.as_str();
     let _guard = state.admin_job.lock().await;
     let manifest = run_backup(&state, who).await?;
     Ok(Json(json!(manifest)))
@@ -337,7 +359,7 @@ pub(crate) async fn download_backup(
     headers: HeaderMap,
     Path(id): Path<String>,
 ) -> Result<Response, ApiError> {
-    role(&headers, &state, &["admin", "datamgr"]).await?;
+    auth::require_ready(&headers, &state, &["admin", "datamgr"]).await?;
     validate_id(&id)?;
     let manifest = read_manifest(&state, &id).await?;
     let path = state.backup_dir.join(&id).join(&manifest.dump.file);
@@ -358,7 +380,8 @@ pub(crate) async fn delete_backup(
     headers: HeaderMap,
     Path(id): Path<String>,
 ) -> ApiResult {
-    let who = role(&headers, &state, &["admin"]).await?;
+    let account = auth::require_ready(&headers, &state, &["admin"]).await?;
+    let who = account.username.as_str();
     validate_id(&id)?;
     // Wait for an in-flight backup, verification, or restore that may be
     // reading this archive.
@@ -379,7 +402,7 @@ pub(crate) async fn verify_backup(
     headers: HeaderMap,
     Path(id): Path<String>,
 ) -> ApiResult {
-    role(&headers, &state, &["admin", "datamgr"]).await?;
+    auth::require_ready(&headers, &state, &["admin", "datamgr"]).await?;
     validate_id(&id)?;
     let _guard = state.admin_job.lock().await;
     let manifest = read_manifest(&state, &id).await?;
@@ -392,7 +415,10 @@ pub(crate) async fn verify_backup(
         ));
     }
 
-    let scratch = format!("atlasio_verify_{}", &Uuid::new_v4().simple().to_string()[..10]);
+    let scratch = format!(
+        "atlasio_verify_{}",
+        &Uuid::new_v4().simple().to_string()[..10]
+    );
     let admin_pool = admin_pool(&state).await?;
     create_database(&admin_pool, &scratch).await?;
     let scratch_url = with_database(&state.db_url, &scratch);
@@ -433,7 +459,8 @@ pub(crate) async fn restore_backup(
     Path(id): Path<String>,
     Json(request): Json<RestoreRequest>,
 ) -> ApiResult {
-    let who = role(&headers, &state, &["admin"]).await?;
+    let account = auth::require_ready(&headers, &state, &["admin"]).await?;
+    let who = account.username.as_str();
     validate_id(&id)?;
     if request.confirm.trim() != format!("RESTORE {id}") {
         return Err(ApiError::new(
@@ -441,10 +468,7 @@ pub(crate) async fn restore_backup(
             &format!("Type RESTORE {id} to confirm"),
         ));
     }
-    if state
-        .maintenance
-        .load(std::sync::atomic::Ordering::Relaxed)
-    {
+    if state.maintenance.load(std::sync::atomic::Ordering::Relaxed) {
         return Err(ApiError::new(
             StatusCode::CONFLICT,
             "A restore or maintenance operation is already in progress",
@@ -486,8 +510,18 @@ pub(crate) async fn restore_backup(
             let destination = object_dir;
             tokio::task::spawn_blocking(move || replace_tree(&source, &destination))
                 .await
-                .map_err(|_| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "Object restore task failed"))?
-                .map_err(|_| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "Could not restore original files"))?;
+                .map_err(|_| {
+                    ApiError::new(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Object restore task failed",
+                    )
+                })?
+                .map_err(|_| {
+                    ApiError::new(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Could not restore original files",
+                    )
+                })?;
             true
         } else {
             false
@@ -644,7 +678,10 @@ fn parse_changelog(content: &str) -> Vec<ChangeEntry> {
         } else if let Some(value) = trimmed.strip_prefix("Commit:") {
             entry.commit = non_empty(value);
             open_bullet = None;
-        } else if let Some(value) = trimmed.strip_prefix("- ").or_else(|| trimmed.strip_prefix("* ")) {
+        } else if let Some(value) = trimmed
+            .strip_prefix("- ")
+            .or_else(|| trimmed.strip_prefix("* "))
+        {
             entry.highlights.push(value.trim().to_string());
             open_bullet = Some(entry.highlights.len() - 1);
         } else if trimmed.starts_with('#') {
@@ -694,7 +731,7 @@ fn non_empty(value: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_changelog, ChangeEntry};
+    use super::{ChangeEntry, parse_changelog};
 
     #[test]
     fn parses_sections_metadata_and_bullets() {
@@ -824,7 +861,10 @@ async fn run_backup(state: &AppState, actor: &str) -> Result<BackupManifest, Api
         let copied = tokio::task::spawn_blocking(move || copy_tree(&object_dir, &destination))
             .await
             .map_err(|_| {
-                ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "Object backup task failed")
+                ApiError::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Object backup task failed",
+                )
             })?
             .map_err(|_| {
                 ApiError::new(
@@ -881,19 +921,23 @@ async fn run_backup(state: &AppState, actor: &str) -> Result<BackupManifest, Api
                 "Could not write the backup manifest",
             )
         })?;
-    audit_admin(state, actor, "admin.backup.create", json!({ "id": id, "objects_copied": manifest.objects.copied })).await?;
+    audit_admin(
+        state,
+        actor,
+        "admin.backup.create",
+        json!({ "id": id, "objects_copied": manifest.objects.copied }),
+    )
+    .await?;
     Ok(manifest)
 }
 
 async fn list_backups(state: &AppState) -> Result<Vec<BackupManifest>, ApiError> {
-    let mut dir = tokio::fs::read_dir(&state.backup_dir)
-        .await
-        .map_err(|_| {
-            ApiError::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Could not read the backup directory",
-            )
-        })?;
+    let mut dir = tokio::fs::read_dir(&state.backup_dir).await.map_err(|_| {
+        ApiError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Could not read the backup directory",
+        )
+    })?;
     let mut items = Vec::new();
     while let Some(entry) = dir.next_entry().await.map_err(|_| {
         ApiError::new(
@@ -901,7 +945,12 @@ async fn list_backups(state: &AppState) -> Result<Vec<BackupManifest>, ApiError>
             "Could not read the backup directory",
         )
     })? {
-        if !entry.file_type().await.map(|kind| kind.is_dir()).unwrap_or(false) {
+        if !entry
+            .file_type()
+            .await
+            .map(|kind| kind.is_dir())
+            .unwrap_or(false)
+        {
             continue;
         }
         if let Ok(manifest) = read_manifest(state, &entry.file_name().to_string_lossy()).await {
@@ -918,8 +967,12 @@ async fn read_manifest(state: &AppState, id: &str) -> Result<BackupManifest, Api
     let content = tokio::fs::read_to_string(&path)
         .await
         .map_err(|_| ApiError::new(StatusCode::NOT_FOUND, "Backup not found"))?;
-    serde_json::from_str(&content)
-        .map_err(|_| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "Backup manifest is invalid"))
+    serde_json::from_str(&content).map_err(|_| {
+        ApiError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Backup manifest is invalid",
+        )
+    })
 }
 
 async fn db_counts(pool: &PgPool) -> Result<DatabaseCounts, ApiError> {
@@ -1029,10 +1082,9 @@ async fn sha256_file(path: &FsPath) -> Result<String, ApiError> {
     let mut hasher = Sha256::new();
     let mut buffer = vec![0_u8; 64 * 1024];
     loop {
-        let read = file
-            .read(&mut buffer)
-            .await
-            .map_err(|_| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "Could not read backup"))?;
+        let read = file.read(&mut buffer).await.map_err(|_| {
+            ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "Could not read backup")
+        })?;
         if read == 0 {
             break;
         }
@@ -1047,23 +1099,15 @@ async fn audit_admin(
     action: &str,
     details: Value,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        "INSERT INTO audit_events (batch_id, actor, action, details) VALUES (NULL, $1, $2, $3)",
-    )
-    .bind(actor)
-    .bind(action)
-    .bind(sqlx::types::Json(details))
-    .execute(&state.db)
-    .await?;
-    Ok(())
+    record_audit(&state.db, actor, action, details).await
 }
 
 fn validate_id(id: &str) -> Result<(), ApiError> {
     if id.is_empty()
         || id.len() > 80
-        || !id
-            .chars()
-            .all(|character| character.is_ascii_alphanumeric() || character == '-' || character == '_')
+        || !id.chars().all(|character| {
+            character.is_ascii_alphanumeric() || character == '-' || character == '_'
+        })
     {
         return Err(ApiError::new(StatusCode::BAD_REQUEST, "Invalid backup id"));
     }
@@ -1071,11 +1115,7 @@ fn validate_id(id: &str) -> Result<(), ApiError> {
 }
 
 fn custom_key() -> String {
-    format!(
-        "atl_{}{}",
-        Uuid::new_v4().simple(),
-        Uuid::new_v4().simple()
-    )
+    format!("atl_{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple())
 }
 
 fn title_role(role: &str) -> &'static str {
