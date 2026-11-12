@@ -2,7 +2,8 @@
   --font-ui: 'Archivo Variable', 'Archivo', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
 
-  --shell-max: 1520px;
+  /* Fluid shell: fill the viewport minus the responsive gutter, with no fixed cap. */
+  --shell-max: 100%;
   --gutter: clamp(18px, 3vw, 52px);
   --header-h: 64px;
   --landing-h: clamp(520px, calc(100dvh - 392px), 760px);
