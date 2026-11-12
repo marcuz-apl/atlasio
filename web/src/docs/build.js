@@ -4,7 +4,7 @@ export const BUILD_DOCS_HTML = `
   <h2>Why this page exists</h2>
   <p>Atlasio is built around choices that are easy to lose: why coordinates are stored the way they are, why a published version never changes, why a category shows a dash instead of a zero, and why the catalog is grouped into six domains. This page keeps those choices beside the product so a client, reviewer, or future maintainer can understand the reasoning without reconstructing it from commits or conversations.</p>
   <p>Read it in three ways. The <a href="#/docs" data-doc-link="docs-invariants">invariants</a> are the rules we do not break. The <a href="#/docs" data-doc-link="docs-decisions">decision log</a> records what we chose, when, and what it costs. The <a href="#/docs" data-doc-link="docs-glossary">glossary</a> fixes the vocabulary used by the interface and the API.</p>
-  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.29. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
+  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.30. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
 </section>
 
 <section class="docs-section" id="docs-architecture" data-doc-section>
@@ -101,21 +101,22 @@ export const BUILD_DOCS_HTML = `
 
 <section class="docs-section" id="docs-catalog" data-doc-section>
   <p class="docs-eyebrow">07 / Catalog</p>
-  <h2>Six domains, twenty-four categories</h2>
+  <h2>Six domains, twenty-five categories</h2>
   <p>The dashboard separates surface and land context from subsurface data, and separates drilling from production. That gives each record type a clear owner and a place for its own lifecycle. Counts come from the API and are scoped to the current role.</p>
   <div class="docs-table-wrap">
     <table class="docs-table">
       <thead><tr><th>Domain</th><th>Categories</th><th>Why it is separate</th></tr></thead>
       <tbody>
         <tr><td>Culture &amp; Lands</td><td>GIS &amp; Basemaps, Concession Maps, Permits &amp; Licenses, Land &amp; Lease Records</td><td>Surface context and land rights carry dates, issuing authorities, and confidentiality rules that documents do not.</td></tr>
-        <tr><td>Well Data</td><td>E&amp;P Projects, Wells, Well Versions, Horizontal Wells, Well Logs, Formation Tops, Well Interpretations</td><td>Registry, content, and interpretations share a well identity and version history.</td></tr>
+        <tr><td>Well Data</td><td>Wells, Well Versions, Core &amp; Sample Records, Horizontal Wells, Well Logs, Formation Tops, Well Interpretations</td><td>Registry, content, and interpretations share a well identity and version history.</td></tr>
         <tr><td>Seismic Data</td><td>Seismic Surveys, 2D Seismic Lines, 3D Seismic Cubes, Seismic Interpretations</td><td>Survey identity, footprint, navigation, volumes, and interpretations follow a different access and storage pattern.</td></tr>
-        <tr><td>Drilling &amp; Completions</td><td>Drilling Records, Completion Records, Workover Records</td><td>Operational records describe what happened at the wellbore and need their own timeline.</td></tr>
+        <tr><td>Drilling &amp; Completions</td><td>Drilling Records, DST Records, Completion Records, Workover Records</td><td>Operational records describe what happened at the wellbore and need their own timeline.</td></tr>
         <tr><td>Production Data</td><td>Production Tests, Production Records, Injection Records</td><td>Time-series volumes and tests have units, allocations, and QC that differ from well headers.</td></tr>
-        <tr><td>Documents &amp; Reports</td><td>Reports, M&amp;A Reports, Original Files</td><td>Narrative and commercial evidence stays linked to the records it supports.</td></tr>
+        <tr><td>Documents &amp; Reports</td><td>Reports, M&amp;A Reports, Source Files</td><td>Narrative and commercial evidence stays linked to the records it supports.</td></tr>
       </tbody>
     </table>
   </div>
+  <p><strong>Wells</strong> counts current wells; <strong>Well Versions</strong> counts every published version, including earlier corrections, so a reissued well raises the version count without adding another well. <strong>Source Files</strong> counts the original uploads preserved behind published packages. DST Records and Core &amp; Sample Records are planned categories and show a dash until their data contract exists.</p>
   <div class="docs-note"><strong>Cataloged is not the same as planned.</strong> An item with data shows a count. An item without data shows a dash and participates in the “planned” legend. It is never rendered as zero, because zero would claim that none exist.</div>
 </section>
 
@@ -182,6 +183,7 @@ export const BUILD_DOCS_HTML = `
         <tr><td>0.1.27</td><td>Staff fields stay read-only until focused, so Chrome cannot restore the previous username or password on the gate.</td></tr>
         <tr><td>0.1.28</td><td>Operator-only <code>atlasio-server reset-mfa &lt;username&gt;</code> clears a lost authenticator, recovery codes, lockout, and sessions without changing the password or restarting the service.</td></tr>
         <tr><td>0.1.29</td><td>GIS &amp; Basemaps leads Culture &amp; Lands; Production Tests leads Production Data.</td></tr>
+        <tr><td>0.1.30</td><td>E&amp;P Projects removed; Source Files replaces Original Files; DST Records and Core &amp; Sample Records join the catalog as planned categories, with a Wells-versus-Versions explanation.</td></tr>
       </tbody>
     </table>
   </div>

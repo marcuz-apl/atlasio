@@ -28,9 +28,9 @@ const groups = [
     title: 'Well Data',
     icon: 'well',
     items: [
-      ['ep_projects', 'E&P Projects'],
       ['wells', 'Wells'],
       ['well_versions', 'Well Versions'],
+      ['core_samples', 'Core & Sample Records'],
       ['horizontal_wells', 'Horizontal Wells'],
       ['logs', 'Well Logs'],
       ['formation_tops', 'Formation Tops'],
@@ -52,6 +52,7 @@ const groups = [
     icon: 'wellhead',
     items: [
       ['drilling_records', 'Drilling Records'],
+      ['dst_records', 'DST Records'],
       ['completion_records', 'Completion Records'],
       ['workover_records', 'Workover Records'],
     ],
@@ -71,7 +72,7 @@ const groups = [
     items: [
       ['reports', 'Reports'],
       ['ma_reports', 'M&A Reports'],
-      ['original_files', 'Original Files'],
+      ['source_files', 'Source Files'],
     ],
   },
 ];
