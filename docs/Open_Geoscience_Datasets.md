@@ -1,6 +1,6 @@
 # Free Public Well, Seismic, and Production Data for Open-Source Software Demos
 
-> **Verified 2026-11-12 for Atlasio.** For the current well-header slice (EPSG:4326, one file up to 5 MiB), use **Sodir FactMaps WGS84 wellbores** (Norway) and **NSTA UKCS top holes WGS84** (United Kingdom). Volve, F3, Teapot Dome, and NLOG are deferred until seismic, LAS, or CRS transformation is implemented. The fetch/load recipe is in [operations/demo-data.md](operations/demo-data.md) and `scripts/fetch-demo-wells.mjs`.
+> **Verified 2026-11-12 for Atlasio.** For the current well-header slice (EPSG:4326, one file up to 5 MiB), use **Sodir FactMaps WGS84 wellbores** (Norway) and **NSTA UKCS top holes WGS84** (United Kingdom). A curated **Volve** subset is now staged under `demo-data/volve/` for raw log, deviation, production, 2D, and 3D file testing, but it is not ingestible by the header-only API yet. F3, Teapot Dome, and NLOG remain deferred until LAS, SEG-Y, or CRS transformation is implemented. The recipes are in [operations/demo-data.md](operations/demo-data.md), `scripts/fetch-demo-wells.mjs`, and `scripts/fetch-demo-volve.mjs`.
 
 
 
@@ -32,7 +32,9 @@ The dataset contains roughly 40,000 files from a real producing North Sea field.
 - Production forecasting
 - Well-to-seismic tie projects
 
-### Not good for offline use due to its residing in Databricks
+### Offline access
+
+The full release is still delivered through Databricks or Azure, but the OSDU open test-data bucket exposes a small, anonymously downloadable Volve subset: `https://s3.amazonaws.com/osdu-seismic-test-data?list-type=2&prefix=volve/`. It includes LAS well logs, trajectories, 2D site-survey lines, a 3D post-stack time cube, horizons, checkshots, and markers. `scripts/fetch-demo-volve.mjs` downloads the well headers from Sodir, the logs, trajectories, Volve field production, five 2D lines, and the 3D time cube into `demo-data/volve/` (48 files, about 422 MiB), with SHA-256 provenance.
 
 ---
 
