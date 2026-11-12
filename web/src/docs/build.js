@@ -4,7 +4,7 @@ export const BUILD_DOCS_HTML = `
   <h2>Why this page exists</h2>
   <p>Atlasio is built around choices that are easy to lose: why coordinates are stored the way they are, why a published version never changes, why a category shows a dash instead of a zero, and why the catalog is grouped into six domains. This page keeps those choices beside the product so a client, reviewer, or future maintainer can understand the reasoning without reconstructing it from commits or conversations.</p>
   <p>Read it in three ways. The <a href="#/docs" data-doc-link="docs-invariants">invariants</a> are the rules we do not break. The <a href="#/docs" data-doc-link="docs-decisions">decision log</a> records what we chose, when, and what it costs. The <a href="#/docs" data-doc-link="docs-glossary">glossary</a> fixes the vocabulary used by the interface and the API.</p>
-  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.36. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
+  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.39. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
 </section>
 
 <section class="docs-section" id="docs-architecture" data-doc-section>
@@ -187,6 +187,9 @@ export const BUILD_DOCS_HTML = `
         <tr><td>0.1.31</td><td>Viewer demo key is <code>viewer-demo</code>; the seeded staff passwords are <code>admin-initial</code> and <code>datamgr-initial</code>.</td></tr>
         <tr><td>0.1.32</td><td>Deviation Surveys replaces Horizontal Wells; orientation is derived from the survey as a well attribute.</td></tr>
         <tr><td>0.1.36</td><td>Explore becomes a full-bleed map beneath the header with a floating toolbar, basemap gallery, live display controls, catalog drawer, quick search, and PNG export; Ingest gains an explicit pick-on-map position helper.</td></tr>
+        <tr><td>0.1.37</td><td>Records refreshes with the active query on every open; a denied full-screen request shows a notice instead of an unhandled error.</td></tr>
+        <tr><td>0.1.38</td><td>The workspace hero title and lede are removed; the mode bar becomes the only head, top-left with a consistent 16px gap below the header in every mode.</td></tr>
+        <tr><td>0.1.39</td><td>In Records, Review, and Ingest the mode bar aligns with the cards' left edge on the content grid; Explore keeps its floating map-edge inset.</td></tr>
       </tbody>
     </table>
   </div>
@@ -370,6 +373,16 @@ export const BUILD_DOCS_HTML = `
       <dt>Decision</dt><dd>Rebuild Explore as a full-bleed MapLibre stage beneath the app header with a floating toolbar, basemap gallery, permanently visible display controls, catalog drawer, quick search, and a coordinate rail. Only the layout language is borrowed: every thematic layer remains Atlasio's governed data. Basemaps are standard public Esri tiles with attribution, and a labeled offline vector map is the automatic fallback.</dd>
       <dt>Why</dt><dd>The map is a discovery and inspection surface for every role, while entry and stewardship stay form-first in Ingest and Review. A map-first Explore makes the product's evidence visible at a glance without depending on another organisation's services or terms.</dd>
       <dt>Trade-off</dt><dd>Online basemaps need external connectivity and Esri's attribution terms; private deployments fall back to the offline vector canvas. The display panel yields space to the record inspector while a record is open.</dd>
+    </dl>
+  </article>
+  <article class="decision">
+    <div class="decision-head"><span class="decision-id">D-0017</span><span class="decision-tag">Accepted</span><span class="decision-tag">v0.1.39</span></div>
+    <h3>The workspace head is a mode bar, not a hero</h3>
+    <dl>
+      <dt>Context</dt><dd>The workspace opened with an eyebrow, title, and lede, and the mode tabs sat at the right of that hero. In Explore the tabs floated at the map's left edge, so switching modes moved the control between corners and the title spent vertical space on a screen meant for work.</dd>
+      <dt>Decision</dt><dd>Remove the workspace hero entirely. The Explore / Records / Ingest / Review bar is the only head, 16px below the app header in every mode. In the list modes its tabs align with the cards' left edge on the content grid; in Explore the bar keeps the floating map-edge inset.</dd>
+      <dt>Why</dt><dd>A workspace is judged by its work surface, not by marketing copy. One stable control position keeps muscle memory, and grid alignment makes the list modes read as a single composed page.</dd>
+      <dt>Trade-off</dt><dd>The horizontal inset differs between Explore (map edge) and the list modes (content gutter), so the bar slides slightly when switching; the vertical offset never changes. Role context lives in the header account chip instead of a workspace badge.</dd>
     </dl>
   </article>
 </section>
