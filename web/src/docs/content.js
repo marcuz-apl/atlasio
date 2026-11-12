@@ -4,7 +4,7 @@ export const DOCS_HTML = `
   <h2>Why this page exists</h2>
   <p>Atlasio is built around choices that are easy to lose: why coordinates are stored the way they are, why a published version never changes, why a category shows a dash instead of a zero, and why the catalog is grouped into six domains. This page keeps those choices beside the product so a client, reviewer, or future maintainer can understand the reasoning without reconstructing it from commits or conversations.</p>
   <p>Read it in three ways. The <a href="#/docs" data-doc-link="docs-invariants">invariants</a> are the rules we do not break. The <a href="#/docs" data-doc-link="docs-decisions">decision log</a> records what we chose, when, and what it costs. The <a href="#/docs" data-doc-link="docs-glossary">glossary</a> fixes the vocabulary used by the interface and the API.</p>
-  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.22. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
+  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.23. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
 </section>
 
 <section class="docs-section" id="docs-architecture" data-doc-section>
@@ -175,6 +175,7 @@ export const DOCS_HTML = `
         <tr><td>0.1.20</td><td>Header tagline states the product promise: governed subsurface data, in place.</td></tr>
         <tr><td>0.1.21</td><td>Staff accounts sign in with seeded passwords and forced first change; optional TOTP MFA with recovery codes and a required-MFA deployment switch.</td></tr>
         <tr><td>0.1.22</td><td>Account menu for profile, password, MFA management, and log out; the Admin Panel change log and audit trail start collapsed.</td></tr>
+        <tr><td>0.1.23</td><td>New passwords need at least 8 characters instead of 12.</td></tr>
       </tbody>
     </table>
   </div>

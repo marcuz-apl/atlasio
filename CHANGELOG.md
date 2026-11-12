@@ -4,6 +4,11 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.23 — 2026-11-12
+Build: v0.1.23+261112a
+Type: fix
+- Lower the new-password minimum from 12 to 8 characters, in both the server rule and the password dialog.
+
 ## 0.1.22 — 2026-11-12
 Build: v0.1.22+2611129
 Type: feat

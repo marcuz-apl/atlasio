@@ -635,8 +635,8 @@ async function submitPassword(event) {
     fail('The new passwords do not match.');
     return;
   }
-  if (next.length < 12) {
-    fail('Use at least 12 characters.');
+  if (next.length < 8) {
+    fail('Use at least 8 characters.');
     return;
   }
   const submit = $('#password-submit');

@@ -21,7 +21,7 @@ use super::{ApiError, ApiResult, AppState, mfa, record_audit, role};
 pub(crate) const SESSION_HEADER: &str = "x-atlasio-session";
 const SESSION_HOURS: i64 = 12;
 const MAX_FAILED_ATTEMPTS: i32 = 5;
-const MIN_PASSWORD_CHARS: usize = 12;
+const MIN_PASSWORD_CHARS: usize = 8;
 const MAX_PASSWORD_CHARS: usize = 128;
 
 #[derive(Debug, Clone)]
@@ -533,6 +533,8 @@ mod tests {
     #[test]
     fn password_length_is_enforced() {
         assert!(check_password_shape("short").is_err());
+        assert!(check_password_shape("1234567").is_err());
+        assert!(check_password_shape("12345678").is_ok());
         assert!(check_password_shape("correct horse battery staple").is_ok());
         assert!(check_password_shape(&"x".repeat(129)).is_err());
     }
