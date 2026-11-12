@@ -9,7 +9,7 @@
   justify-content: flex-start;
   gap: 12px;
   margin-inline: calc(-1 * var(--gutter));
-  padding: 16px 14px 14px;
+  padding: 16px var(--gutter) 14px;
   border-bottom: 1px solid var(--line);
 }
 

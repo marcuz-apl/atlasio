@@ -4,6 +4,11 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.39 — 2026-11-12
+Build: v0.1.39+261112y
+Type: fix
+- In Records, Review, and Ingest the mode control aligns with the cards' left edge on the content grid, while Explore keeps its floating map-edge inset; the vertical gap below the header is unchanged in every mode.
+
 ## 0.1.38 — 2026-11-12
 Build: v0.1.38+261112x
 Type: fix
