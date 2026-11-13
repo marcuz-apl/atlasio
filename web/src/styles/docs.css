@@ -1,6 +1,16 @@
 /* ---------- Reference page ---------- */
 .docs-page {
+  width: 85vw;
+  max-width: 85vw;
+  margin-inline: auto;
   padding-bottom: 8px;
+}
+
+@media (max-width: 760px) {
+  .docs-page {
+    width: 100%;
+    max-width: 100%;
+  }
 }
 
 .docs-hero {
@@ -32,7 +42,8 @@
 }
 
 .docs-hero .lede {
-  max-width: 720px;
+  max-width: 860px;
+  font-size: 16px;
 }
 
 .docs-meta {
@@ -60,7 +71,7 @@
 .docs-meta dd {
   margin: 5px 0 0;
   color: var(--ink-2);
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
@@ -98,7 +109,7 @@
   padding: 6px 0 6px 12px;
   border-left: 1px solid transparent;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.35;
   transition: color 0.14s ease, border-color 0.14s ease;
 }
@@ -123,7 +134,7 @@
 
 .docs-content {
   min-width: 0;
-  max-width: 780px;
+  max-width: none;
 }
 
 .docs-section {
@@ -153,7 +164,7 @@
 .docs-section h2 {
   margin: 0 0 12px;
   color: var(--ink);
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 600;
   letter-spacing: -0.035em;
   line-height: 1.15;
@@ -162,7 +173,7 @@
 .docs-section h3 {
   margin: 20px 0 6px;
   color: var(--ink);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 650;
   letter-spacing: -0.01em;
 }
@@ -170,7 +181,7 @@
 .docs-section p,
 .docs-section li {
   color: var(--ink-2);
-  font-size: 13.5px;
+  font-size: 15px;
   line-height: 1.7;
 }
 
@@ -221,13 +232,13 @@
   background: var(--surface-tint);
   color: var(--ink);
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 13px;
   overflow-wrap: anywhere;
 }
 
 .docs-muted {
   color: var(--muted) !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
 }
 
 .docs-note {
@@ -237,8 +248,8 @@
   border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
   background: var(--surface-tint);
   color: var(--ink-2);
-  font-size: 12.5px;
-  line-height: 1.6;
+  font-size: 14px;
+  line-height: 1.65;
 }
 
 .docs-note strong {
@@ -264,7 +275,7 @@
 .docs-stack-row b {
   color: var(--ink);
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -272,8 +283,8 @@
 
 .docs-stack-row span {
   color: var(--ink-2);
-  font-size: 12.5px;
-  line-height: 1.55;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .docs-numbered,
@@ -370,7 +381,7 @@
   display: block;
   margin-top: 2px;
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: 13.5px;
 }
 
 .docs-badges {
@@ -402,7 +413,7 @@
   width: 100%;
   min-width: 560px;
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: 13.5px;
 }
 
 .docs-table th {
@@ -410,7 +421,7 @@
   border-bottom: 1px solid var(--line-strong);
   color: var(--faint);
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 10.5px;
   font-weight: 500;
   letter-spacing: 0.09em;
   text-align: left;
@@ -472,7 +483,7 @@
 
 .decision h3 {
   margin: 0 0 8px;
-  font-size: 14.5px;
+  font-size: 16px;
 }
 
 .decision dl {
@@ -486,7 +497,7 @@
   padding-top: 2px;
   color: var(--faint);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -494,8 +505,8 @@
 .decision dd {
   margin: 0;
   color: var(--ink-2);
-  font-size: 12.5px;
-  line-height: 1.55;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .decision .docs-muted {
@@ -520,7 +531,7 @@
 
 .docs-refs b {
   display: block;
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 600;
 }
 
