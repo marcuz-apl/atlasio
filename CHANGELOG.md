@@ -4,6 +4,13 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.40 — 2026-11-13
+Build: v0.1.40+261113a
+Type: feat
+- Import-time CRS transformation: native ED50 source positions (EPSG:4230 geographic, EPSG:23031/23032 UTM 31N/32N) are reprojected to WGS 84 for display using the verified EPSG:1311 operation (±1 m); source CRS and coordinates are preserved and the operation and accuracy are recorded on each published version.
+- The importer offers the supported source CRS with CRS-aware axis labels and validation; the record inspector shows the applied operation and display accuracy.
+- Positions outside the verified area of EPSG:1311 and unregistered CRS are blocked at QC instead of being silently transformed.
+
 ## 0.1.39 — 2026-11-12
 Build: v0.1.39+261112y
 Type: fix

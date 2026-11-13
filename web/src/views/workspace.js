@@ -695,6 +695,7 @@ function renderInspector(well) {
     addRow(list, 'Source position', `${version.source_x}, ${version.source_y}`);
     addRow(list, 'Display position', formatPoint(version.longitude, version.latitude));
     addRow(list, 'Operation', version.transform_operation);
+    addRow(list, 'Display accuracy', version.transform_accuracy_m == null ? '—' : version.transform_accuracy_m === 0 ? 'Identity (no shift)' : `±${version.transform_accuracy_m} m`);
     addRow(list, 'Reviewer', version.reviewer);
     addRow(list, 'Published', formatDateTime(version.published_at));
     addRow(list, 'License', version.license || '—', { mono: false });

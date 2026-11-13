@@ -1,3 +1,5 @@
+pub mod crs;
+
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -82,26 +84,31 @@ pub fn qc_findings(manifest: &Manifest, candidates: &[Candidate]) -> Vec<Finding
             "Source CRS must be identified; no default is assumed.",
             None,
         )),
-        Some("EPSG:4326") => {}
-        Some(_) => findings.push(Finding::new(
+        Some(source_crs) if crs::is_supported(source_crs) => {}
+        Some(source_crs) => findings.push(Finding::new(
             "unverified_crs",
             "error",
-            "This slice can publish only explicit EPSG:4326 positions.",
+            &format!(
+                "No verified transformation to EPSG:4326 is registered for {source_crs}."
+            ),
             None,
         )),
     }
     match (manifest.x, manifest.y) {
         (Some(x), Some(y)) if x.is_finite() && y.is_finite() => {
-            if manifest.source_crs.as_deref() == Some("EPSG:4326") && !(-180.0..=180.0).contains(&x)
-                || manifest.source_crs.as_deref() == Some("EPSG:4326")
-                    && !(-90.0..=90.0).contains(&y)
-            {
-                findings.push(Finding::new(
-                    "out_of_range_coordinates",
-                    "error",
-                    "Longitude or latitude is outside EPSG:4326 bounds.",
-                    None,
-                ));
+            // One code path validates the position: the same transformation used
+            // at publication checks the numeric domain and the verified area.
+            if let Some(source_crs) = manifest.source_crs.as_deref() {
+                if crs::is_supported(source_crs) {
+                    if let Err(error) = crs::transform(source_crs, x, y) {
+                        findings.push(Finding::new(
+                            "out_of_range_coordinates",
+                            "error",
+                            &error.to_string(),
+                            None,
+                        ));
+                    }
+                }
             }
         }
         _ => findings.push(Finding::new(

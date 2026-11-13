@@ -9,12 +9,22 @@ let items = [];
 let pickMap = null;
 let picked = null;
 
+// CRS the domain engine can verify and transform to EPSG:4326. Axis order and
+// numeric domain depend on the CRS; ED50 variants use the EPSG:1311 operation.
+const CRS_OPTIONS = [
+  { code: 'EPSG:4326', label: 'EPSG:4326 — WGS 84 (lon, lat)', xLabel: 'Source X (longitude)', yLabel: 'Source Y (latitude)', hint: 'WGS 84 longitude/latitude in degrees. No transformation is applied.', geo: true },
+  { code: 'EPSG:4230', label: 'EPSG:4230 — ED50 geographic (lon, lat)', xLabel: 'Source X (longitude)', yLabel: 'Source Y (latitude)', hint: 'ED50 longitude/latitude in degrees. Transformed to WGS 84 with EPSG:1311 (±1 m, southern North Sea).', geo: true },
+  { code: 'EPSG:23031', label: 'EPSG:23031 — ED50 / UTM 31N (E, N)', xLabel: 'Source X (easting, m)', yLabel: 'Source Y (northing, m)', hint: 'ED50 / UTM zone 31N easting/northing in metres. Transformed to WGS 84 with EPSG:1311 (±1 m).', geo: false },
+  { code: 'EPSG:23032', label: 'EPSG:23032 — ED50 / UTM 32N (E, N)', xLabel: 'Source X (easting, m)', yLabel: 'Source Y (northing, m)', hint: 'ED50 / UTM zone 32N easting/northing in metres. Transformed to WGS 84 with EPSG:1311 (±1 m).', geo: false },
+];
+const CRS_BY_CODE = Object.fromEntries(CRS_OPTIONS.map((option) => [option.code, option]));
+
 const requiredFields = [
   ['name', 'Well name'],
   ['source', 'Source package'],
   ['license', 'License'],
-  ['position', 'Valid EPSG:4326 position'],
-  ['crs', 'Explicit EPSG:4326 CRS'],
+  ['position', 'Valid source position'],
+  ['crs', 'Supported source CRS'],
   ['file', 'Original file'],
 ];
 
@@ -145,18 +155,25 @@ function updateReadiness() {
   const source = (data.source?.value || '').trim();
   const license = (data.license?.value || '').trim();
   const crs = (data.source_crs?.value || '').trim().toUpperCase();
+  const meta = CRS_BY_CODE[crs];
   const x = Number(data.x?.value);
   const y = Number(data.y?.value);
-  const positionOk =
-    Number.isFinite(x) && Number.isFinite(y) && x >= -180 && x <= 180 && y >= -90 && y <= 90;
+  const inDomain = meta
+    ? meta.geo
+      ? x >= -180 && x <= 180 && y >= -90 && y <= 90
+      : x >= 0 && x <= 1000000 && y >= 0 && y <= 10000000
+    : false;
+  const positionOk = Number.isFinite(x) && Number.isFinite(y) && inDomain;
   const hasFile = Boolean(data.file?.files?.length);
+
+  syncCrsLabels(meta);
 
   const results = {
     name: Boolean(name),
     source: Boolean(source),
     license: Boolean(license),
     position: positionOk,
-    crs: crs === 'EPSG:4326',
+    crs: Boolean(meta),
     file: hasFile,
   };
 
@@ -172,6 +189,16 @@ function updateReadiness() {
   const ready = Object.values(results).every(Boolean);
   submit.disabled = !ready;
   submit.title = ready ? '' : 'Complete the required fields to stage this package.';
+}
+
+function syncCrsLabels(meta) {
+  if (!meta) return;
+  const xLabel = $('#x-label');
+  const yLabel = $('#y-label');
+  const hint = $('#crs-hint');
+  if (xLabel?.firstChild) xLabel.firstChild.textContent = `${meta.xLabel} `;
+  if (yLabel?.firstChild) yLabel.firstChild.textContent = `${meta.yLabel} `;
+  if (hint) hint.textContent = meta.hint;
 }
 
 async function stagePackage(event) {
@@ -378,8 +405,14 @@ function buildCorrectionForm(item) {
   form.append(provenance);
 
   const position = el('div', 'field-row');
-  const crsField = field('Source CRS', 'source_crs', manifest.source_crs);
-  crsField.classList.add('field-wide');
+  const crsField = el('label', 'field field-wide');
+  crsField.append(el('span', '', 'Source CRS'));
+  const crsSelect = el('select');
+  crsSelect.name = 'source_crs';
+  for (const option of CRS_OPTIONS) {
+    crsSelect.append(new Option(option.label, option.code, false, (manifest.source_crs || 'EPSG:4326') === option.code));
+  }
+  crsField.append(crsSelect);
   position.append(crsField);
   position.append(field('Source X', 'x', manifest.x, 'number', 'any'));
   position.append(field('Source Y', 'y', manifest.y, 'number', 'any'));

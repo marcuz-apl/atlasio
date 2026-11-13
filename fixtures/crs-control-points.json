@@ -1,0 +1,216 @@
+{
+  "operation": "EPSG:1311",
+  "operation_name": "ED50 to WGS 84 (18)",
+  "method": "Position Vector transformation (geog2D domain), EPSG:9606",
+  "accuracy_m": 1.0,
+  "area": "Denmark - offshore North Sea; Ireland - offshore; Netherlands - offshore; United Kingdom - UKCS offshore; Norway - North Sea south of 62N",
+  "authority": "Published EPSG:1311 parameters; every control cross-checked against PROJ 9.4.0 cs2cs --area EPSG:2330 --accuracy 1.0 (points where PROJ auto-selects a different operation are excluded). Source ellipsoid International 1924, target WGS 84.",
+  "helmert": {
+    "dx": -89.5,
+    "dy": -93.8,
+    "dz": -123.1,
+    "rx_arcsec": 0.0,
+    "ry_arcsec": 0.0,
+    "rz_arcsec": -0.156,
+    "s_ppm": 1.2,
+    "convention": "position_vector"
+  },
+  "controls": [
+    {
+      "source_crs": "EPSG:4230",
+      "x": 0.5,
+      "y": 51.0,
+      "expected_lon": 0.4986316515,
+      "expected_lat": 50.9991304125
+    },
+    {
+      "source_crs": "EPSG:4230",
+      "x": 1.0,
+      "y": 51.0,
+      "expected_lon": 0.9986429288,
+      "expected_lat": 50.9991360588
+    },
+    {
+      "source_crs": "EPSG:4230",
+      "x": 2.0,
+      "y": 51.0,
+      "expected_lon": 1.9986657826,
+      "expected_lat": 50.9991472055
+    },
+    {
+      "source_crs": "EPSG:4230",
+      "x": 3.0,
+      "y": 51.0,
+      "expected_lon": 2.9986890298,
+      "expected_lat": 50.999158155
+    },
+    {
+      "source_crs": "EPSG:4230",
+      "x": 4.0,
+      "y": 51.0,
+      "expected_lon": 3.998712663,
+      "expected_lat": 50.9991689038
+    },
+    {
+      "source_crs": "EPSG:4230",
+      "x": 5.0,
+      "y": 51.0,
+      "expected_lon": 4.9987366753,
+      "expected_lat": 50.9991794487
+    },
+    {
+      "source_crs": "EPSG:4230",
+      "x": 6.0,
+      "y": 51.0,
+      "expected_lon": 5.9987610592,
+      "expected_lat": 50.9991897866
+    },
+    {
+      "source_crs": "EPSG:4230",
+      "x": 7.0,
+      "y": 51.0,
+      "expected_lon": 6.9987858073,
+      "expected_lat": 50.9991999141
+    },
+    {
+      "source_crs": "EPSG:4230",
+      "x": 8.0,
+      "y": 51.0,
+      "expected_lon": 7.9988109121,
+      "expected_lat": 50.9992098283
+    },
+    {
+      "source_crs": "EPSG:4230",
+      "x": 9.0,
+      "y": 51.0,
+      "expected_lon": 8.9988363659,
+      "expected_lat": 50.9992195261
+    },
+    {
+      "source_crs": "EPSG:4230",
+      "x": 10.0,
+      "y": 51.0,
+      "expected_lon": 9.998862161,
+      "expected_lat": 50.9992290046
+    },
+    {
+      "source_crs": "EPSG:4230",
+      "x": 11.0,
+      "y": 51.0,
+      "expected_lon": 10.9988882896,
+      "expected_lat": 50.9992382609
+    },
+    {
+      "source_crs": "EPSG:23031",
+      "x": 328378.508757,
+      "y": 5764109.276869,
+      "expected_lon": 0.4986023321,
+      "expected_lat": 51.9991608541
+    },
+    {
+      "source_crs": "EPSG:23031",
+      "x": 362699.019998,
+      "y": 5763046.671862,
+      "expected_lon": 0.9986138589,
+      "expected_lat": 51.9991665784
+    },
+    {
+      "source_crs": "EPSG:23031",
+      "x": 431346.987972,
+      "y": 5761630.107258,
+      "expected_lon": 1.9986372185,
+      "expected_lat": 51.999177879
+    },
+    {
+      "source_crs": "EPSG:23031",
+      "x": 500000.0,
+      "y": 5761157.98055,
+      "expected_lon": 2.99866098,
+      "expected_lat": 51.9991889797
+    },
+    {
+      "source_crs": "EPSG:23031",
+      "x": 568653.012028,
+      "y": 5761630.107258,
+      "expected_lon": 3.9986851362,
+      "expected_lat": 51.9991998769
+    },
+    {
+      "source_crs": "EPSG:23031",
+      "x": 637300.980002,
+      "y": 5763046.671862,
+      "expected_lon": 4.9987096798,
+      "expected_lat": 51.9992105675
+    },
+    {
+      "source_crs": "EPSG:23031",
+      "x": 336134.21101,
+      "y": 5986542.908126,
+      "expected_lon": 0.4985382607,
+      "expected_lat": 53.999224646
+    },
+    {
+      "source_crs": "EPSG:23031",
+      "x": 368902.745768,
+      "y": 5985501.309652,
+      "expected_lon": 0.9985503328,
+      "expected_lat": 53.9992305208
+    },
+    {
+      "source_crs": "EPSG:23032",
+      "x": 362699.019998,
+      "y": 5763046.671862,
+      "expected_lon": 6.9987598989,
+      "expected_lat": 51.9992313154
+    },
+    {
+      "source_crs": "EPSG:23032",
+      "x": 431346.987972,
+      "y": 5761630.107258,
+      "expected_lon": 7.9987855592,
+      "expected_lat": 51.9992413665
+    },
+    {
+      "source_crs": "EPSG:23032",
+      "x": 500000.0,
+      "y": 5761157.98055,
+      "expected_lon": 8.9988115763,
+      "expected_lat": 51.9992511982
+    },
+    {
+      "source_crs": "EPSG:23032",
+      "x": 568653.012028,
+      "y": 5761630.107258,
+      "expected_lon": 9.9988379422,
+      "expected_lat": 51.9992608076
+    },
+    {
+      "source_crs": "EPSG:23032",
+      "x": 637300.980002,
+      "y": 5763046.671862,
+      "expected_lon": 10.9988646488,
+      "expected_lat": 51.9992701917
+    },
+    {
+      "source_crs": "EPSG:23032",
+      "x": 368902.745768,
+      "y": 5985501.309652,
+      "expected_lon": 6.9987032816,
+      "expected_lat": 53.9992969613
+    },
+    {
+      "source_crs": "EPSG:23032",
+      "x": 434448.293311,
+      "y": 5984112.711449,
+      "expected_lon": 7.9987301558,
+      "expected_lat": 53.9993072769
+    },
+    {
+      "source_crs": "EPSG:23032",
+      "x": 500000.0,
+      "y": 5983649.89613,
+      "expected_lon": 8.9987574037,
+      "expected_lat": 53.9993173673
+    }
+  ]
+}
