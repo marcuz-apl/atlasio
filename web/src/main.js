@@ -984,6 +984,7 @@ function showLanding() {
   if (docsView) docsView.hidden = true;
   if (adminView) adminView.hidden = true;
   dashboard.hidePreview();
+  document.body.classList.remove('explore-active');
   setNav('dashboard');
   document.title = 'Atlasio · Subsurface workspace';
 }
@@ -1015,6 +1016,7 @@ function showDocs(kind = 'user') {
   if (adminView) adminView.hidden = true;
   hideGate();
   dashboard.hidePreview();
+  document.body.classList.remove('explore-active');
   setNav(kind === 'build' ? 'admin' : 'docs');
   document.title = kind === 'build' ? 'Atlasio · Build notes & decisions' : 'Atlasio · User guide';
   if (window.scrollY > 0) window.scrollTo({ top: 0, behavior: 'auto' });
@@ -1030,6 +1032,7 @@ async function showAdminView() {
   if (docsView) docsView.hidden = true;
   if (adminView) adminView.hidden = false;
   dashboard.hidePreview();
+  document.body.classList.remove('explore-active');
   setNav('admin');
   document.title = 'Atlasio · Administration';
   if (window.scrollY > 0) window.scrollTo({ top: 0, behavior: 'auto' });
