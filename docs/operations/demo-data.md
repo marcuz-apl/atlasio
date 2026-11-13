@@ -1,6 +1,6 @@
 # Open-data demo wells
 
-Atlasio's current slice ingests well headers, not logs, seismic, or production series. A package is one well, one original file, an explicit `EPSG:4326` position, source and license text, and a maximum file size of 5 MiB. That constraint decides which public datasets are useful now.
+Atlasio's current slice ingests well headers, not logs, seismic, or production series. A package is one well, one original file, a source position in a supported CRS (`EPSG:4326`, or native ED50 `EPSG:4230` / `23031` / `23032` reprojected for display), source and license text, and a maximum file size of 5 MiB. That constraint decides which public datasets are useful now.
 
 ## Recommended pair
 
@@ -135,6 +135,16 @@ Key endpoints:
 Coordinate notes: the WGS 84 service is Sodir's own transformed product (`EPSG:4326`), FactMaps ED50 is kept in native `EPSG:23032`, and DataService is kept in native `EPSG:4230`. The script does not transform any of them. ED50 layers are stored as Esri JSON with an explicit `spatialReference` because a GeoJSON request against those services silently reprojects to WGS 84; GeoJSON is written only for the WGS 84 layers. Tables and production CSVs carry no geometry. The package uses NLOD 2.0.
 
 Sodir does not publish raw SEG-Y. Its open services cover wells, production, surveys, facilities, licences, and subsurface metadata; raw Norwegian seismic is held in Diskos and needs membership or an order through the Diskos public portal. The current ingest API cannot load these layers, tables, or production series yet; the package is staged evidence for forthcoming importers.
+
+## Import-time CRS transformation
+
+The slice no longer requires WGS 84 at the source. `crates/domain/src/crs.rs` implements one verified operation per supported CRS and derives the `EPSG:4326` display position at publication, preserving `source_crs`, `source_x`, and `source_y` unchanged and recording `transform_operation` plus `transform_accuracy_m`.
+
+The registered operation is **EPSG:1311, "ED50 to WGS 84 (18)"** (Position Vector / EPSG:9606, stated accuracy 1.0 m), which PROJ 9.4 ranks best for the southern North Sea (UKCS, Netherlands, Denmark, Norway south of 62N). It covers `EPSG:4230` (ED50 geographic) and, after an inverse Transverse Mercator step, `EPSG:23031` / `EPSG:23032` (ED50 / UTM 31N/32N). `EPSG:4326` is an identity transform.
+
+The engine is pure Rust so the domain crate stays portable and unit-testable without a system PROJ library; PROJ is the offline authority. `fixtures/crs-control-points.json` holds control points generated from the published EPSG:1311 parameters and cross-checked against `cs2cs --area EPSG:2330 --accuracy 1.0`; points where PROJ auto-selects a different operation are excluded. `crates/domain/tests/crs.rs` asserts the engine reproduces those controls to about 1 cm, and `scripts/verify-crs.mjs` stages, publishes, and checks synthetic ED50 wells end to end (source preserved, display transformed, map placement, out-of-area and unregistered CRS blocked).
+
+A position outside the verified area of EPSG:1311 is rejected at QC rather than transformed with an operation that does not apply there. Other regions (for example RMOTC's NAD27/NAD83 or Netherlands RD New `EPSG:28992`) need their own registered operation and control points before they can be published.
 
 ## Datasets deferred for now
 

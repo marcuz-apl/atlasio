@@ -622,16 +622,27 @@
                       </fieldset>
                       <fieldset>
                         <legend>Position</legend>
+                        <label class="field"><span>Source CRS <b aria-hidden="true">*</b></span>
+                          <div class="select-wrap">
+                            <select name="source_crs">
+                              <option value="EPSG:4326">EPSG:4326 — WGS 84 (lon, lat)</option>
+                              <option value="EPSG:4230">EPSG:4230 — ED50 geographic (lon, lat)</option>
+                              <option value="EPSG:23031">EPSG:23031 — ED50 / UTM 31N (E, N)</option>
+                              <option value="EPSG:23032">EPSG:23032 — ED50 / UTM 32N (E, N)</option>
+                            </select>
+                            <svg class="select-arrow" aria-hidden="true"><use href="#i-chevron-down" /></svg>
+                          </div>
+                          <em class="field-hint" id="crs-hint">WGS 84 longitude/latitude in degrees. No transformation is applied.</em>
+                        </label>
                         <div class="field-row">
-                          <label class="field"><span>Source X (longitude) <b aria-hidden="true">*</b></span><input name="x" type="number" step="any" required inputmode="decimal" /></label>
-                          <label class="field"><span>Source Y (latitude) <b aria-hidden="true">*</b></span><input name="y" type="number" step="any" required inputmode="decimal" /></label>
+                          <label class="field"><span id="x-label">Source X (longitude) <b aria-hidden="true">*</b></span><input name="x" type="number" step="any" required inputmode="decimal" /></label>
+                          <label class="field"><span id="y-label">Source Y (latitude) <b aria-hidden="true">*</b></span><input name="y" type="number" step="any" required inputmode="decimal" /></label>
                         </div>
-                        <label class="field"><span>Source CRS <b aria-hidden="true">*</b></span><input name="source_crs" placeholder="e.g. EPSG:4326" autocomplete="off" /><em class="field-hint">No default is assumed. This slice publishes only explicit EPSG:4326 positions.</em></label>
                         <div class="pick-row">
                           <button class="btn btn-secondary btn-small" type="button" id="pick-on-map">
                             <svg aria-hidden="true"><use href="#i-location" /></svg>Pick on map
                           </button>
-                          <span class="field-hint" id="pick-hint">The pick sets X/Y and EPSG:4326 explicitly. Native CRS values are typed above.</span>
+                          <span class="field-hint" id="pick-hint">The pick sets X/Y and EPSG:4326 explicitly. Native ED50 coordinates are typed above.</span>
                         </div>
                       </fieldset>
                       <fieldset>

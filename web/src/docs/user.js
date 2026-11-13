@@ -78,7 +78,7 @@ export const USER_DOCS_HTML = `
   <h2>Stage, correct, and submit a package</h2>
   <p>Importers turn a source package into a reviewed record. The original file is stored unchanged; its checksum proves the bytes survived.</p>
   <ol class="docs-steps">
-    <li><strong>Stage the package.</strong> Provide the header manifest and the original file. The upload limit in this slice is 5 MiB. <strong>Pick on map</strong> can fill X/Y for you; a pick is explicit and sets the source CRS to EPSG:4326. Native CRS values are always typed by hand.</li>
+    <li><strong>Stage the package.</strong> Provide the header manifest and the original file. The upload limit in this slice is 5 MiB. Choose the source CRS: WGS 84 (EPSG:4326) or native ED50 (EPSG:4230 geographic, EPSG:23031 / 23032 UTM). ED50 positions are transformed to WGS 84 for display with the verified EPSG:1311 operation (±1 m); the source coordinates you type are preserved and the applied operation and accuracy are shown on the record. <strong>Pick on map</strong> can fill X/Y for you; a pick is explicit and sets the source CRS to EPSG:4326.</li>
     <li><strong>Read the QC findings.</strong> Blocking errors must be resolved; warnings need a judgement, not a dismissal.</li>
     <li><strong>Correct metadata</strong> on the staged record. Every correction updates the QC result and is recorded in the audit trail.</li>
     <li><strong>Submit for review.</strong> A staged package is editable; a submitted package is not.</li>

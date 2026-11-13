@@ -12,7 +12,7 @@ use std::{
     time::Instant,
 };
 
-use atlasio_domain::{Candidate, Finding, Manifest, next_version, qc_findings};
+use atlasio_domain::{Candidate, Finding, Manifest, crs, next_version, qc_findings};
 use axum::{
     Json, Router,
     body::Body,
@@ -236,6 +236,10 @@ pub(crate) async fn migrate(pool: &PgPool) -> Result<(), sqlx::Error> {
         (
             "005_viewer_demo_key.sql",
             include_str!("../../../migrations/005_viewer_demo_key.sql"),
+        ),
+        (
+            "006_crs_transform.sql",
+            include_str!("../../../migrations/006_crs_transform.sql"),
         ),
     ];
     for (version, sql) in migrations {
@@ -943,12 +947,17 @@ async fn review(
     let version_id = Uuid::new_v4();
     let name = manifest.name.as_deref().unwrap_or("");
     let source = manifest.source.as_deref().unwrap_or("");
-    let crs = manifest.source_crs.as_deref().unwrap_or("");
+    let source_crs = manifest.source_crs.as_deref().unwrap_or("");
     let x = manifest.x.unwrap_or(0.0);
     let y = manifest.y.unwrap_or(0.0);
-    sqlx::query("INSERT INTO well_versions (id, well_id, version_no, batch_id, name, aliases, external_id, source, source_crs, source_x, source_y, display_point, transform_operation, reviewer) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,ST_SetSRID(ST_MakePoint($12,$13),4326),$14,$15)")
+    // Derive the display position from the preserved source position. QC has
+    // already verified the CRS and area; recompute here so publication records
+    // the exact operation and its stated accuracy.
+    let display = crs::transform(source_crs, x, y)
+        .map_err(|error| ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, &error.to_string()))?;
+    sqlx::query("INSERT INTO well_versions (id, well_id, version_no, batch_id, name, aliases, external_id, source, source_crs, source_x, source_y, display_point, transform_operation, reviewer, transform_accuracy_m) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,ST_SetSRID(ST_MakePoint($12,$13),4326),$14,$15,$16)")
         .bind(version_id).bind(well_id).bind(version_no).bind(id).bind(name).bind(&manifest.aliases).bind(&manifest.external_id)
-        .bind(source).bind(crs).bind(x).bind(y).bind(x).bind(y).bind("identity:EPSG:4326").bind(who)
+        .bind(source).bind(source_crs).bind(x).bind(y).bind(display.longitude).bind(display.latitude).bind(&display.operation).bind(who).bind(display.accuracy_m)
         .execute(&mut *tx).await?;
     sqlx::query("UPDATE wells SET current_version_id=$1 WHERE id=$2")
         .bind(version_id)
@@ -1019,13 +1028,14 @@ async fn well_detail(
         ));
     }
     let current: Uuid = current_row.get("current_version_id");
-    let rows = sqlx::query("SELECT v.id, v.version_no, v.name, v.aliases, v.external_id, v.source, v.source_crs, v.source_x, v.source_y, ST_X(v.display_point) AS longitude, ST_Y(v.display_point) AS latitude, v.transform_operation, v.reviewer, v.published_at, b.id AS batch_id, b.qc, b.manifest, f.id AS file_id, f.original_name, f.sha256, f.size_bytes, f.license, f.confidentiality FROM well_versions v JOIN import_batches b ON b.id=v.batch_id JOIN file_assets f ON f.batch_id=b.id WHERE v.well_id=$1 AND ($2 OR f.confidentiality='public') ORDER BY v.version_no DESC")
+    let rows = sqlx::query("SELECT v.id, v.version_no, v.name, v.aliases, v.external_id, v.source, v.source_crs, v.source_x, v.source_y, ST_X(v.display_point) AS longitude, ST_Y(v.display_point) AS latitude, v.transform_operation, v.transform_accuracy_m, v.reviewer, v.published_at, b.id AS batch_id, b.qc, b.manifest, f.id AS file_id, f.original_name, f.sha256, f.size_bytes, f.license, f.confidentiality FROM well_versions v JOIN import_batches b ON b.id=v.batch_id JOIN file_assets f ON f.batch_id=b.id WHERE v.well_id=$1 AND ($2 OR f.confidentiality='public') ORDER BY v.version_no DESC")
         .bind(id).bind(who != "reader").fetch_all(&state.db).await?;
     let versions: Vec<Value> = rows.into_iter().map(|row| json!({
         "id": row.get::<Uuid,_>("id"), "version_no": row.get::<i32,_>("version_no"), "name": row.get::<String,_>("name"),
         "aliases": row.get::<Vec<String>,_>("aliases"), "external_id": row.get::<Option<String>,_>("external_id"), "source": row.get::<String,_>("source"),
         "source_crs": row.get::<String,_>("source_crs"), "source_x": row.get::<f64,_>("source_x"), "source_y": row.get::<f64,_>("source_y"),
         "longitude": row.get::<f64,_>("longitude"), "latitude": row.get::<f64,_>("latitude"), "transform_operation": row.get::<String,_>("transform_operation"),
+        "transform_accuracy_m": row.get::<Option<f64>,_>("transform_accuracy_m"),
         "reviewer": row.get::<String,_>("reviewer"), "published_at": row.get::<sqlx::types::chrono::DateTime<sqlx::types::chrono::Utc>,_>("published_at"),
         "batch_id": row.get::<Uuid,_>("batch_id"), "qc": row.get::<DbJson<Vec<Finding>>,_>("qc").0,
         "file_id": row.get::<Uuid,_>("file_id"), "original_name": row.get::<String,_>("original_name"), "sha256": row.get::<String,_>("sha256"),

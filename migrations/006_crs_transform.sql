@@ -1,0 +1,2 @@
+ALTER TABLE well_versions ADD COLUMN IF NOT EXISTS transform_accuracy_m double precision;
+COMMENT ON COLUMN well_versions.transform_accuracy_m IS 'Stated accuracy in metres of the operation that derived display_point from the source position (null for legacy identity rows).';

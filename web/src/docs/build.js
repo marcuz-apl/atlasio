@@ -4,7 +4,7 @@ export const BUILD_DOCS_HTML = `
   <h2>Why this page exists</h2>
   <p>Atlasio is built around choices that are easy to lose: why coordinates are stored the way they are, why a published version never changes, why a category shows a dash instead of a zero, and why the catalog is grouped into six domains. This page keeps those choices beside the product so a client, reviewer, or future maintainer can understand the reasoning without reconstructing it from commits or conversations.</p>
   <p>Read it in three ways. The <a href="#/docs" data-doc-link="docs-invariants">invariants</a> are the rules we do not break. The <a href="#/docs" data-doc-link="docs-decisions">decision log</a> records what we chose, when, and what it costs. The <a href="#/docs" data-doc-link="docs-glossary">glossary</a> fixes the vocabulary used by the interface and the API.</p>
-  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.39. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
+  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.40. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
 </section>
 
 <section class="docs-section" id="docs-architecture" data-doc-section>
@@ -190,6 +190,7 @@ export const BUILD_DOCS_HTML = `
         <tr><td>0.1.37</td><td>Records refreshes with the active query on every open; a denied full-screen request shows a notice instead of an unhandled error.</td></tr>
         <tr><td>0.1.38</td><td>The workspace hero title and lede are removed; the mode bar becomes the only head, top-left with a consistent 16px gap below the header in every mode.</td></tr>
         <tr><td>0.1.39</td><td>In Records, Review, and Ingest the mode bar aligns with the cards' left edge on the content grid; Explore keeps its floating map-edge inset.</td></tr>
+        <tr><td>0.1.40</td><td>Import-time CRS transformation: native ED50 (EPSG:4230/23031/23032) is reprojected to WGS 84 with the verified EPSG:1311 operation; source coordinates are preserved and the operation plus accuracy are recorded; the importer offers the supported CRS and the record shows the transform.</td></tr>
       </tbody>
     </table>
   </div>
@@ -383,6 +384,16 @@ export const BUILD_DOCS_HTML = `
       <dt>Decision</dt><dd>Remove the workspace hero entirely. The Explore / Records / Ingest / Review bar is the only head, 16px below the app header in every mode. In the list modes its tabs align with the cards' left edge on the content grid; in Explore the bar keeps the floating map-edge inset.</dd>
       <dt>Why</dt><dd>A workspace is judged by its work surface, not by marketing copy. One stable control position keeps muscle memory, and grid alignment makes the list modes read as a single composed page.</dd>
       <dt>Trade-off</dt><dd>The horizontal inset differs between Explore (map edge) and the list modes (content gutter), so the bar slides slightly when switching; the vertical offset never changes. Role context lives in the header account chip instead of a workspace badge.</dd>
+    </dl>
+  </article>
+  <article class="decision">
+    <div class="decision-head"><span class="decision-id">D-0018</span><span class="decision-tag">Accepted</span><span class="decision-tag">v0.1.40</span></div>
+    <h3>Import-time reprojection uses one verified operation, never a silent default</h3>
+    <dl>
+      <dt>Context</dt><dd>The demo packages preserve native ED50 coordinates (EPSG:4230, 23031, 23032) so import-time transformation can be tested, but the first slice could only publish explicit EPSG:4326 and recorded an identity transform.</dd>
+      <dt>Decision</dt><dd>Add a pure-Rust CRS engine in the domain crate implementing the single PROJ-ranked operation for the southern North Sea, EPSG:1311 "ED50 to WGS 84 (18)" (Position Vector, 1.0 m). QC accepts a source CRS only when a verified operation to EPSG:4326 is registered; publication derives the display point, preserves source CRS and coordinates, and records the operation id and stated accuracy. Points outside the operation's verified area are rejected, not transformed.</dd>
+      <dt>Why</dt><dd>The domain invariants forbid silently choosing among competing datum transformations. One named, control-point-verified operation per region keeps the transform auditable; the control fixture is generated from PROJ and cross-checked so the engine is proven against an external authority, not a round-trip of itself.</dd>
+      <dt>Trade-off</dt><dd>Only ED50 variants in the southern North Sea are publishable now; other regions (NAD27/83 USA, RD New Netherlands) need their own registered operation and controls before publication. The engine is pure Rust for portability, with PROJ as the offline authority rather than a runtime C dependency.</dd>
     </dl>
   </article>
 </section>
