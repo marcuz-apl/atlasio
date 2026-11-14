@@ -4,6 +4,11 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.46 — 2026-11-14
+Build: v0.1.46+2611146
+Type: fix
+- Ingest layout: the "Attach dataset to a published well or survey" card now insets its labels, inputs, dropzone, and button from the panel edges (22 px desktop, 16 px on small screens), matching the staging and table-import cards. The attach form also gains the same vertical rhythm as the other ingest forms.
+
 ## 0.1.45 — 2026-11-14
 Build: v0.1.45+2611145
 Type: feat

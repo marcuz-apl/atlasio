@@ -222,6 +222,8 @@
 
   .records-panel,
   .form-panel,
+  .attach-panel,
+  .table-panel,
   .queue-panel,
   .review-panel {
     padding: 16px;
