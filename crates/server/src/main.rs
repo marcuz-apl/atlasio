@@ -1,6 +1,7 @@
 mod admin;
 mod auth;
 mod mfa;
+mod wizard;
 
 use std::{
     env,
@@ -102,7 +103,7 @@ fn static_role(value: &str) -> Option<&'static str> {
     }
 }
 
-async fn role(
+pub(crate) async fn role(
     headers: &HeaderMap,
     state: &AppState,
     allowed: &[&str],
@@ -179,9 +180,9 @@ async fn load_candidates(conn: &mut PgConnection) -> Result<Vec<Candidate>, sqlx
         .collect())
 }
 
-async fn audit(
+pub(crate) async fn audit(
     conn: &mut PgConnection,
-    batch_id: Uuid,
+    batch_id: Option<Uuid>,
     actor: &str,
     action: &str,
     details: Value,
@@ -250,6 +251,10 @@ pub(crate) async fn migrate(pool: &PgPool) -> Result<(), sqlx::Error> {
         (
             "008_well_header.sql",
             include_str!("../../../migrations/008_well_header.sql"),
+        ),
+        (
+            "009_wizard.sql",
+            include_str!("../../../migrations/009_wizard.sql"),
         ),
     ];
     for (version, sql) in migrations {
@@ -511,6 +516,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             post(admin::restore_backup),
         )
         .route("/api/admin/audit", get(admin::audit_log))
+        .route("/api/ingest/tables", post(wizard::upload_table).get(wizard::list_tables))
+        .route("/api/ingest/tables/{id}", get(wizard::table_detail))
+        .route("/api/ingest/tables/{id}/mapping", axum::routing::put(wizard::save_mapping))
+        .route("/api/ingest/tables/{id}/stage", post(wizard::stage_table))
+        .route("/api/ingest/tables/{id}/report", get(wizard::table_report))
         .route("/api/admin/changelog", get(admin::changelog))
         .route("/", get(index))
         .route("/favicon.svg", get(favicon))
@@ -1084,7 +1094,7 @@ async fn stage(
             .bind(payload.manifest.license.as_deref().unwrap_or(""))
             .bind(payload.manifest.confidentiality.as_deref().unwrap_or("restricted"))
             .execute(&mut *tx).await?;
-        audit(&mut tx, batch_id, who, "staged", json!({ "sha256": checksum })).await?;
+        audit(&mut *tx, Some(batch_id), who, "staged", json!({ "sha256": checksum })).await?;
         Ok(())
     }.await;
     if let Err(error) = result {
@@ -1209,8 +1219,8 @@ async fn correct(
         .execute(&mut *tx)
         .await?;
     audit(
-        &mut tx,
-        id,
+        &mut *tx,
+        Some(id),
         who,
         "corrected",
         json!({ "fields": changes.keys().collect::<Vec<_>>() }),
@@ -1255,7 +1265,7 @@ async fn submit(
     .bind(id)
     .execute(&mut *tx)
     .await?;
-    audit(&mut tx, id, who, "submitted", json!({})).await?;
+    audit(&mut *tx, Some(id), who, "submitted", json!({})).await?;
     tx.commit().await?;
     Ok(Json(
         json!({ "id": id, "status": "submitted", "qc": findings }),
@@ -1300,7 +1310,7 @@ async fn review(
             })?;
         sqlx::query("UPDATE import_batches SET status='rejected', reviewed_at=now(), reviewer=$1, review_reason=$2 WHERE id=$3")
             .bind(who).bind(&reason).bind(id).execute(&mut *tx).await?;
-        audit(&mut tx, id, who, "rejected", json!({ "reason": reason })).await?;
+        audit(&mut *tx, Some(id), who, "rejected", json!({ "reason": reason })).await?;
         tx.commit().await?;
         return Ok(Json(json!({ "id": id, "status": "rejected" })));
     }
@@ -1384,8 +1394,8 @@ async fn review(
     sqlx::query("UPDATE import_batches SET status='published', reviewed_at=now(), reviewer=$1, review_reason=$2, well_id=$3, qc=$4 WHERE id=$5")
         .bind(who).bind(&request.reason).bind(well_id).bind(DbJson(&findings)).bind(id).execute(&mut *tx).await?;
     audit(
-        &mut tx,
-        id,
+        &mut *tx,
+        Some(id),
         who,
         "published",
         json!({ "well_id": well_id, "version_id": version_id, "identity_resolution": resolution }),

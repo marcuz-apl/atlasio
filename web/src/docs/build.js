@@ -195,6 +195,7 @@ export const BUILD_DOCS_HTML = `
         <tr><td>0.1.42</td><td>The app serves on port 3040: server bind, script defaults, and README move from 8000; ATLASIO_URL still overrides script targets and the web client keeps same-origin API paths.</td></tr>
         <tr><td>0.1.43</td><td>Industry well header: 16 new preserved columns (folder, symbol, structure, operator, datum name/value/unit, TD MD, bottom hole, source lat/lon with geographic CRS, spud/completion), three position modes, CRS aliases, and warnings-not-blocks QC; migration 008.</td></tr>
         <tr><td>0.1.44</td><td>Multi-type ingestion: datasets attach to wells or seismic surveys with checksum, licence, and access state; large originals stream to object storage; seismic survey catalog with source-CRS footprints and WGS 84 display only for registered CRS; Explore footprint layer, inspector dataset list, attach form; migration 007.</td></tr>
+        <tr><td>0.1.45</td><td>Table-import wizard: a CSV/XLSX of well headers is profiled server-side (kinds, fill rate, DMS/decimal-comma/units flags), mapped to governed fields with a suggested mapping, and pre-conditioned with an auto-derived, saved ruleset; DMS, decimal commas, embedded units, null tokens, and mixed dates are cleaned with a full before/after audit; unusable rows are blocked with a downloadable error report; clean rows stage into the governed queue; migration 009.</td></tr>
       </tbody>
     </table>
   </div>
