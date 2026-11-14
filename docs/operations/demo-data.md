@@ -146,15 +146,17 @@ The engine is pure Rust so the domain crate stays portable and unit-testable wit
 
 A position outside the verified area of EPSG:1311 is rejected at QC rather than transformed with an operation that does not apply there. Other regions (for example RMOTC's NAD27/NAD83 or Netherlands RD New `EPSG:28992`) need their own registered operation and control points before they can be published.
 
-## Datasets deferred for now
+## Deferred packages and parsers
+
+Ingest type matrix (2026-11-14): `docs/reports/2026-11-14-ingest-matrix.md` — 27/27 rows pass across Sodir, NSTA, and Volve, including real header publishes, real above-5 MiB streaming originals, restricted-access hiding, and published immutability. RMOTC is on hold by owner decision; its USA NAD27/83 no-transform behaviour is proven by `scripts/verify-datasets.mjs`.
 
 - **Volve full release** — roughly 40,000 files under Equinor's data-sharing licence, normally delivered through Databricks. The curated OSDU subset above is now the local demo; the full package remains out of scope.
-- **F3 Netherlands** — a 4.5 GB uncompressed seismic download (7.6 GB unpacked) under CC BY 3.0. Excellent for future seismic work; the current app stores seismic only as an opaque file and cannot display or interpret it.
-- **Teapot Dome** — well logs in LAS, tops, and 3D seismic in a tar archive, but its positions are not in WGS84 and the current slice does not transform CRS or parse LAS.
+- **F3 Netherlands** — a 4.5 GB uncompressed seismic download (7.6 GB unpacked) under CC BY 3.0. Excellent for future seismic work; the app catalogs seismic originals and shows survey footprints but cannot interpret traces.
+- **Teapot Dome** — well logs in LAS, tops, and 3D seismic in a tar archive, but its positions are NAD27/83, which have no registered transformation yet, so such headers stay catalog-only until an operation is verified with control points.
 - **NLOG Netherlands** — rich wells, logs, and production, but downloads are manual per well and coordinates are commonly RD (`EPSG:28992`), which would need a verified transformation before publication.
 - **NSTA offshore SEG-Y** — raw 2D/3D seismic is held in the NDR behind a free account and download-access approval; the open package carries survey geometry only.
 - **Sodir raw SEG-Y** — Sodir publishes well, production, survey, and licence data, but not raw seismic. Norwegian SEG-Y is in Diskos; members download it directly and non-members order released data through the Diskos public portal.
-- **NSTA CGG remaining releases** — `CGG_Digital_Well_Logs.zip` (15.0 GiB), `Pressure.zip` (11.0 GiB), `CoreAnalysis.zip` (40.9 GiB), `CGG_Seeps_Database.zip` (4.9 GiB), and `CGG_GeoThermal.zip` (1.3 MiB) are openly downloadable from the NSTA blob but not staged; the app has no log, pressure, or core ingestion yet.
+- **NSTA CGG remaining releases** — `CGG_Digital_Well_Logs.zip` (15.0 GiB), `Pressure.zip` (11.0 GiB), `CoreAnalysis.zip` (40.9 GiB), `CGG_Seeps_Database.zip` (4.9 GiB), and `CGG_GeoThermal.zip` (1.3 MiB) are openly downloadable from the NSTA blob but not staged; they can now be attached as governed originals, while log, pressure, and core parsing remains out of scope.
 - **Production parser** — Sodir and NSTA production CSVs are staged as evidence, but the app has no production time-series parser or view yet.
 
 ## Caveats
