@@ -4,7 +4,7 @@ export const BUILD_DOCS_HTML = `
   <h2>Why this page exists</h2>
   <p>Atlasio is built around choices that are easy to lose: why coordinates are stored the way they are, why a published version never changes, why a category shows a dash instead of a zero, and why the catalog is grouped into six domains. This page keeps those choices beside the product so a client, reviewer, or future maintainer can understand the reasoning without reconstructing it from commits or conversations.</p>
   <p>Read it in three ways. The <a href="#/docs" data-doc-link="docs-invariants">invariants</a> are the rules we do not break. The <a href="#/docs" data-doc-link="docs-decisions">decision log</a> records what we chose, when, and what it costs. The <a href="#/docs" data-doc-link="docs-glossary">glossary</a> fixes the vocabulary used by the interface and the API.</p>
-  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.42. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
+  <div class="docs-note"><strong>Status.</strong> This describes the Release 1 local demo and the decisions through v0.1.43. It is a working reference, not a marketing page. Synthetic fixtures only; no licensed customer data is stored in this repository.</div>
 </section>
 
 <section class="docs-section" id="docs-architecture" data-doc-section>
@@ -193,6 +193,7 @@ export const BUILD_DOCS_HTML = `
         <tr><td>0.1.40</td><td>Import-time CRS transformation: native ED50 (EPSG:4230/23031/23032) is reprojected to WGS 84 with the verified EPSG:1311 operation; source coordinates are preserved and the operation plus accuracy are recorded; the importer offers the supported CRS and the record shows the transform.</td></tr>
         <tr><td>0.1.41</td><td>Both docs guides span 85% of the screen width (full content width on narrow screens), show the site footer, and use larger reading type: 15px prose, 26px section headings, and proportionally larger tables, notes, and decision cards.</td></tr>
         <tr><td>0.1.42</td><td>The app serves on port 3040: server bind, script defaults, and README move from 8000; ATLASIO_URL still overrides script targets and the web client keeps same-origin API paths.</td></tr>
+        <tr><td>0.1.43</td><td>Industry well header: 16 new preserved columns (folder, symbol, structure, operator, datum name/value/unit, TD MD, bottom hole, source lat/lon with geographic CRS, spud/completion), three position modes, CRS aliases, and warnings-not-blocks QC; migration 008.</td></tr>
       </tbody>
     </table>
   </div>

@@ -602,7 +602,7 @@
                         <legend>Identity</legend>
                         <label class="field"><span>Well name <b aria-hidden="true">*</b></span><input name="name" required autocomplete="off" /></label>
                         <div class="field-row">
-                          <label class="field"><span>External ID</span><input name="external_id" autocomplete="off" /></label>
+                          <label class="field"><span>UWI / External ID</span><input name="external_id" autocomplete="off" /></label>
                           <label class="field"><span>Aliases</span><input name="aliases" placeholder="Comma separated" autocomplete="off" /></label>
                         </div>
                       </fieldset>
@@ -622,9 +622,10 @@
                       </fieldset>
                       <fieldset>
                         <legend>Position</legend>
-                        <label class="field"><span>Source CRS <b aria-hidden="true">*</b></span>
+                        <label class="field"><span>Source CRS (for X/Y)</span>
                           <div class="select-wrap">
                             <select name="source_crs">
+                              <option value="">Not stated — geographic pair below</option>
                               <option value="EPSG:4326">EPSG:4326 — WGS 84 (lon, lat)</option>
                               <option value="EPSG:4230">EPSG:4230 — ED50 geographic (lon, lat)</option>
                               <option value="EPSG:23031">EPSG:23031 — ED50 / UTM 31N (E, N)</option>
@@ -635,8 +636,8 @@
                           <em class="field-hint" id="crs-hint">WGS 84 longitude/latitude in degrees. No transformation is applied.</em>
                         </label>
                         <div class="field-row">
-                          <label class="field"><span id="x-label">Source X (longitude) <b aria-hidden="true">*</b></span><input name="x" type="number" step="any" required inputmode="decimal" /></label>
-                          <label class="field"><span id="y-label">Source Y (latitude) <b aria-hidden="true">*</b></span><input name="y" type="number" step="any" required inputmode="decimal" /></label>
+                          <label class="field"><span id="x-label">Source X (longitude)</span><input name="x" type="number" step="any" inputmode="decimal" /></label>
+                          <label class="field"><span id="y-label">Source Y (latitude)</span><input name="y" type="number" step="any" inputmode="decimal" /></label>
                         </div>
                         <div class="pick-row">
                           <button class="btn btn-secondary btn-small" type="button" id="pick-on-map">
@@ -644,6 +645,40 @@
                           </button>
                           <span class="field-hint" id="pick-hint">The pick sets X/Y and EPSG:4326 explicitly. Native ED50 coordinates are typed above.</span>
                         </div>
+                      </fieldset>
+                      <fieldset id="industry-header">
+                        <legend>Industry well header (optional)</legend>
+                        <div class="field-row">
+                          <label class="field"><span>Folder</span><input name="folder" autocomplete="off" /></label>
+                          <label class="field"><span>Well symbol</span><input name="well_symbol" autocomplete="off" /></label>
+                        </div>
+                        <div class="field-row">
+                          <label class="field"><span>Drilling structure</span><input name="drilling_structure" autocomplete="off" /></label>
+                          <label class="field"><span>Operator</span><input name="operator" autocomplete="off" /></label>
+                        </div>
+                        <div class="field-row">
+                          <label class="field"><span>Well datum name (KB, GL, RF)</span><input name="datum_name" autocomplete="off" /></label>
+                          <label class="field"><span>Well datum value</span><input name="datum_value" type="number" step="any" inputmode="decimal" /></label>
+                          <label class="field"><span>Datum unit</span><input name="datum_unit" placeholder="m or ft" autocomplete="off" /></label>
+                        </div>
+                        <div class="field-row">
+                          <label class="field"><span>TD (MD)</span><input name="td_md" type="number" step="any" inputmode="decimal" /></label>
+                          <label class="field"><span>TD unit</span><input name="td_unit" placeholder="m or ft" autocomplete="off" /></label>
+                        </div>
+                        <div class="field-row">
+                          <label class="field"><span>Bottom hole X</span><input name="bottom_hole_x" type="number" step="any" inputmode="decimal" /></label>
+                          <label class="field"><span>Bottom hole Y</span><input name="bottom_hole_y" type="number" step="any" inputmode="decimal" /></label>
+                        </div>
+                        <div class="field-row">
+                          <label class="field"><span>Latitude (source)</span><input name="source_lat" type="number" step="any" inputmode="decimal" /></label>
+                          <label class="field"><span>Longitude (source)</span><input name="source_lon" type="number" step="any" inputmode="decimal" /></label>
+                          <label class="field"><span>Geographic CRS</span><input name="source_geo_crs" placeholder="EPSG:4230" autocomplete="off" /></label>
+                        </div>
+                        <div class="field-row">
+                          <label class="field"><span>Spud date</span><input name="spud_date" type="date" /></label>
+                          <label class="field"><span>Completion date</span><input name="completion_date" type="date" /></label>
+                        </div>
+                        <em class="field-hint">Source values are preserved as provided. X/Y with a CRS, or a lat/lon pair with its geographic CRS, is enough to place the well; the map display is derived at publish.</em>
                       </fieldset>
                       <fieldset>
                         <legend>Original file</legend>

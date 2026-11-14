@@ -13,6 +13,7 @@ fn manifest() -> Manifest {
         source_crs: Some("EPSG:4326".into()),
         x: Some(10.0),
         y: Some(20.0),
+        ..Default::default()
     }
 }
 

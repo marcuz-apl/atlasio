@@ -692,10 +692,24 @@ function renderInspector(well) {
     addRow(list, 'External ID', version.external_id || '—');
     addRow(list, 'Source', version.source || '—', { mono: false });
     addRow(list, 'Source CRS', version.source_crs || '—');
-    addRow(list, 'Source position', `${version.source_x}, ${version.source_y}`);
+    addRow(list, 'Source position', version.source_x == null ? '— (geographic header)' : `${version.source_x}, ${version.source_y}`);
     addRow(list, 'Display position', formatPoint(version.longitude, version.latitude));
     addRow(list, 'Operation', version.transform_operation);
     addRow(list, 'Display accuracy', version.transform_accuracy_m == null ? '—' : version.transform_accuracy_m === 0 ? 'Identity (no shift)' : `±${version.transform_accuracy_m} m`);
+    if (version.folder) addRow(list, 'Folder', version.folder, { mono: false });
+    if (version.well_symbol) addRow(list, 'Well symbol', version.well_symbol, { mono: false });
+    if (version.drilling_structure) addRow(list, 'Drilling structure', version.drilling_structure, { mono: false });
+    if (version.operator) addRow(list, 'Operator', version.operator, { mono: false });
+    if (version.datum_name || version.datum_value != null) {
+      addRow(list, 'Well datum', [version.datum_name, version.datum_value, version.datum_unit].filter((part) => part != null && part !== '').join(' '), { mono: false });
+    }
+    if (version.td_md != null) {
+      addRow(list, 'TD (MD)', [version.td_md, version.td_unit].filter((part) => part != null && part !== '').join(' '));
+    }
+    if (version.bottom_hole_x != null) addRow(list, 'Bottom hole', `${version.bottom_hole_x}, ${version.bottom_hole_y}`);
+    if (version.source_lat != null) addRow(list, 'Source lat/lon', `${version.source_lat}, ${version.source_lon} (${version.source_geo_crs || 'CRS not stated'})`);
+    if (version.spud_date) addRow(list, 'Spud date', version.spud_date);
+    if (version.completion_date) addRow(list, 'Completion date', version.completion_date);
     addRow(list, 'Reviewer', version.reviewer);
     addRow(list, 'Published', formatDateTime(version.published_at));
     addRow(list, 'License', version.license || '—', { mono: false });

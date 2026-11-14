@@ -156,14 +156,24 @@ function updateReadiness() {
   const license = (data.license?.value || '').trim();
   const crs = (data.source_crs?.value || '').trim().toUpperCase();
   const meta = CRS_BY_CODE[crs];
-  const x = Number(data.x?.value);
-  const y = Number(data.y?.value);
+  const xRaw = (data.x?.value || '').trim();
+  const yRaw = (data.y?.value || '').trim();
+  const x = Number(xRaw);
+  const y = Number(yRaw);
   const inDomain = meta
     ? meta.geo
       ? x >= -180 && x <= 180 && y >= -90 && y <= 90
       : x >= 0 && x <= 1000000 && y >= 0 && y <= 10000000
     : false;
-  const positionOk = Number.isFinite(x) && Number.isFinite(y) && inDomain;
+  const projectedOk = xRaw !== '' && yRaw !== '' && Number.isFinite(x) && Number.isFinite(y) && inDomain;
+  const latRaw = (data.source_lat?.value || '').trim();
+  const lonRaw = (data.source_lon?.value || '').trim();
+  const lat = Number(latRaw);
+  const lon = Number(lonRaw);
+  const geoMeta = CRS_BY_CODE[(data.source_geo_crs?.value || '').trim().toUpperCase()];
+  const geoOk = latRaw !== '' && lonRaw !== '' && Number.isFinite(lat) && Number.isFinite(lon)
+    && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180 && Boolean(geoMeta?.geo);
+  const positionOk = projectedOk || geoOk;
   const hasFile = Boolean(data.file?.files?.length);
 
   syncCrsLabels(meta);
@@ -173,7 +183,7 @@ function updateReadiness() {
     source: Boolean(source),
     license: Boolean(license),
     position: positionOk,
-    crs: Boolean(meta),
+    crs: Boolean(meta) || Boolean(geoMeta),
     file: hasFile,
   };
 
@@ -223,6 +233,8 @@ async function stagePackage(event) {
   });
   if (base64 === null) return;
 
+  const text = (input) => (input?.value || '').trim() || null;
+  const num = (input) => (input && input.value !== '' ? Number(input.value) : null);
   const manifest = {
     name: (data.name.value || '').trim(),
     external_id: (data.external_id.value || '').trim() || null,
@@ -234,9 +246,25 @@ async function stagePackage(event) {
     license: (data.license.value || '').trim(),
     confidentiality: data.confidentiality.value,
     download_allowed: data.download_allowed.checked,
-    source_crs: (data.source_crs.value || '').trim().toUpperCase(),
-    x: Number(data.x.value),
-    y: Number(data.y.value),
+    source_crs: (data.source_crs.value || '').trim().toUpperCase() || null,
+    x: num(data.x),
+    y: num(data.y),
+    folder: text(data.folder),
+    well_symbol: text(data.well_symbol),
+    drilling_structure: text(data.drilling_structure),
+    operator: text(data.operator),
+    datum_name: text(data.datum_name),
+    datum_value: num(data.datum_value),
+    datum_unit: text(data.datum_unit),
+    td_md: num(data.td_md),
+    td_unit: text(data.td_unit),
+    bottom_hole_x: num(data.bottom_hole_x),
+    bottom_hole_y: num(data.bottom_hole_y),
+    source_lat: num(data.source_lat),
+    source_lon: num(data.source_lon),
+    source_geo_crs: text(data.source_geo_crs),
+    spud_date: text(data.spud_date),
+    completion_date: text(data.completion_date),
   };
 
   setButtonBusy(submit, true, 'Staging package…');

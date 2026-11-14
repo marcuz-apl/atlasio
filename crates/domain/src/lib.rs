@@ -17,6 +17,22 @@ pub struct Manifest {
     pub source_crs: Option<String>,
     pub x: Option<f64>,
     pub y: Option<f64>,
+    pub folder: Option<String>,
+    pub well_symbol: Option<String>,
+    pub drilling_structure: Option<String>,
+    pub operator: Option<String>,
+    pub datum_name: Option<String>,
+    pub datum_value: Option<f64>,
+    pub datum_unit: Option<String>,
+    pub td_md: Option<f64>,
+    pub td_unit: Option<String>,
+    pub bottom_hole_x: Option<f64>,
+    pub bottom_hole_y: Option<f64>,
+    pub source_lat: Option<f64>,
+    pub source_lon: Option<f64>,
+    pub source_geo_crs: Option<String>,
+    pub spud_date: Option<String>,
+    pub completion_date: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -47,8 +63,73 @@ impl Finding {
     }
 }
 
+/// A usable source position: projected x/y with its CRS, or geographic
+/// longitude/latitude with its own CRS. Source values are never mutated.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SourcePosition {
+    pub crs: String,
+    pub x: f64,
+    pub y: f64,
+}
+
+/// Resolve the position a header actually provides. The projected surface pair
+/// is primary when present; a geographic-only header falls back to lat/lon with
+/// its declared geographic CRS. No CRS is ever assumed.
+pub fn source_position(manifest: &Manifest) -> Option<SourcePosition> {
+    if let (Some(x), Some(y)) = (manifest.x, manifest.y) {
+        if x.is_finite() && y.is_finite() {
+            if let Some(crs) = manifest
+                .source_crs
+                .as_deref()
+                .map(str::trim)
+                .filter(|text| !text.is_empty())
+            {
+                return Some(SourcePosition {
+                    crs: crs::normalize(crs),
+                    x,
+                    y,
+                });
+            }
+        }
+    }
+    if let (Some(lat), Some(lon)) = (manifest.source_lat, manifest.source_lon) {
+        if lat.is_finite() && lon.is_finite() {
+            if let Some(crs) = manifest
+                .source_geo_crs
+                .as_deref()
+                .map(str::trim)
+                .filter(|text| !text.is_empty())
+            {
+                return Some(SourcePosition {
+                    crs: crs::normalize(crs),
+                    x: lon,
+                    y: lat,
+                });
+            }
+        }
+    }
+    None
+}
+
 fn blank(value: &Option<String>) -> bool {
     value.as_deref().is_none_or(|text| text.trim().is_empty())
+}
+
+fn is_iso_date(text: &str) -> bool {
+    let bytes = text.as_bytes();
+    if bytes.len() != 10 || bytes[4] != b'-' || bytes[7] != b'-' {
+        return false;
+    }
+    if !bytes
+        .iter()
+        .enumerate()
+        .all(|(index, byte)| matches!(index, 4 | 7) || byte.is_ascii_digit())
+    {
+        return false;
+    }
+    let month: u32 = text[5..7].parse().unwrap_or(0);
+    let day: u32 = text[8..10].parse().unwrap_or(0);
+    (1..=12).contains(&month) && (1..=31).contains(&day)
 }
 
 pub fn qc_findings(manifest: &Manifest, candidates: &[Candidate]) -> Vec<Finding> {
@@ -77,46 +158,128 @@ pub fn qc_findings(manifest: &Manifest, candidates: &[Candidate]) -> Vec<Finding
             None,
         ));
     }
-    match manifest.source_crs.as_deref() {
-        None | Some("") => findings.push(Finding::new(
+    let position = source_position(manifest);
+    if blank(&manifest.source_crs) && blank(&manifest.source_geo_crs) {
+        findings.push(Finding::new(
             "missing_crs",
             "error",
             "Source CRS must be identified; no default is assumed.",
             None,
-        )),
-        Some(source_crs) if crs::is_supported(source_crs) => {}
-        Some(source_crs) => findings.push(Finding::new(
+        ));
+    }
+    match &position {
+        Some(position) if crs::is_supported(&position.crs) => {
+            // One code path validates the position: the same transformation used
+            // at publication checks the numeric domain and the verified area.
+            if let Err(error) = crs::transform(&position.crs, position.x, position.y) {
+                findings.push(Finding::new(
+                    "out_of_range_coordinates",
+                    "error",
+                    &error.to_string(),
+                    None,
+                ));
+            }
+        }
+        Some(position) => findings.push(Finding::new(
             "unverified_crs",
             "error",
             &format!(
-                "No verified transformation to EPSG:4326 is registered for {source_crs}."
+                "No verified transformation to EPSG:4326 is registered for {}.",
+                position.crs
             ),
             None,
         )),
+        None => {
+            let has_pair = (manifest.x.is_some() && manifest.y.is_some())
+                || (manifest.source_lat.is_some() && manifest.source_lon.is_some());
+            if !has_pair {
+                findings.push(Finding::new(
+                    "invalid_coordinates",
+                    "error",
+                    "Numeric source x and y, or latitude and longitude, are required.",
+                    None,
+                ));
+            }
+        }
     }
-    match (manifest.x, manifest.y) {
-        (Some(x), Some(y)) if x.is_finite() && y.is_finite() => {
-            // One code path validates the position: the same transformation used
-            // at publication checks the numeric domain and the verified area.
-            if let Some(source_crs) = manifest.source_crs.as_deref() {
-                if crs::is_supported(source_crs) {
-                    if let Err(error) = crs::transform(source_crs, x, y) {
-                        findings.push(Finding::new(
-                            "out_of_range_coordinates",
-                            "error",
-                            &error.to_string(),
-                            None,
-                        ));
-                    }
+    if manifest.datum_value.is_some() && blank(&manifest.datum_unit) {
+        findings.push(Finding::new(
+            "missing_datum_unit",
+            "warning",
+            "Well datum value needs a unit (m or ft).",
+            None,
+        ));
+    }
+    if manifest.td_md.is_some() && blank(&manifest.td_unit) {
+        findings.push(Finding::new(
+            "missing_td_unit",
+            "warning",
+            "TD (MD) needs a unit (m or ft).",
+            None,
+        ));
+    }
+    if let Some(datum) = manifest
+        .datum_name
+        .as_deref()
+        .map(str::trim)
+        .filter(|text| !text.is_empty())
+    {
+        if !matches!(datum.to_lowercase().as_str(), "kb" | "gl" | "rf" | "df") {
+            findings.push(Finding::new(
+                "unknown_datum_name",
+                "warning",
+                "Well datum name is outside the known KB/GL/RF/DF vocabulary; confirm the elevation reference.",
+                None,
+            ));
+        }
+    }
+    if manifest.source_lat.is_some()
+        && manifest.source_lon.is_some()
+        && blank(&manifest.source_geo_crs)
+    {
+        findings.push(Finding::new(
+            "missing_source_geo_crs",
+            "warning",
+            "Source latitude/longitude need their own geographic CRS; no default is assumed.",
+            None,
+        ));
+    }
+    if let (Some(position), Some(lat), Some(lon)) =
+        (&position, manifest.source_lat, manifest.source_lon)
+    {
+        if manifest.x.is_some()
+            && manifest.y.is_some()
+            && !blank(&manifest.source_geo_crs)
+            && crs::is_supported(&position.crs)
+        {
+            if let Ok(display) = crs::transform(&position.crs, position.x, position.y) {
+                if (display.longitude - lon).abs() > 0.001
+                    || (display.latitude - lat).abs() > 0.001
+                {
+                    findings.push(Finding::new(
+                        "position_mismatch",
+                        "warning",
+                        "Source latitude/longitude disagree with the projected surface position beyond 0.001 degrees; reviewer confirmation is required.",
+                        None,
+                    ));
                 }
             }
         }
-        _ => findings.push(Finding::new(
-            "invalid_coordinates",
-            "error",
-            "Numeric source x and y are required.",
-            None,
-        )),
+    }
+    for (value, code) in [
+        (&manifest.spud_date, "invalid_spud_date"),
+        (&manifest.completion_date, "invalid_completion_date"),
+    ] {
+        if let Some(text) = value.as_deref().map(str::trim).filter(|text| !text.is_empty()) {
+            if !is_iso_date(text) {
+                findings.push(Finding::new(
+                    code,
+                    "warning",
+                    "Date must be ISO YYYY-MM-DD as provided by the source.",
+                    None,
+                ));
+            }
+        }
     }
 
     let names: Vec<String> = manifest

@@ -12,7 +12,7 @@ use std::{
     time::Instant,
 };
 
-use atlasio_domain::{Candidate, Finding, Manifest, crs, next_version, qc_findings};
+use atlasio_domain::{Candidate, Finding, Manifest, crs, next_version, qc_findings, source_position};
 use axum::{
     Json, Router,
     body::Body,
@@ -240,6 +240,10 @@ pub(crate) async fn migrate(pool: &PgPool) -> Result<(), sqlx::Error> {
         (
             "006_crs_transform.sql",
             include_str!("../../../migrations/006_crs_transform.sql"),
+        ),
+        (
+            "008_well_header.sql",
+            include_str!("../../../migrations/008_well_header.sql"),
         ),
     ];
     for (version, sql) in migrations {
@@ -948,16 +952,24 @@ async fn review(
     let name = manifest.name.as_deref().unwrap_or("");
     let source = manifest.source.as_deref().unwrap_or("");
     let source_crs = manifest.source_crs.as_deref().unwrap_or("");
-    let x = manifest.x.unwrap_or(0.0);
-    let y = manifest.y.unwrap_or(0.0);
-    // Derive the display position from the preserved source position. QC has
-    // already verified the CRS and area; recompute here so publication records
-    // the exact operation and its stated accuracy.
-    let display = crs::transform(source_crs, x, y)
+    // Resolve the position the header provides: projected surface pair primary,
+    // geographic pair fallback. QC has already verified the CRS and area;
+    // recompute here so publication records the exact operation and accuracy.
+    let position = source_position(&manifest).ok_or_else(|| {
+        ApiError::new(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "A numeric source position with its CRS is required.",
+        )
+    })?;
+    let display = crs::transform(&position.crs, position.x, position.y)
         .map_err(|error| ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, &error.to_string()))?;
-    sqlx::query("INSERT INTO well_versions (id, well_id, version_no, batch_id, name, aliases, external_id, source, source_crs, source_x, source_y, display_point, transform_operation, reviewer, transform_accuracy_m) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,ST_SetSRID(ST_MakePoint($12,$13),4326),$14,$15,$16)")
+    sqlx::query("INSERT INTO well_versions (id, well_id, version_no, batch_id, name, aliases, external_id, source, source_crs, source_x, source_y, display_point, transform_operation, reviewer, transform_accuracy_m, folder, well_symbol, drilling_structure, operator, datum_name, datum_value, datum_unit, td_md, td_unit, bottom_hole_x, bottom_hole_y, source_lat, source_lon, source_geo_crs, spud_date, completion_date) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,ST_SetSRID(ST_MakePoint($12,$13),4326),$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32)")
         .bind(version_id).bind(well_id).bind(version_no).bind(id).bind(name).bind(&manifest.aliases).bind(&manifest.external_id)
-        .bind(source).bind(source_crs).bind(x).bind(y).bind(display.longitude).bind(display.latitude).bind(&display.operation).bind(who).bind(display.accuracy_m)
+        .bind(source).bind(source_crs).bind(manifest.x).bind(manifest.y).bind(display.longitude).bind(display.latitude).bind(&display.operation).bind(who).bind(display.accuracy_m)
+        .bind(&manifest.folder).bind(&manifest.well_symbol).bind(&manifest.drilling_structure).bind(&manifest.operator)
+        .bind(&manifest.datum_name).bind(manifest.datum_value).bind(&manifest.datum_unit).bind(manifest.td_md).bind(&manifest.td_unit)
+        .bind(manifest.bottom_hole_x).bind(manifest.bottom_hole_y).bind(manifest.source_lat).bind(manifest.source_lon).bind(&manifest.source_geo_crs)
+        .bind(&manifest.spud_date).bind(&manifest.completion_date)
         .execute(&mut *tx).await?;
     sqlx::query("UPDATE wells SET current_version_id=$1 WHERE id=$2")
         .bind(version_id)
@@ -1028,14 +1040,21 @@ async fn well_detail(
         ));
     }
     let current: Uuid = current_row.get("current_version_id");
-    let rows = sqlx::query("SELECT v.id, v.version_no, v.name, v.aliases, v.external_id, v.source, v.source_crs, v.source_x, v.source_y, ST_X(v.display_point) AS longitude, ST_Y(v.display_point) AS latitude, v.transform_operation, v.transform_accuracy_m, v.reviewer, v.published_at, b.id AS batch_id, b.qc, b.manifest, f.id AS file_id, f.original_name, f.sha256, f.size_bytes, f.license, f.confidentiality FROM well_versions v JOIN import_batches b ON b.id=v.batch_id JOIN file_assets f ON f.batch_id=b.id WHERE v.well_id=$1 AND ($2 OR f.confidentiality='public') ORDER BY v.version_no DESC")
+    let rows = sqlx::query("SELECT v.id, v.version_no, v.name, v.aliases, v.external_id, v.source, v.source_crs, v.source_x, v.source_y, ST_X(v.display_point) AS longitude, ST_Y(v.display_point) AS latitude, v.transform_operation, v.transform_accuracy_m, v.folder, v.well_symbol, v.drilling_structure, v.operator, v.datum_name, v.datum_value, v.datum_unit, v.td_md, v.td_unit, v.bottom_hole_x, v.bottom_hole_y, v.source_lat, v.source_lon, v.source_geo_crs, v.spud_date, v.completion_date, v.reviewer, v.published_at, b.id AS batch_id, b.qc, b.manifest, f.id AS file_id, f.original_name, f.sha256, f.size_bytes, f.license, f.confidentiality FROM well_versions v JOIN import_batches b ON b.id=v.batch_id JOIN file_assets f ON f.batch_id=b.id WHERE v.well_id=$1 AND ($2 OR f.confidentiality='public') ORDER BY v.version_no DESC")
         .bind(id).bind(who != "reader").fetch_all(&state.db).await?;
     let versions: Vec<Value> = rows.into_iter().map(|row| json!({
         "id": row.get::<Uuid,_>("id"), "version_no": row.get::<i32,_>("version_no"), "name": row.get::<String,_>("name"),
         "aliases": row.get::<Vec<String>,_>("aliases"), "external_id": row.get::<Option<String>,_>("external_id"), "source": row.get::<String,_>("source"),
-        "source_crs": row.get::<String,_>("source_crs"), "source_x": row.get::<f64,_>("source_x"), "source_y": row.get::<f64,_>("source_y"),
+        "source_crs": row.get::<String,_>("source_crs"), "source_x": row.get::<Option<f64>,_>("source_x"), "source_y": row.get::<Option<f64>,_>("source_y"),
         "longitude": row.get::<f64,_>("longitude"), "latitude": row.get::<f64,_>("latitude"), "transform_operation": row.get::<String,_>("transform_operation"),
         "transform_accuracy_m": row.get::<Option<f64>,_>("transform_accuracy_m"),
+        "folder": row.get::<Option<String>,_>("folder"), "well_symbol": row.get::<Option<String>,_>("well_symbol"),
+        "drilling_structure": row.get::<Option<String>,_>("drilling_structure"), "operator": row.get::<Option<String>,_>("operator"),
+        "datum_name": row.get::<Option<String>,_>("datum_name"), "datum_value": row.get::<Option<f64>,_>("datum_value"), "datum_unit": row.get::<Option<String>,_>("datum_unit"),
+        "td_md": row.get::<Option<f64>,_>("td_md"), "td_unit": row.get::<Option<String>,_>("td_unit"),
+        "bottom_hole_x": row.get::<Option<f64>,_>("bottom_hole_x"), "bottom_hole_y": row.get::<Option<f64>,_>("bottom_hole_y"),
+        "source_lat": row.get::<Option<f64>,_>("source_lat"), "source_lon": row.get::<Option<f64>,_>("source_lon"), "source_geo_crs": row.get::<Option<String>,_>("source_geo_crs"),
+        "spud_date": row.get::<Option<String>,_>("spud_date"), "completion_date": row.get::<Option<String>,_>("completion_date"),
         "reviewer": row.get::<String,_>("reviewer"), "published_at": row.get::<sqlx::types::chrono::DateTime<sqlx::types::chrono::Utc>,_>("published_at"),
         "batch_id": row.get::<Uuid,_>("batch_id"), "qc": row.get::<DbJson<Vec<Finding>>,_>("qc").0,
         "file_id": row.get::<Uuid,_>("file_id"), "original_name": row.get::<String,_>("original_name"), "sha256": row.get::<String,_>("sha256"),
