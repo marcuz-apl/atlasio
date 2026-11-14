@@ -4,6 +4,12 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.42 — 2026-11-14
+Build: v0.1.42+2611141
+Type: feat
+- The app serves on port 3040: the server binds `0.0.0.0:3040`, and the smoke, auth, admin, demo-well, and CRS verification scripts plus the README default to `http://localhost:3040`.
+- `ATLASIO_URL` still overrides the script target, and the web client is unchanged because it calls same-origin `/api` paths.
+
 ## 0.1.41 — 2026-11-13
 Build: v0.1.41+2611133
 Type: fix

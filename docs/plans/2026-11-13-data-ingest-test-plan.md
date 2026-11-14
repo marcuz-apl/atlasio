@@ -23,7 +23,7 @@ Gap (must be built first as Slice A, else non-header types cannot be ingested):
 ## 3. Prerequisites (verify before Phase 1)
 
 - [ ] v0.1.40 committed/pushed/tagged/released at UTC rollover (counter reset); server rebuilt + restarted in WSL; migration 006 applied.
-- [ ] `docker compose` DB + object storage up; `scripts/dev-server.sh` healthy at :8000.
+- [ ] `docker compose` DB + object storage up; `scripts/dev-server.sh` healthy at :3040.
 - [ ] Datasets present under `demo-data/{sodir,nsta,volve,rmotc}` with `manifest.json` (already downloaded; OpendTect F3/Laurentian excluded — moved out).
 - [ ] Demo keys resolve via `/api/demo-profiles`; importer/reviewer/reader roles available.
 - [ ] Baseline green: `cargo test --workspace`, `node scripts/smoke.mjs`, `node scripts/verify-crs.mjs`.

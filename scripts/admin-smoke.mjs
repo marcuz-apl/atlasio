@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-const host = process.env.ATLASIO_URL || 'http://localhost:8000';
+const host = process.env.ATLASIO_URL || 'http://localhost:3040';
 const adminUser = process.env.ATLASIO_ADMIN_USERNAME || 'admin';
 const adminInitial = process.env.ATLASIO_ADMIN_INITIAL_PASSWORD || 'admin-initial';
 const adminPassword = process.env.ATLASIO_ADMIN_PASSWORD || 'atlasio-staff-smoke-pass';

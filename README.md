@@ -20,10 +20,10 @@ Requires Docker Compose, a Rust toolchain, and Node.js 20.19+ (or 22+). From the
 docker compose up -d          # PostGIS + S3Mock (development only)
 npm --prefix web ci
 npm --prefix web run build
-./scripts/dev-server.sh       # serves the API and web client on :8000
+./scripts/dev-server.sh       # serves the API and web client on :3040
 ```
 
-Open `http://localhost:8000`. After cloning, enable the commit hooks with `git config core.hooksPath .githooks`.
+Open `http://localhost:3040`. After cloning, enable the commit hooks with `git config core.hooksPath .githooks`.
 
 | Entry | Credentials | Notes |
 | --- | --- | --- |
