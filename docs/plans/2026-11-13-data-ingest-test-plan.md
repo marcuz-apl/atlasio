@@ -2,6 +2,11 @@
 
 Objective: exercise governed ingestion for **every data type** present in the four loaded demo packages (Sodir, NSTA, Volve, RMOTC), end to end, and report what passes, what is blocked, and what remains catalog-only. This plan is the commission for tomorrow morning; it is not yet executed.
 
+## 0. Scope changes — 2026-11-14
+
+- **RMOTC on hold** (owner decision). `demo-data/rmotc` keeps `DataSets/` (extracted from the former `rmotc.tar`, since deleted together with two scratch text files) plus four PDFs; no manifest yet. All RMOTC/USA rows in §5 and the USA no-transform checks in §6–§7 are deferred until the hold lifts; NAD27/83 operation registration remains a later-release item.
+- **Well-header contract gap raised by owner.** Industry well headers carry 17 columns: WellName, UWI, Folder, Well symbol, Surface X, Surface Y, Latitude, Longitude, Drilling structure, Well datum name (KB/GL/RF), Well datum value, TD (MD), Bottom hole X, Bottom hole Y, Spud date, Completion date, Operator. Today's manifest and `well_versions` cover only name, external_id (UWI), source_x/source_y with source_crs, and a derived display lat/lon; source-provided lat/lon and the other 11 columns have no home. A header-extension design is pending owner approval; matrix sequencing depends on that decision.
+
 ## 1. What "ingest" means per type (Release 1 scope)
 
 Per PRD §6 (W-03, S-02, S-03), Release-1 ingestion is **governed cataloging**, not full domain parsing:
@@ -56,14 +61,17 @@ For each row: attach via API, assert checksum + size + source CRS + licence + ac
 | Seismic nav / 2D | Volve ST0299 lines; NSTA 2D index; RMOTC nav | SEG-Y/Esri JSON/txt | 23031/4230 / NAD | survey catalog | line footprint on map; original CRS visible |
 | Seismic 3D | Volve st0202 time (+depth) cube; NSTA 3D index | SEG-Y/Esri JSON | 23031/4230 | survey catalog, object storage | large cube NOT copied to browser; footprint + checksum + size |
 
-## 6. Morning schedule (time-boxed)
+## 6. Session schedule (approved 2026-11-14, time-boxed)
 
-1. **0:00–0:20** Prerequisites + baseline green (§3). Release v0.1.40 if not already.
-2. **0:20–1:20** Slice A (§4): migration + attach/catalog API + large-file path + minimal UI. Unit + API tests.
-3. **1:20–2:20** Run matrix (§5) headers + well-attached types (logs/deviation/tops/production/core/docs) across datasets; write `scripts/verify-ingest-types.mjs`.
-4. **2:20–3:00** Seismic + GIS rows (footprints, large-cube object storage, USA no-transform).
-5. **3:00–3:30** Governance cross-checks (§7) + fix any defect + rerun affected rows.
-6. **3:30–4:00** Report (§9), docs + CHANGELOG + version bump, commit/push/tag/release.
+1. **0:00–0:20** Phase 0: prerequisites + baseline green (§3); RMOTC held (§0).
+2. **0:20–1:20** Phase 1a: well-header industry extension (approved design: 16 nullable columns, three position modes, CRS alias normalization, warnings-not-blocks QC, importer/record UI, fixtures, tests first).
+3. **1:20–2:20** Phase 1b: Slice A (§4) migration + attach/catalog API + large-file path + minimal UI.
+4. **2:20–3:20** Phase 2: matrix (§5) headers + well-attached types; write `scripts/verify-ingest-types.mjs`.
+5. **3:20–4:00** Phase 3: seismic + GIS rows (footprints, large-cube object storage).
+6. **4:00–4:30** Phase 4: governance cross-checks (§7) + fix any defect + rerun affected rows.
+7. **4:30–5:00** Phase 5: report (§9), docs + CHANGELOG + version bump, commit/push/tag/release.
+
+**Next slice (after the report, separate design approval):** column-mapping import wizard — upload CSV/XLSX (server-side parse), preview grid, step-by-step column matching with synonym suggestions, per-row QC preview, stage into the governed flow; migration 009 drops `well_versions.batch_id UNIQUE` so one header table can carry many wells.
 
 ## 7. Cross-cutting governance checks
 

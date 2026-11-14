@@ -78,12 +78,14 @@ export const USER_DOCS_HTML = `
   <h2>Stage, correct, and submit a package</h2>
   <p>Importers turn a source package into a reviewed record. The original file is stored unchanged; its checksum proves the bytes survived.</p>
   <ol class="docs-steps">
-    <li><strong>Stage the package.</strong> Provide the header manifest and the original file. The upload limit in this slice is 5 MiB. Choose the source CRS: WGS 84 (EPSG:4326) or native ED50 (EPSG:4230 geographic, EPSG:23031 / 23032 UTM). ED50 positions are transformed to WGS 84 for display with the verified EPSG:1311 operation (±1 m); the source coordinates you type are preserved and the applied operation and accuracy are shown on the record. <strong>Pick on map</strong> can fill X/Y for you; a pick is explicit and sets the source CRS to EPSG:4326.</li>
+    <li><strong>Stage the package.</strong> Provide the header manifest and the original file. The form upload limit is 5 MiB; larger originals stream through the attach-dataset path. Choose the source CRS: WGS 84 (EPSG:4326) or native ED50 (EPSG:4230 geographic, EPSG:23031 / 23032 UTM). ED50 positions are transformed to WGS 84 for display with the verified EPSG:1311 operation (±1 m); the source coordinates you type are preserved and the applied operation and accuracy are shown on the record. <strong>Pick on map</strong> can fill X/Y for you; a pick is explicit and sets the source CRS to EPSG:4326.</li>
     <li><strong>Read the QC findings.</strong> Blocking errors must be resolved; warnings need a judgement, not a dismissal.</li>
     <li><strong>Correct metadata</strong> on the staged record. Every correction updates the QC result and is recorded in the audit trail.</li>
     <li><strong>Submit for review.</strong> A staged package is editable; a submitted package is not.</li>
   </ol>
   <p>Duplicate candidates are surfaced for a human decision. Atlasio does not merge wells automatically.</p>
+  <p>The header form follows the industry well header: UWI, folder, well symbol, drilling structure, operator, well datum (KB/GL/RF) with value and unit, TD (MD) with unit, bottom-hole X/Y, source latitude/longitude with their own geographic CRS, and spud/completion dates. Every value is preserved as provided. A position can be projected X/Y with a CRS, a lat/lon pair with a geographic CRS, or both; the map display is derived at publish and never overwrites the source.</p>
+  <p><strong>Attach datasets.</strong> Below the staging form, attach any original (logs, deviation, tops, production, core, documents, seismic) to a published well or seismic survey. Files above 5 MiB stream to object storage. The record inspector lists attached datasets with checksum, size, access state, and a download; Explore shows seismic survey footprints with a display toggle.</p>
 </section>
 
 <section class="docs-section" id="user-review" data-doc-section>
