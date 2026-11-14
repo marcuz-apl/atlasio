@@ -1,0 +1,18 @@
+ALTER TABLE well_versions ADD COLUMN IF NOT EXISTS folder text;
+ALTER TABLE well_versions ADD COLUMN IF NOT EXISTS well_symbol text;
+ALTER TABLE well_versions ADD COLUMN IF NOT EXISTS drilling_structure text;
+ALTER TABLE well_versions ADD COLUMN IF NOT EXISTS operator text;
+ALTER TABLE well_versions ADD COLUMN IF NOT EXISTS datum_name text;
+ALTER TABLE well_versions ADD COLUMN IF NOT EXISTS datum_value double precision;
+ALTER TABLE well_versions ADD COLUMN IF NOT EXISTS datum_unit text;
+ALTER TABLE well_versions ADD COLUMN IF NOT EXISTS td_md double precision;
+ALTER TABLE well_versions ADD COLUMN IF NOT EXISTS td_unit text;
+ALTER TABLE well_versions ADD COLUMN IF NOT EXISTS bottom_hole_x double precision;
+ALTER TABLE well_versions ADD COLUMN IF NOT EXISTS bottom_hole_y double precision;
+ALTER TABLE well_versions ADD COLUMN IF NOT EXISTS source_lat double precision;
+ALTER TABLE well_versions ADD COLUMN IF NOT EXISTS source_lon double precision;
+ALTER TABLE well_versions ADD COLUMN IF NOT EXISTS source_geo_crs text;
+ALTER TABLE well_versions ADD COLUMN IF NOT EXISTS spud_date text;
+ALTER TABLE well_versions ADD COLUMN IF NOT EXISTS completion_date text;
+ALTER TABLE well_versions ALTER COLUMN source_x DROP NOT NULL;
+ALTER TABLE well_versions ALTER COLUMN source_y DROP NOT NULL;

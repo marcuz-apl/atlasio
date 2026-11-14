@@ -4,6 +4,14 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.43 — 2026-11-14
+Build: v0.1.43+2611142
+Type: feat
+- Well headers carry the industry columns: folder, well symbol, drilling structure, operator, well datum name/value/unit (KB/GL/RF), TD (MD) with unit, bottom-hole X/Y, source latitude/longitude with their own geographic CRS, and spud/completion dates. All are preserved as provided and shown in the record inspector; the external ID field is labelled UWI.
+- Import accepts three position modes: projected X/Y with a CRS, geographic lat/lon with a CRS, or both (a mismatch beyond 0.001 degrees warns). CRS aliases such as `ED50 / UTM zone 32N` normalize to their code; X/Y are no longer mandatory.
+- New QC warnings that never block: missing datum or TD unit, datum name outside KB/GL/RF/DF, lat/lon without a geographic CRS, position mismatch, and non-ISO dates.
+- Migration 008 adds the header columns and makes source X/Y nullable for geographic-only headers; published versions remain immutable.
+
 ## 0.1.42 — 2026-11-14
 Build: v0.1.42+2611141
 Type: feat

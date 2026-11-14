@@ -110,6 +110,7 @@ fn ed50_manifest() -> Manifest {
         source_crs: Some("EPSG:23031".into()),
         x: Some(500_000.0),
         y: Some(6_206_216.606_592),
+        ..Default::default()
     }
 }
 

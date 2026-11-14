@@ -124,14 +124,34 @@ impl fmt::Display for CrsError {
 
 impl std::error::Error for CrsError {}
 
-fn normalize(crs: &str) -> String {
-    crs.trim().to_uppercase()
+/// Normalize a CRS as written in a well header to its bare EPSG code:
+/// `EPSG:23032`, `23032`, and `ED50 / UTM zone 32N` all become `23032`.
+/// Unregistered names are returned trimmed and unchanged, never guessed.
+pub fn normalize(crs: &str) -> String {
+    let trimmed = crs.trim();
+    let lower = trimmed.to_lowercase();
+    let body = lower.strip_prefix("epsg:").unwrap_or(&lower).trim();
+    if !body.is_empty() && body.chars().all(|character| character.is_ascii_digit()) {
+        return body.to_string();
+    }
+    match lower.as_str() {
+        "ed50" => "4230",
+        "wgs 84" | "wgs84" => "4326",
+        "ed50 / utm zone 31n" => "23031",
+        "ed50 / utm zone 32n" => "23032",
+        _ => trimmed,
+    }
+    .to_string()
+}
+
+fn canonical(crs: &str) -> String {
+    format!("EPSG:{}", normalize(crs))
 }
 
 /// Whether a verified operation to `EPSG:4326` is registered for this CRS.
 pub fn is_supported(crs: &str) -> bool {
     matches!(
-        normalize(crs).as_str(),
+        canonical(crs).as_str(),
         "EPSG:4326" | "EPSG:4230" | "EPSG:23031" | "EPSG:23032"
     )
 }
@@ -152,7 +172,7 @@ pub fn supported_crs() -> &'static [(&'static str, &'static str)] {
 /// CRS, easting/northing for projected CRS. The source values are never mutated;
 /// the caller stores them unchanged alongside the derived display position.
 pub fn transform(crs: &str, x: f64, y: f64) -> Result<Transform, CrsError> {
-    let code = normalize(crs);
+    let code = canonical(crs);
     match code.as_str() {
         "EPSG:4326" => {
             check_geographic_range(x, y)?;
