@@ -727,6 +727,52 @@
                       <button class="btn btn-primary" type="submit" id="attach-submit">Attach dataset</button>
                     </form>
                   </section>
+
+                  <section class="panel table-panel" aria-labelledby="table-title" id="table-import-panel">
+                    <header class="panel-head">
+                      <div>
+                        <p class="eyebrow">TABLE IMPORT</p>
+                        <h2 id="table-title">Import from a header table</h2>
+                      </div>
+                      <span class="role-badge role-importer">Importer</span>
+                    </header>
+                    <p class="panel-lede">Upload a CSV or XLSX of well headers. The server profiles each column, suggests a mapping, cleans messy values, and stages the rows into the governed flow. Original file is preserved; every change is audited.</p>
+                    <div id="table-upload-area">
+                      <form id="table-upload-form" novalidate>
+                        <div class="field-row">
+                          <label class="field"><span>Table name <b aria-hidden="true">*</b></span><input name="name" required autocomplete="off" placeholder="e.g. North Sea well list 2024" /></label>
+                          <label class="field"><span>License</span><input name="license" placeholder="OGL-UK-3.0" autocomplete="off" /></label>
+                          <label class="field"><span>Confidentiality</span>
+                            <div class="select-wrap">
+                              <select name="confidentiality"><option value="public">Public</option><option value="restricted">Restricted</option></select>
+                              <svg class="select-arrow" aria-hidden="true"><use href="#i-chevron-down" /></svg>
+                            </div>
+                          </label>
+                        </div>
+                        <label class="dropzone" id="table-dropzone">
+                          <input name="file" type="file" accept=".csv,.xlsx" required />
+                          <svg aria-hidden="true"><use href="#i-upload" /></svg>
+                          <span class="dropzone-title">Choose or drop a .csv or .xlsx file</span>
+                          <span class="dropzone-hint">Up to 5 MiB · header row required</span>
+                        </label>
+                        <button class="btn btn-primary" type="submit" id="table-upload-btn">Upload &amp; profile</button>
+                      </form>
+                    </div>
+                    <div id="table-preview" hidden>
+                      <div class="table-preview-head">
+                        <h3 id="table-preview-title">Column mapping</h3>
+                        <div class="table-preview-actions">
+                          <button class="btn btn-secondary btn-small" type="button" id="table-save-mapping">Save mapping</button>
+                          <button class="btn btn-primary btn-small" type="button" id="table-stage-btn">Stage clean rows</button>
+                          <a class="btn btn-secondary btn-small" id="table-report-link" href="#" download>Download error report</a>
+                        </div>
+                      </div>
+                      <div id="table-profile-summary" class="table-profile-summary"></div>
+                      <div id="table-mapping-grid" class="table-mapping-grid"></div>
+                      <div id="table-status" class="table-status" aria-live="polite"></div>
+                    </div>
+                  </section>
+
                   <aside class="panel queue-panel" aria-labelledby="ingest-queue-title">
                     <header class="panel-head">
                       <div>

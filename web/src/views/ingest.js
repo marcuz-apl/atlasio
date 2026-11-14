@@ -101,6 +101,9 @@ export function initIngest() {
     }
   });
 
+  // Table import wizard
+  initTableImport();
+
   updateReadiness();
 }
 
@@ -583,6 +586,215 @@ async function saveCorrection(item, form, button) {
     await api(`/imports/${item.id}`, { method: 'PATCH', body: JSON.stringify(changes) });
     toast('Correction saved. QC findings were re-evaluated.', 'success');
     await loadQueue();
+  } catch (error) {
+    toast(error.message, 'error');
+  } finally {
+    setButtonBusy(button, false);
+  }
+}
+
+// ── Table import (preconditioning wizard) ──────────────────────────────────
+
+let tableState = null;
+
+const TABLE_TARGETS = [
+  'name','external_id','folder','well_symbol','drilling_structure','operator',
+  'datum_name','datum_value','datum_unit','td_md','td_unit',
+  'bottom_hole_x','bottom_hole_y','x','y','source_lat','source_lon',
+  'source_crs','source_geo_crs','spud_date','completion_date','alias',
+];
+
+function initTableImport() {
+  const form = $('#table-upload-form');
+  const dropzone = $('#table-dropzone');
+  const fileInput = form?.elements.file;
+
+  form?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const nameInput = form.elements.name;
+    const file = fileInput?.files?.[0];
+    if (!file || !(nameInput?.value || '').trim()) {
+      toast('Table name and file are required.', 'error');
+      return;
+    }
+    const button = $('#table-upload-btn');
+    setButtonBusy(button, true, 'Uploading…');
+    try {
+      // Read the file as base64 (chunked to avoid blowing the call stack on large files)
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = '';
+      const CHUNK = 32768;
+      for (let offset = 0; offset < bytes.length; offset += CHUNK) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(offset, offset + CHUNK));
+      }
+      const base64 = btoa(binary);
+      const response = await api('/ingest/tables', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: nameInput.value.trim(),
+          file_name: file.name,
+          file_base64: base64,
+          license: (form.elements.license?.value || '').trim() || null,
+          confidentiality: form.elements.confidentiality?.value || null,
+        }),
+      });
+      tableState = {
+        id: response.id,
+        profile: response.profile,
+        mapping: response.suggested_mapping,
+      };
+      showTablePreview();
+      toast(`Profiled ${response.rows} rows.`, 'success');
+    } catch (error) {
+      toast(error.message, 'error');
+    } finally {
+      setButtonBusy(button, false);
+    }
+  });
+
+  if (dropzone && fileInput) {
+    for (const eventName of ['dragenter', 'dragover']) {
+      dropzone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        dropzone.classList.add('is-dragging');
+      });
+    }
+    for (const eventName of ['dragleave', 'dragend', 'drop']) {
+      dropzone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        dropzone.classList.remove('is-dragging');
+      });
+    }
+    dropzone.addEventListener('drop', (event) => {
+      const file = event.dataTransfer?.files?.[0];
+      if (!file) return;
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      fileInput.files = transfer.files;
+    });
+  }
+
+  $('#table-save-mapping')?.addEventListener('click', saveTableMapping);
+  $('#table-stage-btn')?.addEventListener('click', stageTableRows);
+  $('#table-report-link')?.addEventListener('click', (event) => {
+    event.preventDefault();
+    if (!tableState) return;
+    fetch(`/api/ingest/tables/${tableState.id}/report`, { headers: authHeaders() })
+      .then((response) => {
+        if (!response.ok) {
+          return response.json().then((data) => { throw new Error(data.detail || `HTTP ${response.status}`); });
+        }
+        return response.blob();
+      })
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = 'blocked_rows.csv';
+        anchor.click();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+      })
+      .catch((error) => toast(`Cannot download report: ${error.message}`, 'error'));
+  });
+}
+
+function showTablePreview() {
+  const uploadArea = $('#table-upload-area');
+  const preview = $('#table-preview');
+  if (uploadArea) uploadArea.setAttribute('hidden', '');
+  if (preview) preview.removeAttribute('hidden');
+
+  // Hide the report link by default
+  const reportLink = $('#table-report-link');
+  if (reportLink) reportLink.setAttribute('hidden', '');
+
+  const profile = tableState.profile;
+  const summary = $('#table-profile-summary');
+  if (summary) {
+    const flaggedCols = profile.columns.filter((col) => col.flags?.length > 0);
+    const flagsHtml = flaggedCols.length
+      ? flaggedCols
+          .map((col) => `<span class="flag-chip" title="${col.name}">${col.name}: ${col.flags.join(', ')}</span>`)
+          .join('')
+      : '<span class="field-hint">No quality flags detected.</span>';
+    summary.innerHTML = `
+      <p class="table-profile-line"><b>${profile.rows}</b> rows · <b>${profile.columns.length}</b> columns</p>
+      <div class="table-col-flags">${flagsHtml}</div>
+    `;
+  }
+
+  const grid = $('#table-mapping-grid');
+  if (grid) {
+    const mapping = tableState.mapping || {};
+    // Build option list for each target select: skip + all targets with the right one selected
+    grid.innerHTML = profile.columns
+      .map((col) => {
+        const options = TABLE_TARGETS.map((target) => {
+          // Find which target is mapped to this column index in the current mapping
+          const selected = Object.entries(mapping).find(([t, idx]) => t === target && idx === col.index);
+          const isSelected = Boolean(selected);
+          return `<option value="${target}"${isSelected ? ' selected' : ''}>${target}</option>`;
+        }).join('');
+        const skipSelected = !Object.values(mapping).includes(col.index);
+        const skipOpt = `<option value=""${skipSelected ? ' selected' : ''}>— skip —</option>`;
+        return `<div class="mapping-row">
+          <span class="mapping-col-name">${col.name}</span>
+          <span class="mapping-col-kind">${col.kind}</span>
+          <select data-col="${col.index}" class="mapping-target-select">${skipOpt}${options}</select>
+        </div>`;
+      })
+      .join('');
+  }
+}
+
+async function saveTableMapping() {
+  if (!tableState) return;
+  const button = $('#table-save-mapping');
+  setButtonBusy(button, true, 'Saving…');
+  try {
+    const mapping = {};
+    document.querySelectorAll('.mapping-target-select').forEach((select) => {
+      const target = select.value;
+      if (target) mapping[target] = Number(select.dataset.col);
+    });
+    const response = await api(`/ingest/tables/${tableState.id}/mapping`, {
+      method: 'PUT',
+      body: JSON.stringify({ mapping }),
+    });
+    tableState.mapping = mapping;
+    const status = $('#table-status');
+    if (status) {
+      const blocked = response.blocked_rows ?? 0;
+      const total = response.total_rows ?? 0;
+      const staged = total - blocked;
+      status.textContent = `${staged} clean rows · ${blocked} blocked · table status: ${response.status}`;
+      if (blocked > 0) {
+        const reportLink = $('#table-report-link');
+        if (reportLink) reportLink.removeAttribute('hidden');
+      }
+    }
+    toast('Mapping saved and rows pre-conditioned.', 'success');
+  } catch (error) {
+    toast(error.message, 'error');
+  } finally {
+    setButtonBusy(button, false);
+  }
+}
+
+async function stageTableRows() {
+  if (!tableState) return;
+  const button = $('#table-stage-btn');
+  setButtonBusy(button, true, 'Staging…');
+  try {
+    const response = await api(`/ingest/tables/${tableState.id}/stage`, { method: 'POST' });
+    const staged = response.staged ?? 0;
+    if (staged > 0) {
+      toast(`Staged ${staged} row${staged === 1 ? '' : 's'} into the import queue.`, 'success');
+      await loadQueue();
+    } else {
+      toast('No clean rows to stage yet. Save the mapping first.', 'info');
+    }
   } catch (error) {
     toast(error.message, 'error');
   } finally {

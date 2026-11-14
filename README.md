@@ -83,6 +83,7 @@ Runbooks: [staff accounts and MFA recovery](docs/operations/staff-accounts.md), 
 - `node scripts/smoke.mjs` — synthetic packages, version replacement, search, map API, download, and access checks.
 - `node scripts/admin-smoke.mjs` — staff sign-in, profiles, demo-key rotation, backup, verification, restore rehearsal, maintenance blocking, and audit.
 - `node scripts/auth-smoke.mjs` — MFA enrolment, code challenges, and recovery codes.
+- `node scripts/verify-ingest-wizard.mjs` — table-import wizard end to end: messy CSV profile, auto-derived rules, DMS/decimal-comma/unit/date cleaning, blocked-row report, and staging.
 
 ## Repository layout
 

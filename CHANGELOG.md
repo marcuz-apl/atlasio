@@ -4,6 +4,14 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.45 — 2026-11-14
+Build: v0.1.45+2611145
+Type: feat
+- Table-import wizard: import a CSV or XLSX of well headers through the new "Import from a header table" panel in Ingest. The server profiles every column (kind, fill rate, flags for DMS coordinates, decimal commas, embedded units, null-heavy columns), suggests a mapping to the governed fields, and stages rows through the same review flow as single packages.
+- Pre-conditioning rules are derived automatically from the detected profile and saved with the table: DMS coordinates become decimal degrees, decimal commas normalize, embedded units strip, null tokens such as -999.25 collapse to empty, and mixed date formats normalize to ISO. Every change is audited with a before/after trail; the original file is stored unchanged.
+- Rows the engine cannot place safely (missing CRS, no usable position) are blocked, never guessed; importers download a CSV error report, fix the rows in the source, and re-upload. Duplicate UWIs in one table are surfaced as findings for reviewer resolution.
+- Migration 009 drops the one-file-per-package unique constraints and adds `ingest_tables` / `ingest_table_rows`. Verified end to end by `scripts/verify-ingest-wizard.mjs`.
+
 ## 0.1.44 — 2026-11-14
 Build: v0.1.44+2611143
 Type: feat
