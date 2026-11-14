@@ -1,4 +1,4 @@
-import { api } from '../lib/api.js';
+import { ApiError, api, authHeaders } from '../lib/api.js';
 import { state } from '../lib/state.js';
 import { createWellMap } from '../lib/maps.js';
 import { formatBytes, formatDateTime } from '../lib/format.js';
@@ -336,6 +336,67 @@ function renderQueue() {
 
   for (const item of items) {
     list.append(renderQueueCard(item));
+  }
+}
+
+$('#attach-dataset')?.addEventListener('submit', attachDataset);
+
+async function attachDataset(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = form.elements;
+  const file = data.file.files?.[0];
+  const submit = $('#attach-submit');
+  if (!file) {
+    toast('Choose the original file to attach.', 'error');
+    return;
+  }
+  const wellId = (data.well_id.value || '').trim();
+  const surveyId = (data.survey_id.value || '').trim();
+  if (!wellId === !surveyId) {
+    toast('Provide exactly one of well ID or survey ID.', 'error');
+    return;
+  }
+  const meta = {
+    well_id: wellId || null,
+    survey_id: surveyId || null,
+    kind: (data.kind.value || '').trim(),
+    format: (data.format.value || '').trim(),
+    source_crs: (data.source_crs.value || '').trim() || null,
+    license: (data.license.value || '').trim(),
+    confidentiality: data.confidentiality.value,
+    file_name: file.name,
+  };
+  setButtonBusy(submit, true, 'Attaching…');
+  try {
+    let result;
+    if (file.size > 5 * 1024 * 1024) {
+      result = await api('/datasets', { method: 'POST', body: JSON.stringify(meta) });
+      const response = await fetch(`/api/datasets/${result.id}/original`, {
+        method: 'PUT',
+        headers: { ...authHeaders(), 'Content-Type': 'application/octet-stream' },
+        body: file,
+      });
+      if (!response.ok) {
+        const detail = await response.json().catch(() => ({}));
+        throw new ApiError(detail.detail || `Upload failed (${response.status})`, detail, response.status);
+      }
+      result = await response.json();
+    } else {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(',')[1]);
+        reader.onerror = () => reject(new Error('Could not read the file.'));
+        reader.readAsDataURL(file);
+      });
+      result = await api('/datasets', { method: 'POST', body: JSON.stringify({ ...meta, file_base64: base64 }) });
+    }
+    toast(`Dataset attached (${result.status}). Checksum ${String(result.sha256).slice(0, 12)}…`, 'success');
+    form.reset();
+  } catch (error) {
+    toast(error.message, 'error');
+  } finally {
+    setButtonBusy(submit, false, 'Attach dataset');
   }
 }
 

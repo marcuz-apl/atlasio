@@ -4,6 +4,14 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.44 — 2026-11-14
+Build: v0.1.44+2611143
+Type: feat
+- Datasets: attach any original (logs, deviation, tops, production, core, documents, seismic) to a published well or seismic survey with kind, format, source CRS, licence, and confidentiality; checksum and size are recorded and downloads are byte-identical. Originals above 5 MiB stream to object storage in multipart parts; published datasets are immutable.
+- Seismic survey catalog (2D/3D) preserves source-CRS footprints; display footprints are transformed to WGS 84 only for registered CRS, and unregistered CRS stays catalog-only with no display geometry.
+- Explore gains a seismic footprint layer with a display toggle; the record inspector lists attached datasets with authenticated download; Ingest gains an attach-dataset form.
+- Migration 007 adds `datasets` and `seismic_surveys` with immutability triggers.
+
 ## 0.1.43 — 2026-11-14
 Build: v0.1.43+2611142
 Type: feat
