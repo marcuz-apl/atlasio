@@ -517,6 +517,7 @@
                       <label class="check"><input type="checkbox" id="toggle-graticule" checked /><span>Graticule</span></label>
                       <label class="check"><input type="checkbox" id="toggle-borders" checked /><span>Country borders</span></label>
                       <label class="check"><input type="checkbox" id="toggle-area" checked /><span>Area of interest</span></label>
+                      <label class="check"><input type="checkbox" id="toggle-seismic" checked /><span>Seismic footprints</span></label>
                     </div>
                     <label class="display-field"><span>Symbol size <output id="symbol-size-value">4.2 px</output></span>
                       <input type="range" id="symbol-size" min="2.5" max="8" step="0.1" value="4.2" />
@@ -694,6 +695,38 @@
                     </form>
                   </section>
 
+                  <section class="panel attach-panel" aria-labelledby="attach-dataset-title">
+                    <header class="panel-head">
+                      <h2 id="attach-dataset-title">Attach dataset to a published well or survey</h2>
+                    </header>
+                    <form id="attach-dataset" class="stage-form">
+                      <div class="field-row">
+                        <label class="field"><span>Well ID</span><input name="well_id" autocomplete="off" placeholder="Published well UUID" /></label>
+                        <label class="field"><span>Survey ID (instead of well)</span><input name="survey_id" autocomplete="off" placeholder="Seismic survey UUID" /></label>
+                      </div>
+                      <div class="field-row">
+                        <label class="field"><span>Kind <b aria-hidden="true">*</b></span><input name="kind" required placeholder="logs, deviation, tops, production, core, documents, seismic-3d" autocomplete="off" /></label>
+                        <label class="field"><span>Format <b aria-hidden="true">*</b></span><input name="format" required placeholder="LAS, CSV, PDF, SEG-Y" autocomplete="off" /></label>
+                      </div>
+                      <div class="field-row">
+                        <label class="field"><span>Source CRS (if positioned)</span><input name="source_crs" placeholder="EPSG:23032" autocomplete="off" /></label>
+                        <label class="field"><span>License <b aria-hidden="true">*</b></span><input name="license" required autocomplete="off" /></label>
+                        <label class="field"><span>Confidentiality</span>
+                          <div class="select-wrap">
+                            <select name="confidentiality"><option value="restricted">Restricted</option><option value="public">Public</option></select>
+                            <svg class="select-arrow" aria-hidden="true"><use href="#i-chevron-down" /></svg>
+                          </div>
+                        </label>
+                      </div>
+                      <label class="dropzone" id="attach-dropzone">
+                        <input name="file" type="file" required />
+                        <svg aria-hidden="true"><use href="#i-upload" /></svg>
+                        <span class="dropzone-title">Choose or drop the original file</span>
+                        <span class="dropzone-hint">Above 5 MiB the file streams directly to object storage.</span>
+                      </label>
+                      <button class="btn btn-primary" type="submit" id="attach-submit">Attach dataset</button>
+                    </form>
+                  </section>
                   <aside class="panel queue-panel" aria-labelledby="ingest-queue-title">
                     <header class="panel-head">
                       <div>

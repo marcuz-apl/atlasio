@@ -22,6 +22,8 @@ use axum::{
     routing::{delete, get, post},
 };
 use base64::{Engine, engine::general_purpose::STANDARD};
+use futures_util::StreamExt;
+use http_body_util::BodyExt;
 use object_store::{ObjectStore, ObjectStoreExt, PutPayload, path::Path as ObjectPath};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -240,6 +242,10 @@ pub(crate) async fn migrate(pool: &PgPool) -> Result<(), sqlx::Error> {
         (
             "006_crs_transform.sql",
             include_str!("../../../migrations/006_crs_transform.sql"),
+        ),
+        (
+            "007_datasets.sql",
+            include_str!("../../../migrations/007_datasets.sql"),
         ),
         (
             "008_well_header.sql",
@@ -466,6 +472,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/wells/{id}", get(well_detail))
         .route("/api/map/wells", get(map_wells))
         .route("/api/files/{id}", get(download))
+        .route("/api/datasets", post(attach_dataset))
+        .route("/api/datasets/{id}", get(dataset_detail).delete(delete_dataset))
+        .route(
+            "/api/datasets/{id}/original",
+            axum::routing::put(upload_dataset_original)
+                .get(dataset_original)
+                .layer(DefaultBodyLimit::max(2 * 1024 * 1024 * 1024)),
+        )
+        .route("/api/wells/{id}/datasets", get(well_datasets))
+        .route("/api/seismic-surveys", post(create_survey).get(list_surveys))
+        .route("/api/map/seismic", get(map_seismic))
         .route("/api/admin/status", get(admin::status))
         .route(
             "/api/admin/profiles",
@@ -503,6 +520,394 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3040").await?;
     axum::serve(listener, app).await?;
     Ok(())
+}
+
+const SMALL_ORIGINAL_LIMIT: usize = 5 * 1024 * 1024;
+
+const DATASET_COLUMNS: &str = "id, well_id, survey_id, kind, format, source_crs, original_name, sha256, size_bytes, license, confidentiality, status, created_at";
+
+fn dataset_row_json(row: &sqlx::postgres::PgRow) -> Value {
+    json!({
+        "id": row.get::<Uuid,_>("id"),
+        "well_id": row.get::<Option<Uuid>,_>("well_id"),
+        "survey_id": row.get::<Option<Uuid>,_>("survey_id"),
+        "kind": row.get::<String,_>("kind"),
+        "format": row.get::<String,_>("format"),
+        "source_crs": row.get::<Option<String>,_>("source_crs"),
+        "original_name": row.get::<String,_>("original_name"),
+        "sha256": row.get::<Option<String>,_>("sha256"),
+        "size_bytes": row.get::<Option<i64>,_>("size_bytes"),
+        "license": row.get::<String,_>("license"),
+        "confidentiality": row.get::<String,_>("confidentiality"),
+        "status": row.get::<String,_>("status"),
+        "created_at": row.get::<sqlx::types::chrono::DateTime<sqlx::types::chrono::Utc>,_>("created_at"),
+    })
+}
+
+#[derive(Deserialize)]
+struct DatasetAttach {
+    well_id: Option<Uuid>,
+    survey_id: Option<Uuid>,
+    kind: String,
+    format: String,
+    source_crs: Option<String>,
+    license: String,
+    confidentiality: Option<String>,
+    file_name: String,
+    file_base64: Option<String>,
+}
+
+async fn attach_dataset(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(payload): Json<DatasetAttach>,
+) -> ApiResult {
+    let _who = role(&headers, &state, &["importer", "admin", "datamgr"]).await?;
+    if payload.license.trim().is_empty() {
+        return Err(ApiError::new(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "License or permitted-use statement is required.",
+        ));
+    }
+    if payload.well_id.is_none() == payload.survey_id.is_none() {
+        return Err(ApiError::new(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "Attach the dataset to exactly one well or seismic survey.",
+        ));
+    }
+    if let Some(well_id) = payload.well_id {
+        let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM wells WHERE id=$1)")
+            .bind(well_id)
+            .fetch_one(&state.db)
+            .await?;
+        if !exists {
+            return Err(ApiError::new(StatusCode::NOT_FOUND, "Well not found"));
+        }
+    }
+    if let Some(survey_id) = payload.survey_id {
+        let exists: bool =
+            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM seismic_surveys WHERE id=$1)")
+                .bind(survey_id)
+                .fetch_one(&state.db)
+                .await?;
+        if !exists {
+            return Err(ApiError::new(StatusCode::NOT_FOUND, "Seismic survey not found"));
+        }
+    }
+    let id = Uuid::new_v4();
+    let confidentiality = payload
+        .confidentiality
+        .unwrap_or_else(|| "restricted".into());
+    let key = format!("datasets/{id}/{}", payload.file_name.replace('/', "_"));
+    let (sha, size, status) = if let Some(encoded) = payload.file_base64.as_deref() {
+        let bytes = STANDARD.decode(encoded).map_err(|_| {
+            ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, "file_base64 is not valid base64.")
+        })?;
+        if bytes.len() > SMALL_ORIGINAL_LIMIT {
+            return Err(ApiError::new(
+                StatusCode::PAYLOAD_TOO_LARGE,
+                "Originals above 5 MiB must use the streaming upload.",
+            ));
+        }
+        let digest = format!("{:x}", Sha256::digest(&bytes));
+        state
+            .objects
+            .put(&ObjectPath::from(key.clone()), PutPayload::from(bytes.clone()))
+            .await?;
+        (Some(digest), Some(bytes.len() as i64), "published")
+    } else {
+        (None, None, "staged")
+    };
+    sqlx::query("INSERT INTO datasets (id, well_id, survey_id, kind, format, source_crs, object_key, original_name, sha256, size_bytes, license, confidentiality, status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)")
+        .bind(id).bind(payload.well_id).bind(payload.survey_id).bind(&payload.kind).bind(&payload.format)
+        .bind(&payload.source_crs).bind(&key).bind(&payload.file_name).bind(&sha).bind(size)
+        .bind(&payload.license).bind(&confidentiality).bind(status)
+        .execute(&state.db).await?;
+    Ok(Json(json!({
+        "id": id, "status": status, "sha256": sha, "size_bytes": size, "upload_required": sha.is_none(),
+    })))
+}
+
+async fn upload_dataset_original(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+    body: Body,
+) -> ApiResult {
+    let _who = role(&headers, &state, &["importer", "admin", "datamgr"]).await?;
+    let row = sqlx::query("SELECT status, object_key FROM datasets WHERE id=$1")
+        .bind(id)
+        .fetch_optional(&state.db)
+        .await?
+        .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "Dataset not found"))?;
+    if row.get::<String, _>("status") != "staged" {
+        return Err(ApiError::new(
+            StatusCode::CONFLICT,
+            "Original already uploaded; published datasets are immutable.",
+        ));
+    }
+    let key: String = row.get("object_key");
+    let mut upload = state.objects.put_multipart(&ObjectPath::from(key)).await?;
+    let mut hasher = Sha256::new();
+    let mut size: i64 = 0;
+    let mut stream = body.into_data_stream();
+    let mut buffer: Vec<u8> = Vec::new();
+    const PART_SIZE: usize = 5 * 1024 * 1024;
+    while let Some(chunk) = stream.next().await {
+        let bytes = chunk.map_err(|_| {
+            ApiError::new(StatusCode::BAD_REQUEST, "Upload stream failed.")
+        })?;
+        hasher.update(&bytes);
+        size += bytes.len() as i64;
+        buffer.extend_from_slice(&bytes);
+        // S3 requires every part except the last to be at least 5 MiB.
+        while buffer.len() >= PART_SIZE {
+            let part: Vec<u8> = buffer.drain(..PART_SIZE).collect();
+            upload.put_part(PutPayload::from(part)).await?;
+        }
+    }
+    if !buffer.is_empty() {
+        upload.put_part(PutPayload::from(buffer)).await?;
+    }
+    upload.complete().await?;
+    let digest = format!("{:x}", hasher.finalize());
+    sqlx::query("UPDATE datasets SET sha256=$1, size_bytes=$2, status='published' WHERE id=$3 AND status='staged'")
+        .bind(&digest).bind(size).bind(id)
+        .execute(&state.db).await?;
+    Ok(Json(json!({ "id": id, "status": "published", "sha256": digest, "size_bytes": size })))
+}
+
+async fn well_datasets(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(well_id): Path<Uuid>,
+) -> ApiResult {
+    let who = role(
+        &headers,
+        &state,
+        &["importer", "reviewer", "reader", "admin", "datamgr"],
+    )
+    .await?;
+    let rows = sqlx::query(&format!(
+        "SELECT {DATASET_COLUMNS} FROM datasets WHERE well_id=$1 AND ($2 OR confidentiality='public') ORDER BY created_at"
+    ))
+    .bind(well_id)
+    .bind(who != "reader")
+    .fetch_all(&state.db)
+    .await?;
+    Ok(Json(json!(rows.iter().map(dataset_row_json).collect::<Vec<_>>())))
+}
+
+async fn dataset_detail(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+) -> ApiResult {
+    let who = role(
+        &headers,
+        &state,
+        &["importer", "reviewer", "reader", "admin", "datamgr"],
+    )
+    .await?;
+    let row = sqlx::query(&format!("SELECT {DATASET_COLUMNS} FROM datasets WHERE id=$1"))
+        .bind(id)
+        .fetch_optional(&state.db)
+        .await?
+        .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "Dataset not found"))?;
+    if who == "reader" && row.get::<String, _>("confidentiality") != "public" {
+        return Err(ApiError::new(StatusCode::FORBIDDEN, "This dataset is restricted"));
+    }
+    Ok(Json(dataset_row_json(&row)))
+}
+
+async fn dataset_original(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+) -> Result<Response, ApiError> {
+    let who = role(
+        &headers,
+        &state,
+        &["importer", "reviewer", "reader", "admin", "datamgr"],
+    )
+    .await?;
+    let row = sqlx::query("SELECT object_key, original_name, sha256, confidentiality FROM datasets WHERE id=$1")
+        .bind(id)
+        .fetch_optional(&state.db)
+        .await?
+        .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "Dataset not found"))?;
+    if who == "reader" && row.get::<String, _>("confidentiality") != "public" {
+        return Err(ApiError::new(StatusCode::FORBIDDEN, "This dataset is restricted"));
+    }
+    if row.get::<Option<String>, _>("sha256").is_none() {
+        return Err(ApiError::new(StatusCode::CONFLICT, "Original not uploaded yet."));
+    }
+    let key: String = row.get("object_key");
+    let name: String = row.get("original_name");
+    let bytes = state.objects.get(&ObjectPath::from(key)).await?.bytes().await?;
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/octet-stream")
+        .header(
+            header::CONTENT_DISPOSITION,
+            format!("attachment; filename=\"{name}\""),
+        )
+        .body(Body::from(bytes))
+        .unwrap())
+}
+
+async fn delete_dataset(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+) -> ApiResult {
+    let _who = role(&headers, &state, &["importer", "admin", "datamgr"]).await?;
+    let row = sqlx::query("SELECT status, object_key FROM datasets WHERE id=$1")
+        .bind(id)
+        .fetch_optional(&state.db)
+        .await?
+        .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "Dataset not found"))?;
+    if row.get::<String, _>("status") == "published" {
+        return Err(ApiError::new(
+            StatusCode::METHOD_NOT_ALLOWED,
+            "Published datasets are immutable; corrections create a new dataset version.",
+        ));
+    }
+    let key: String = row.get("object_key");
+    sqlx::query("DELETE FROM datasets WHERE id=$1")
+        .bind(id)
+        .execute(&state.db)
+        .await?;
+    let _ = state.objects.delete(&ObjectPath::from(key)).await;
+    Ok(Json(json!({ "id": id, "status": "deleted" })))
+}
+
+#[derive(Deserialize)]
+struct SurveyCreate {
+    name: String,
+    kind: String,
+    source_crs: String,
+    footprint: Value,
+    license: String,
+    confidentiality: Option<String>,
+}
+
+fn survey_row_json(row: &sqlx::postgres::PgRow) -> Value {
+    let parse = |text: Option<String>| {
+        text.and_then(|text| serde_json::from_str::<Value>(&text).ok())
+    };
+    json!({
+        "id": row.get::<Uuid,_>("id"),
+        "name": row.get::<String,_>("name"),
+        "kind": row.get::<String,_>("kind"),
+        "source_crs": row.get::<String,_>("source_crs"),
+        "footprint": parse(row.get::<Option<String>,_>("footprint")),
+        "display_footprint": parse(row.get::<Option<String>,_>("display_footprint")),
+        "license": row.get::<String,_>("license"),
+        "confidentiality": row.get::<String,_>("confidentiality"),
+        "status": row.get::<String,_>("status"),
+        "created_at": row.get::<sqlx::types::chrono::DateTime<sqlx::types::chrono::Utc>,_>("created_at"),
+    })
+}
+
+const SURVEY_COLUMNS: &str = "id, name, kind, source_crs, license, confidentiality, status, created_at, ST_AsGeoJSON(footprint) AS footprint, ST_AsGeoJSON(display_footprint) AS display_footprint";
+
+async fn create_survey(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(payload): Json<SurveyCreate>,
+) -> ApiResult {
+    let _who = role(&headers, &state, &["importer", "admin", "datamgr"]).await?;
+    if !matches!(payload.kind.as_str(), "2d" | "3d") {
+        return Err(ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, "Survey kind must be 2d or 3d."));
+    }
+    if payload.license.trim().is_empty() || payload.name.trim().is_empty() {
+        return Err(ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, "Survey name and license are required."));
+    }
+    let ring = payload.footprint["coordinates"][0]
+        .as_array()
+        .ok_or_else(|| ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, "Footprint must be a Polygon."))?;
+    let mut source_ring: Vec<Value> = Vec::new();
+    let mut display_ring: Vec<Value> = Vec::new();
+    let code = crs::normalize(&payload.source_crs);
+    let mut display_ok = crs::is_supported(&code);
+    for pair in ring {
+        let x = pair[0].as_f64().unwrap_or(f64::NAN);
+        let y = pair[1].as_f64().unwrap_or(f64::NAN);
+        source_ring.push(json!([x, y]));
+        if display_ok {
+            match crs::transform(&code, x, y) {
+                Ok(transform) => display_ring.push(json!([transform.longitude, transform.latitude])),
+                Err(_) => display_ok = false,
+            }
+        }
+    }
+    let source_geojson = serde_json::to_string(&json!({ "type": "Polygon", "coordinates": [source_ring] }))
+        .map_err(|_| ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, "Footprint is not valid geometry."))?;
+    let display_geojson = if display_ok {
+        Some(serde_json::to_string(&json!({ "type": "Polygon", "coordinates": [display_ring] })).unwrap())
+    } else {
+        None
+    };
+    let id = Uuid::new_v4();
+    let confidentiality = payload.confidentiality.unwrap_or_else(|| "restricted".into());
+    sqlx::query("INSERT INTO seismic_surveys (id, name, kind, source_crs, footprint, display_footprint, license, confidentiality) VALUES ($1,$2,$3,$4,ST_SetSRID(ST_GeomFromGeoJSON($5),0),ST_SetSRID(ST_GeomFromGeoJSON($6),4326),$7,$8)")
+        .bind(id).bind(&payload.name).bind(&payload.kind).bind(&payload.source_crs)
+        .bind(&source_geojson).bind(&display_geojson).bind(&payload.license).bind(&confidentiality)
+        .execute(&state.db).await?;
+    Ok(Json(json!({ "id": id, "status": "published", "display_footprint": display_geojson.is_some() })))
+}
+
+async fn list_surveys(State(state): State<AppState>, headers: HeaderMap) -> ApiResult {
+    let who = role(
+        &headers,
+        &state,
+        &["importer", "reviewer", "reader", "admin", "datamgr"],
+    )
+    .await?;
+    let rows = sqlx::query(&format!(
+        "SELECT {SURVEY_COLUMNS} FROM seismic_surveys WHERE ($1 OR confidentiality='public') ORDER BY created_at DESC"
+    ))
+    .bind(who != "reader")
+    .fetch_all(&state.db)
+    .await?;
+    Ok(Json(json!(rows.iter().map(survey_row_json).collect::<Vec<_>>())))
+}
+
+async fn map_seismic(State(state): State<AppState>, headers: HeaderMap) -> ApiResult {
+    let who = role(
+        &headers,
+        &state,
+        &["importer", "reviewer", "reader", "admin", "datamgr"],
+    )
+    .await?;
+    let rows = sqlx::query(&format!(
+        "SELECT {SURVEY_COLUMNS} FROM seismic_surveys WHERE display_footprint IS NOT NULL AND ($1 OR confidentiality='public')"
+    ))
+    .bind(who != "reader")
+    .fetch_all(&state.db)
+    .await?;
+    let features: Vec<Value> = rows
+        .iter()
+        .map(|row| {
+            let geometry: Value = serde_json::from_str(
+                &row.get::<Option<String>, _>("display_footprint").unwrap_or_default(),
+            )
+            .unwrap_or(Value::Null);
+            json!({
+                "type": "Feature",
+                "id": row.get::<Uuid,_>("id"),
+                "geometry": geometry,
+                "properties": {
+                    "survey_id": row.get::<Uuid,_>("id"),
+                    "name": row.get::<String,_>("name"),
+                    "kind": row.get::<String,_>("kind"),
+                    "source_crs": row.get::<String,_>("source_crs"),
+                },
+            })
+        })
+        .collect();
+    Ok(Json(json!({ "type": "FeatureCollection", "features": features })))
 }
 
 async fn index() -> Result<Html<String>, ApiError> {

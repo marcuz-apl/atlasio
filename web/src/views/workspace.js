@@ -29,7 +29,7 @@ function defaultSettings() {
     basemap: null,
     symbol: 4.2,
     opacity: 100,
-    overlays: { wells: true, graticule: true, borders: true, area: true },
+    overlays: { wells: true, graticule: true, borders: true, area: true, seismic: true },
     catalog: null,
     display: null,
   };
@@ -209,6 +209,105 @@ function initExploreControls() {
       syncBasemapNote();
     }
   });
+
+  $('#toggle-seismic')?.addEventListener('change', (event) => {
+    settings.overlays.seismic = event.target.checked;
+    saveSettings();
+    setSeismicVisible(event.target.checked);
+  });
+  loadSeismicFootprints();
+}
+
+function loadInspectorDatasets(wellId, body) {
+  api(`/wells/${wellId}/datasets`)
+    .then((items) => {
+      if (!Array.isArray(items) || !items.length) return;
+      const section = el('section', 'inspector-section');
+      section.append(el('h3', '', 'Datasets'));
+      const list = el('dl');
+      for (const item of items) {
+        addRow(list, `${item.kind} · ${item.format}`, `${item.original_name} · ${formatBytes(item.size_bytes)} · ${item.confidentiality}`, { mono: false });
+        const dt = el('dt', '', 'Download');
+        const dd = el('dd');
+        const link = el('a', '');
+        link.href = `/api/datasets/${item.id}/original`;
+        link.dataset.datasetDownload = item.id;
+        link.textContent = item.original_name;
+        dd.append(link);
+        list.append(dt, dd);
+      }
+      section.append(list);
+      section.addEventListener('click', async (event) => {
+        const link = event.target.closest('a[data-dataset-download]');
+        if (!link) return;
+        event.preventDefault();
+        try {
+          const headers = state.session
+            ? { 'X-Atlasio-Session': state.session }
+            : { 'X-Atlasio-Key': state.key };
+          const response = await fetch(link.href, { headers });
+          if (!response.ok) throw new Error(`Download failed (${response.status})`);
+          const url = URL.createObjectURL(await response.blob());
+          const anchor = document.createElement('a');
+          anchor.href = url;
+          anchor.download = link.textContent || 'dataset-original';
+          document.body.append(anchor);
+          anchor.click();
+          anchor.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1500);
+        } catch (error) {
+          toast(error.message, 'error');
+        }
+      });
+      body.append(section);
+    })
+    .catch(() => {});
+}
+
+function setSeismicVisible(visible) {
+  const instance = map?.map;
+  if (!instance) return;
+  for (const layer of ['seismic-footprints', 'seismic-footprint-line']) {
+    if (instance.getLayer(layer)) {
+      instance.setLayoutProperty(layer, 'visibility', visible ? 'visible' : 'none');
+    }
+  }
+}
+
+async function loadSeismicFootprints() {
+  const instance = map?.map;
+  if (!instance) return;
+  const add = async () => {
+    if (instance.getSource('seismic')) {
+      setSeismicVisible(settings.overlays.seismic !== false);
+      return;
+    }
+    let data;
+    try {
+      data = await api('/map/seismic');
+    } catch {
+      return;
+    }
+    if (!instance.getSource('seismic')) {
+      instance.addSource('seismic', { type: 'geojson', data });
+      instance.addLayer({
+        id: 'seismic-footprints',
+        type: 'fill',
+        source: 'seismic',
+        paint: { 'fill-color': '#6ea8fe', 'fill-opacity': 0.16 },
+      });
+      instance.addLayer({
+        id: 'seismic-footprint-line',
+        type: 'line',
+        source: 'seismic',
+        paint: { 'line-color': '#6ea8fe', 'line-width': 1.4 },
+      });
+    }
+    setSeismicVisible(settings.overlays.seismic !== false);
+  };
+  if (instance.isStyleLoaded()) await add();
+  else instance.once('load', add);
+  instance.on('style.load', add);
 }
 
 function setDrawer(kind, value) {
@@ -262,6 +361,8 @@ function syncDisplayControls() {
   if (opacity) opacity.value = String(settings.opacity);
   const opacityOut = $('#well-opacity-value');
   if (opacityOut) opacityOut.textContent = `${settings.opacity}%`;
+  const seismicBox = $('#toggle-seismic');
+  if (seismicBox) seismicBox.checked = settings.overlays.seismic !== false;
   syncBasemapNote();
 }
 
@@ -355,7 +456,11 @@ export function ensureMap() {
     if (state.selectedWellId) map.setSelected(state.selectedWellId);
     map.setSymbolSize(settings.symbol);
     map.setWellOpacity(settings.opacity);
-    for (const [group, on] of Object.entries(settings.overlays)) map.setOverlay(group, on);
+    for (const [group, on] of Object.entries(settings.overlays)) {
+      if (group === 'seismic') continue;
+      map.setOverlay(group, on);
+    }
+    loadSeismicFootprints();
     map.map.on('move', updateRailZoom);
     updateRailZoom();
     if (!fitDone && state.wells.features.length) {
@@ -676,6 +781,7 @@ function renderInspector(well) {
   head.append(heading, close);
 
   const body = el('div', 'inspector-body');
+  loadInspectorDatasets(well.id, body);
   for (const version of versions) {
     const section = el('section', 'inspector-section');
     section.append(el('h3', '', `Version ${version.version_no}`));
