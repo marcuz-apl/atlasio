@@ -496,7 +496,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .nest_service("/assets", ServeDir::new("web/dist/assets"))
         .layer(DefaultBodyLimit::max(8 * 1024 * 1024))
         .with_state(state);
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await?;
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3040").await?;
     axum::serve(listener, app).await?;
     Ok(())
 }

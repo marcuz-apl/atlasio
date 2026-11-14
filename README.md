@@ -2,7 +2,7 @@
 
 **Governed subsurface data, in place.** Atlasio is a workspace for wells, seismic, and the evidence behind them: original files, provenance, immutable versions, role-scoped access, and coordinate integrity are the product, and a map-led surface makes the catalog discoverable.
 
-Release 1 is in progress (current build `v0.6.4`; see [CHANGELOG.md](CHANGELOG.md)). The first vertical slice takes a well package through staging, QC, review, publication, search, and map display. Requirements and open decisions live in [PRD.md](PRD.md); implementation constraints and domain invariants live in [AGENTS.md](AGENTS.md).
+Release 1 is in progress (current build `v0.6.5`; see [CHANGELOG.md](CHANGELOG.md)). The first vertical slice takes a well package through staging, QC, review, publication, search, and map display. Requirements and open decisions live in [PRD.md](PRD.md); implementation constraints and domain invariants live in [AGENTS.md](AGENTS.md).
 
 ## What it does
 
@@ -20,10 +20,10 @@ Requires Docker Compose, a Rust toolchain, and Node.js 20.19+ (or 22+). From the
 docker compose up -d          # PostGIS + S3Mock (development only)
 npm --prefix web ci
 npm --prefix web run build
-./scripts/dev-server.sh       # serves the API and web client on :8000
+./scripts/dev-server.sh       # serves the API and web client on :3040
 ```
 
-Open `http://localhost:8000`. After cloning, enable the commit hooks with `git config core.hooksPath .githooks`.
+Open `http://localhost:3040`. After cloning, enable the commit hooks with `git config core.hooksPath .githooks`.
 
 | Entry | Credentials | Notes |
 | --- | --- | --- |

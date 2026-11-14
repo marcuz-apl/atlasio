@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 
 const root = new URL('../', import.meta.url);
-const host = process.env.ATLASIO_URL || 'http://localhost:8000';
+const host = process.env.ATLASIO_URL || 'http://localhost:3040';
 const keys = await resolveDemoKeys();
 
 // Demo keys are managed records and may be rotated from the admin panel.

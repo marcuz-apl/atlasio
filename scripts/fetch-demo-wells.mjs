@@ -4,7 +4,7 @@ import path from 'node:path';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const outputRoot = path.join(root, 'demo-data');
-const host = process.env.ATLASIO_URL || 'http://localhost:8000';
+const host = process.env.ATLASIO_URL || 'http://localhost:3040';
 const flags = new Set(process.argv.slice(2));
 const shouldStage = flags.has('--stage');
 const requestedLimit = Number(readFlag('--limit') || 12);

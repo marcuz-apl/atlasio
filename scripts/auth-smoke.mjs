@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 
-const host = process.env.ATLASIO_URL || 'http://localhost:8000';
+const host = process.env.ATLASIO_URL || 'http://localhost:3040';
 const username = process.env.ATLASIO_ADMIN_USERNAME || 'admin';
 const initial = process.env.ATLASIO_ADMIN_INITIAL_PASSWORD || 'admin-initial';
 const password = process.env.ATLASIO_ADMIN_PASSWORD || 'atlasio-staff-ui-pass';

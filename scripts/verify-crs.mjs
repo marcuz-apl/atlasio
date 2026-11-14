@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 
-const host = process.env.ATLASIO_URL || 'http://localhost:8000';
+const host = process.env.ATLASIO_URL || 'http://localhost:3040';
 const run = randomUUID().slice(0, 8);
 
 async function resolveDemoKeys() {
