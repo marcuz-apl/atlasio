@@ -546,11 +546,15 @@ body.explore-active .site-footer {
   align-items: start;
 }
 
-.form-panel {
+.form-panel,
+.attach-panel,
+.table-panel {
   padding: 22px;
 }
 
-.form-panel form {
+.form-panel form,
+.attach-panel form,
+.table-panel form {
   display: grid;
   gap: 18px;
   margin-top: 18px;
