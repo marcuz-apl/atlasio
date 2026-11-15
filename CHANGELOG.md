@@ -4,6 +4,11 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.7.6 — 2026-11-15
+Build: v0.7.6+2611156
+Type: feat
+- New operator script `scripts/cleanup-synthetic-wells.sh` removes the synthetic test wells that the smoke and verification suites publish into the workspace (the Canada/Australia fixtures and the CRS, dataset-host, and industry-header test wells), together with their versions, batches, file records, attached datasets, stored originals, and audit-batch links. Real demo data (NSTA, RMOTC, Sodir, Volve) is never matched: only wells whose current name starts with `SYNTHETIC` are removed. The script drops the immutability triggers for one transaction, recreates them exactly afterwards, verifies they are active again, and preserves audit history by clearing batch links instead of deleting entries.
+
 ## 0.7.5 — 2026-11-15
 Build: v0.7.5+2611155
 Type: feat
