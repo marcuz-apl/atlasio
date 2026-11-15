@@ -112,4 +112,16 @@ export const USER_DOCS_HTML = `
   </ul>
   <div class="docs-note"><strong>Scope.</strong> This guide describes the Release 1 local demo. Fixtures are synthetic; no licensed customer data is stored in the repository.</div>
 </section>
+
+<section class="docs-section" id="user-credits" data-doc-section>
+  <p class="docs-eyebrow">09 / Credits</p>
+  <h2>Credits & attribution</h2>
+  <p>The workspace map stands on open foundations, and we credit them here as well as on the map itself.</p>
+  <ul>
+    <li><strong>MapLibre GL JS</strong> renders the workspace map. It is free, open-source software (BSD-3-Clause) maintained by the MapLibre community — no API key, no usage fees, no tile limits. <a href="https://maplibre.org/" target="_blank" rel="noopener">maplibre.org</a></li>
+    <li><strong>Esri</strong> serves the public basemaps: Topographic, Light and Dark Gray Canvas, Satellite imagery (World Imagery), and NatGeo World Map. These tiles are offered by Esri free of charge with attribution, and the map's attribution control shows the active credit (© Esri — …) whenever a raster basemap is on. <a href="https://www.esri.com/" target="_blank" rel="noopener">esri.com</a></li>
+    <li><strong>Natural Earth</strong> (public domain) supplies the offline vector fallback map, country borders, and graticule through the world-atlas dataset.</li>
+  </ul>
+  <p class="docs-muted">Basemap imagery remains the property of Esri and its data suppliers and is used under Esri's terms for its online basemaps. The demo material staged in this workspace comes from open publishers — the Norwegian Offshore Directorate (Sodir), the UK North Sea Transition Authority (NSTA), and Equinor's Volve release — credited with their licences in the demo-data documentation.</p>
+</section>
 `;
