@@ -10,7 +10,7 @@ Release 1 is in progress (current build `v0.1.39`; see [CHANGELOG.md](CHANGELOG.
 - **Map-first exploration.** Explore is a full-bleed map beneath the header with a floating toolbar, basemap gallery (public Esri and OpenStreetMap tiles with an automatic offline vector fallback), live display controls, a catalog drawer, quick search, a coordinate rail, and PNG export. The mode bar (Explore / Records / Ingest / Review) sits in one stable place in every mode.
 - **Records and provenance.** Every record keeps aliases and external IDs separate from its stable internal ID, and shows source position, source CRS, the recorded display transformation, reviewer, license, confidentiality, and the original file checksum.
 - **Role-scoped access.** Viewer, importer, and reviewer keys plus staff accounts (Administrator, Data Manager) with forced first password change and optional TOTP MFA. Authorization is enforced at the API and storage boundary, not only in the UI.
-- **Operations.** Access-profile management, backup creation and verification, typed-confirmation restore with a fresh pre-restore backup, and an administrative audit trail. The Admin Panel renders the change log as build history.
+- **Operations.** Access-profile management, deployment-wide map settings, backup creation and verification, typed-confirmation restore with a fresh pre-restore backup, and an administrative audit trail. The Admin Panel renders the change log as build history.
 
 ## Quick start
 

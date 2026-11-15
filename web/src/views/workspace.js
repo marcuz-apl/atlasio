@@ -21,6 +21,7 @@ let inspectorId = null;
 let fitDone = false;
 let initialized = false;
 let basemapFellBack = false;
+let deploymentBasemap = null;
 
 const EXPLORE_KEY = 'atlasio-explore';
 
@@ -56,13 +57,33 @@ function saveSettings() {
 }
 
 function initialBasemap() {
-  return settings.basemap || (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'topo');
+  return settings.basemap || deploymentBasemap || (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'topo');
+}
+
+// The deployment default is set in the Admin Panel. A user's own basemap
+// choice (saved locally) always wins; this only fills the gap when they
+// have not picked one.
+async function loadDeploymentBasemap() {
+  try {
+    const data = await api('/map-settings');
+    deploymentBasemap = data?.default_basemap || null;
+  } catch (error) {
+    deploymentBasemap = null;
+    return;
+  }
+  if (deploymentBasemap && !settings.basemap) {
+    map?.setBasemap(deploymentBasemap);
+    const select = $('#basemap-select');
+    if (select) select.value = deploymentBasemap;
+    syncBasemapNote();
+  }
 }
 
 export function initWorkspace({ onNavigate } = {}) {
   if (initialized) return;
   initialized = true;
   navigate = onNavigate || navigate;
+  loadDeploymentBasemap();
 
   $('#catalog-search-form')?.addEventListener('submit', (event) => {
     event.preventDefault();

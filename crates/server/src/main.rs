@@ -256,6 +256,10 @@ pub(crate) async fn migrate(pool: &PgPool) -> Result<(), sqlx::Error> {
             "009_wizard.sql",
             include_str!("../../../migrations/009_wizard.sql"),
         ),
+        (
+            "010_settings.sql",
+            include_str!("../../../migrations/010_settings.sql"),
+        ),
     ];
     for (version, sql) in migrations {
         let applied: bool =
@@ -266,7 +270,7 @@ pub(crate) async fn migrate(pool: &PgPool) -> Result<(), sqlx::Error> {
         if !applied {
             let mut tx = pool.begin().await?;
             for statement in split_statements(sql) {
-                sqlx::query(statement).execute(&mut *tx).await?;
+                sqlx::query(&statement).execute(&mut *tx).await?;
             }
             sqlx::query("INSERT INTO schema_migrations(version) VALUES ($1)")
                 .bind(version)
@@ -285,12 +289,12 @@ pub(crate) async fn migrate(pool: &PgPool) -> Result<(), sqlx::Error> {
 /// higher-ranked lifetime limitation ("implementation of `Executor` is not
 /// general enough") when the surrounding future must be `Send`. Semicolons
 /// inside quoted strings and dollar-quoted function bodies are preserved.
-fn split_statements(script: &str) -> Vec<&str> {
+fn split_statements(script: &str) -> Vec<String> {
     let bytes = script.as_bytes();
     let mut statements = Vec::new();
-    let mut start = 0;
     let mut in_quote = false;
     let mut in_dollar = false;
+    let mut start = 0;
     let mut index = 0;
     while index < bytes.len() {
         let byte = bytes[index];
@@ -301,21 +305,29 @@ fn split_statements(script: &str) -> Vec<&str> {
             in_dollar = !in_dollar;
             index += 2;
         } else if !in_quote && !in_dollar && byte == b';' {
-            let statement = script[start..index].trim();
-            if !statement.is_empty() && !statement.starts_with("--") {
-                statements.push(statement);
-            }
+            push_statement(&mut statements, &script[start..index]);
             start = index + 1;
             index += 1;
         } else {
             index += 1;
         }
     }
-    let tail = script[start..].trim();
-    if !tail.is_empty() && !tail.starts_with("--") {
-        statements.push(tail);
-    }
+    push_statement(&mut statements, &script[start..]);
     statements
+}
+
+/// Drop whole-line `--` comments from a statement chunk so a documented
+/// statement is executed instead of being mistaken for a comment.
+fn push_statement(statements: &mut Vec<String>, chunk: &str) {
+    let kept: String = chunk
+        .lines()
+        .filter(|line| !line.trim_start().starts_with("--"))
+        .map(|line| format!("{line}\n"))
+        .collect();
+    let statement = kept.trim();
+    if !statement.is_empty() {
+        statements.push(statement.to_string());
+    }
 }
 
 type StorageSetup = (Arc<dyn ObjectStore>, Option<PathBuf>, &'static str);
@@ -522,6 +534,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/ingest/tables/{id}/stage", post(wizard::stage_table))
         .route("/api/ingest/tables/{id}/report", get(wizard::table_report))
         .route("/api/admin/changelog", get(admin::changelog))
+        .route("/api/map-settings", get(admin::get_map_settings))
+        .route(
+            "/api/admin/map-settings",
+            axum::routing::put(admin::update_map_settings),
+        )
         .route("/", get(index))
         .route("/favicon.svg", get(favicon))
         .nest_service("/assets", ServeDir::new("web/dist/assets"))

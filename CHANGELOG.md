@@ -4,6 +4,13 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.48 — 2026-11-15
+Build: v0.1.48+2611153
+Type: feat
+- Admin Panel gains a **Map basemaps** panel: Administrators and Data Managers set the deployment default basemap — the Esri styles, OpenStreetMap, or the offline vector map — and the choice is stored in a governed `app_settings` table (migration 010) with an `admin.settings.update` audit entry.
+- The workspace applies the deployment default only when a user has not picked their own basemap; an explicit personal choice always wins, and unsetting the default restores the per-theme default (Topographic in light mode, Dark gray canvas in dark mode).
+- `GET /api/map-settings` is readable by every signed-in role; `PUT /api/admin/map-settings` is staff-only, validates the basemap key, and is blocked during maintenance. Verified by an extended `scripts/admin-smoke.mjs`.
+
 ## 0.1.47 — 2026-11-15
 Build: v0.1.47+2611152
 Type: feat

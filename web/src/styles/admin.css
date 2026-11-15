@@ -714,3 +714,31 @@ body[data-role='datamgr'] .status-dot {
     width: 100%;
   }
 }
+
+/* ---------- Map basemap settings ---------- */
+.admin-basemap-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.admin-basemap-row .field {
+  flex: 1 1 280px;
+  max-width: 380px;
+}
+
+.admin-basemap-row .btn {
+  margin-bottom: 2px;
+}
+
+@media (max-width: 760px) {
+  .admin-basemap-row .field {
+    max-width: none;
+  }
+
+  .admin-basemap-row .btn {
+    width: 100%;
+  }
+}
