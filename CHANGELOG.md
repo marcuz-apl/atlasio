@@ -4,6 +4,12 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.7.2 — 2026-11-15
+Build: v0.7.2+2611152
+Type: feat
+- Basemap gallery gains OpenStreetMap (© OpenStreetMap contributors) as a second public tile source beside the Esri basemaps, reducing single-provider risk; the offline vector map remains the no-network fallback. The basemap note now shows the active provider's own credit instead of assuming Esri.
+- The in-app user guide's basemap and credits sections, and the README, reflect the added provider.
+
 ## 0.7.0 — 2026-11-14
 Build: v0.7.0+2611146
 Type: fix

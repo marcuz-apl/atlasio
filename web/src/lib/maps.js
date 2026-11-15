@@ -43,6 +43,12 @@ export const BASEMAPS = {
     maxzoom: 16,
     attribution: '© Esri — NatGeo World Map',
   },
+  osm: {
+    label: 'OpenStreetMap',
+    tiles: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    maxzoom: 19,
+    attribution: '© OpenStreetMap contributors',
+  },
   offline: {
     label: 'Offline vector',
     tiles: null,

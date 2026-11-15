@@ -342,7 +342,9 @@ function syncBasemapNote() {
   const key = map?.getBasemap() || initialBasemap();
   if (select && select.value !== key) select.value = key;
   if (note) {
-    note.textContent = key === 'offline' ? 'Offline vector · Natural Earth' : `${BASEMAPS[key].label} · © Esri`;
+    note.textContent = key === 'offline'
+      ? 'Offline vector · Natural Earth'
+      : `${BASEMAPS[key].label} · ${BASEMAPS[key].attribution}`;
   }
 }
 
