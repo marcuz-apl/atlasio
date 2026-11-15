@@ -95,7 +95,7 @@ export async function showAdmin() {
     scope.textContent =
       state.role === 'admin'
         ? ''
-        : 'Data Managers manage profiles and backups. Restoring or deleting a database backup is reserved for Administrators.';
+        : 'Two tiers share this console: Administrators hold the superadmin level — the only role that can restore or delete a database backup. Data Managers run the day-to-day work: manage access profiles, create and verify backups, and set the deployment basemap. Every action is written to the audit trail.';
   }
   await refreshAdmin();
 }
