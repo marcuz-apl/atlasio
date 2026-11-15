@@ -199,6 +199,7 @@ export const BUILD_DOCS_HTML = `
         <tr><td>0.1.46</td><td>Ingest layout fix: the attach-dataset card insets its labels, inputs, dropzone, and button from the panel edges like the other ingest cards.</td></tr>
         <tr><td>0.1.47</td><td>OpenStreetMap joins the basemap gallery as a second public tile source beside the Esri styles; the basemap note shows each active provider's own attribution.</td></tr>
         <tr><td>0.1.48</td><td>Admin Panel gains a Map basemaps panel: administrators and data managers set the deployment default basemap (Esri styles, OpenStreetMap, or offline) through a governed <code>app_settings</code> store with an audit entry; users keep their own choice, and unset reverts to the per-theme default; migration 010.</td></tr>
+        <tr><td>0.1.49</td><td>New operator script <code>scripts/reset-passwords.sh</code> recovers a locked-out staff account: one-shot reset boot, verifies both staff accounts accept their seeded initial passwords, clears MFA and lockouts, restarts clean, and records an audited <code>auth.password.reset</code> entry; a new password is forced at first sign-in.</td></tr>
       </tbody>
     </table>
   </div>
