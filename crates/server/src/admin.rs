@@ -1180,3 +1180,98 @@ fn replace_tree(source: &FsPath, destination: &FsPath) -> std::io::Result<()> {
     copy_tree(source, destination)?;
     Ok(())
 }
+
+const MAP_BASEMAPS: [&str; 7] = ["topo", "gray", "dark", "imagery", "natgeo", "osm", "offline"];
+const MAP_DEFAULT_BASEMAP_KEY: &str = "map.default_basemap";
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct MapSettingsUpdate {
+    pub default_basemap: Option<String>,
+}
+
+pub(crate) async fn get_map_settings(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> ApiResult {
+    role(
+        &headers,
+        &state,
+        &["reader", "importer", "reviewer", "admin", "datamgr"],
+    )
+    .await?;
+    let row = sqlx::query(
+        "SELECT value, updated_by, updated_at FROM app_settings WHERE key = $1",
+    )
+    .bind(MAP_DEFAULT_BASEMAP_KEY)
+    .fetch_optional(&state.db)
+    .await?;
+    let (value, updated_by, updated_at) = row
+        .map(|row| {
+            (
+                Some(row.get::<String, _>("value")),
+                row.get::<Option<String>, _>("updated_by"),
+                row.get::<Option<DateTime<Utc>>, _>("updated_at")
+                    .map(|at| at.to_rfc3339()),
+            )
+        })
+        .unwrap_or((None, None, None));
+    Ok(Json(json!({
+        "default_basemap": value,
+        "updated_by": updated_by,
+        "updated_at": updated_at,
+    })))
+}
+
+pub(crate) async fn update_map_settings(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<MapSettingsUpdate>,
+) -> ApiResult {
+    if state.maintenance.load(std::sync::atomic::Ordering::Relaxed) {
+        return Err(ApiError::new(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "Maintenance in progress",
+        ));
+    }
+    let account = auth::require_ready(&headers, &state, &["admin", "datamgr"]).await?;
+    let value = request
+        .default_basemap
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    if let Some(value) = &value {
+        if !MAP_BASEMAPS.contains(value) {
+            return Err(ApiError::new(
+                StatusCode::BAD_REQUEST,
+                "Unknown basemap; use one of topo, gray, dark, imagery, natgeo, osm, offline",
+            ));
+        }
+    }
+    if let Some(value) = &value {
+        sqlx::query(
+            "INSERT INTO app_settings (key, value, updated_by) VALUES ($1, $2, $3)
+             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_by = EXCLUDED.updated_by, updated_at = now()",
+        )
+        .bind(MAP_DEFAULT_BASEMAP_KEY)
+        .bind(value)
+        .bind(&account.username)
+        .execute(&state.db)
+        .await?;
+    } else {
+        sqlx::query("DELETE FROM app_settings WHERE key = $1")
+            .bind(MAP_DEFAULT_BASEMAP_KEY)
+            .execute(&state.db)
+            .await?;
+    }
+    audit_admin(
+        &state,
+        &account.username,
+        "admin.settings.update",
+        json!({
+            "key": MAP_DEFAULT_BASEMAP_KEY,
+            "value": value,
+        }),
+    )
+    .await?;
+    Ok(Json(json!({ "default_basemap": value })))
+}

@@ -393,6 +393,36 @@
               <p class="admin-foot">Revoke a key and it stops working on the next request. Rotate a demo key and the sign-in gate picks it up immediately.</p>
             </section>
 
+            <section class="panel admin-panel" aria-labelledby="admin-basemap-title">
+              <header class="panel-head admin-panel-head">
+                <div>
+                  <p class="eyebrow">PLATFORM</p>
+                  <h2 id="admin-basemap-title">Map basemaps</h2>
+                  <p class="panel-lede">Set the deployment default basemap for the Explore map. Users who have not picked their own basemap see this one; the offline vector map stays available without network access.</p>
+                </div>
+              </header>
+              <div class="admin-basemap-row">
+                <label class="field"><span>Default basemap</span>
+                  <div class="select-wrap">
+                    <select id="admin-basemap-select">
+                      <option value="topo">Esri · Topographic</option>
+                      <option value="gray">Esri · Light gray canvas</option>
+                      <option value="dark">Esri · Dark gray canvas</option>
+                      <option value="imagery">Esri · Satellite imagery</option>
+                      <option value="natgeo">Esri · NatGeo style</option>
+                      <option value="osm">OpenStreetMap</option>
+                      <option value="offline">Offline vector (Natural Earth)</option>
+                    </select>
+                    <svg class="select-arrow" aria-hidden="true"><use href="#i-chevron-down" /></svg>
+                  </div>
+                </label>
+                <button class="btn btn-primary btn-small" id="admin-basemap-save" type="button">
+                  <svg aria-hidden="true"><use href="#i-check" /></svg>Save default
+                </button>
+              </div>
+              <p class="admin-foot" id="admin-basemap-meta">Loading current setting…</p>
+            </section>
+
             <section class="panel admin-panel" aria-labelledby="admin-backups-title">
               <header class="panel-head admin-panel-head">
                 <div>

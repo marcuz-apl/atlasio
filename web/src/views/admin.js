@@ -11,10 +11,21 @@ let system = null;
 let profiles = [];
 let backups = [];
 let audit = [];
+let mapSettings = null;
 const verification = new Map();
 let pendingRestore = null;
 let confirmResolve = null;
 let changelog = null;
+
+const BASEMAP_LABELS = {
+  topo: 'Esri · Topographic',
+  gray: 'Esri · Light gray canvas',
+  dark: 'Esri · Dark gray canvas',
+  imagery: 'Esri · Satellite imagery',
+  natgeo: 'Esri · NatGeo style',
+  osm: 'OpenStreetMap',
+  offline: 'Offline vector (Natural Earth)',
+};
 
 export function initAdmin() {
   if (initialized) return;
@@ -27,6 +38,7 @@ export function initAdmin() {
   $('#admin-profile-new')?.addEventListener('click', () => toggleCreate(true));
   $('#admin-create-cancel')?.addEventListener('click', () => toggleCreate(false));
   $('#admin-create-form')?.addEventListener('submit', createProfile);
+  $('#admin-basemap-save')?.addEventListener('click', saveBasemapDefault);
 
   $$('[data-admin-collapse]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -99,13 +111,15 @@ export async function refreshAdmin({ announce = false } = {}) {
       api('/admin/backups'),
       api('/admin/audit'),
       api('/admin/changelog'),
+      api('/map-settings'),
     ]);
-    const [statusResult, profilesResult, backupsResult, auditResult, changelogResult] = results;
+    const [statusResult, profilesResult, backupsResult, auditResult, changelogResult, mapSettingsResult] = results;
     if (statusResult.status === 'fulfilled') system = statusResult.value;
     if (profilesResult.status === 'fulfilled') profiles = profilesResult.value;
     if (backupsResult.status === 'fulfilled') backups = backupsResult.value;
     if (auditResult.status === 'fulfilled') audit = auditResult.value;
     if (changelogResult.status === 'fulfilled') changelog = changelogResult.value;
+    if (mapSettingsResult.status === 'fulfilled') mapSettings = mapSettingsResult.value;
 
     const failure = results.find((result) => result.status === 'rejected')?.reason;
     if (failure) reportError(failure);
@@ -119,11 +133,47 @@ export async function refreshAdmin({ announce = false } = {}) {
 function renderAll() {
   renderStats();
   renderProfiles();
+  renderBasemapSettings();
   renderBackups();
   renderChangelog();
   renderAudit();
   const banner = $('#maintenance-banner');
   if (banner) banner.hidden = !system?.maintenance;
+}
+
+function renderBasemapSettings() {
+  const select = $('#admin-basemap-select');
+  const meta = $('#admin-basemap-meta');
+  if (select && mapSettings?.default_basemap) select.value = mapSettings.default_basemap;
+  if (!meta) return;
+  if (!mapSettings?.default_basemap) {
+    meta.textContent = 'No deployment default is stored — the workspace falls back to each user\'s theme default (Topographic in light mode, Dark gray canvas in dark mode).';
+    return;
+  }
+  const who = mapSettings.updated_by ? ` by ${mapSettings.updated_by}` : '';
+  const when = mapSettings.updated_at ? ` on ${formatDateTime(mapSettings.updated_at)}` : '';
+  meta.textContent = `Current default: ${BASEMAP_LABELS[mapSettings.default_basemap] || mapSettings.default_basemap}${who}${when}. Users who picked their own basemap keep their choice.`;
+}
+
+async function saveBasemapDefault(event) {
+  const button = event?.currentTarget || $('#admin-basemap-save');
+  const select = $('#admin-basemap-select');
+  if (!button || !select) return;
+  setButtonBusy(button, true, 'Saving…');
+  try {
+    const result = await api('/admin/map-settings', {
+      method: 'PUT',
+      body: JSON.stringify({ default_basemap: select.value }),
+    });
+    mapSettings = { ...mapSettings, ...result, default_basemap: result.default_basemap || select.value };
+    renderBasemapSettings();
+    toast(`Deployment basemap default saved: ${BASEMAP_LABELS[select.value] || select.value}.`, 'success');
+    refreshAdmin().catch(() => {});
+  } catch (error) {
+    toast(`Could not save the basemap default: ${error.message}`, 'error');
+  } finally {
+    setButtonBusy(button, false);
+  }
 }
 
 function renderStats() {

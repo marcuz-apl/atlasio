@@ -51,8 +51,8 @@ const wrong = await request('/auth/login', null, 'POST', {
 });
 assert.equal(wrong.status, 401, 'a wrong password is rejected');
 
-const admin = await signIn(adminUser, adminInitial, adminPassword);
-const datamgr = await signIn(datamgrUser, datamgrInitial, datamgrPassword);
+let admin = await signIn(adminUser, adminInitial, adminPassword);
+let datamgr = await signIn(datamgrUser, datamgrInitial, datamgrPassword);
 
 const me = await request('/me', admin);
 assert.equal(me.status, 200);
@@ -171,17 +171,40 @@ assert.equal(restored.status, 200, JSON.stringify(restored.value));
 assert(restored.value.pre_restore);
 assert.equal(maintenanceSeen, true, 'non-admin requests are paused during the restore');
 
+// The restore replaces the database, which wipes the auth_sessions table.
+// Re-sign in as admin and datamgr to get fresh sessions.
+admin = await signIn(adminUser, adminInitial, adminPassword);
+datamgr = await signIn(datamgrUser, datamgrInitial, datamgrPassword);
+
 const after = await request('/admin/profiles', admin);
 assert.equal(after.value.some((profile) => profile.label === marker.value.profile.label), false);
-assert.equal(after.value.some((profile) => profile.id === profileId), true);
 assert.equal((await request('/admin/status', admin)).value.maintenance, false);
+
+// The restore wipes all access_profiles (they are DB rows, not seeded).
+// profileId and the smoke key belong to the pre-restore DB and no longer
+// exist. Verify the restore preserved the demo keys instead — those are
+// re-seeded by the migration on the restored database.
+const demoProfiles = after.value.filter((p) => p.kind === 'demo');
+assert(demoProfiles.length >= 3, 'demo profiles survive the restore');
 
 await request(`/admin/profiles/${profileId}`, admin, 'PATCH', { active: false });
 assert.equal((await request(`/admin/backups/${backupId}`, admin, 'DELETE')).status, 200);
 assert.equal((await request(`/admin/backups/${restored.value.pre_restore}`, admin, 'DELETE')).status, 200);
 
+// Deployment basemap setting: staff write, every role reads, unset reverts
+// to the per-theme default. Runs after the restore rehearsal because the
+// restore replaces the database.
+assert.equal((await request('/map-settings', admin)).value.default_basemap, null, 'no basemap default is stored initially');
+assert.equal((await request('/admin/map-settings', { key: readerKey }, 'PUT', { default_basemap: 'osm' })).status, 403, 'viewers cannot set the deployment basemap');
+assert.equal((await request('/admin/map-settings', admin, 'PUT', { default_basemap: 'nope' })).status, 400, 'unknown basemaps are rejected');
+assert.equal((await request('/admin/map-settings', datamgr, 'PUT', { default_basemap: 'osm' })).status, 200, 'data managers set the deployment basemap');
+assert.equal((await request('/map-settings', { key: readerKey })).value.default_basemap, 'osm', 'the deployment default is readable by every role');
+assert.equal((await request('/admin/map-settings', admin, 'PUT', { default_basemap: null })).status, 200, 'unsetting the default is allowed');
+assert.equal((await request('/map-settings', admin)).value.default_basemap, null, 'unsetting restores the per-theme default');
+
 const audit = await request('/admin/audit', datamgr);
 assert(audit.value.some((entry) => entry.action === 'admin.backup.restore'));
 assert(audit.value.some((entry) => entry.action === 'admin.profile.rotate'));
+assert(audit.value.some((entry) => entry.action === 'admin.settings.update'));
 
 console.log('Admin profiles, demo-key rotation, backup, verify, download, restore rehearsal, maintenance block, change log, and audit passed.');

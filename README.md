@@ -2,7 +2,7 @@
 
 **Governed subsurface data, in place.** Atlasio is a workspace for wells, seismic, and the evidence behind them: original files, provenance, immutable versions, role-scoped access, and coordinate integrity are the product, and a map-led surface makes the catalog discoverable.
 
-Release 1 is in progress (current build `v0.7.2`; see [CHANGELOG.md](CHANGELOG.md)). The first vertical slice takes a well package through staging, QC, review, publication, search, and map display. Requirements and open decisions live in [PRD.md](PRD.md); implementation constraints and domain invariants live in [AGENTS.md](AGENTS.md).
+Release 1 is in progress (current build `v0.7.3`; see [CHANGELOG.md](CHANGELOG.md)). The first vertical slice takes a well package through staging, QC, review, publication, search, and map display. Requirements and open decisions live in [PRD.md](PRD.md); implementation constraints and domain invariants live in [AGENTS.md](AGENTS.md).
 
 ## What it does
 
@@ -10,7 +10,7 @@ Release 1 is in progress (current build `v0.7.2`; see [CHANGELOG.md](CHANGELOG.m
 - **Map-first exploration.** Explore is a full-bleed map beneath the header with a floating toolbar, basemap gallery (public Esri and OpenStreetMap tiles with an automatic offline vector fallback), live display controls, a catalog drawer, quick search, a coordinate rail, and PNG export. The mode bar (Explore / Records / Ingest / Review) sits in one stable place in every mode.
 - **Records and provenance.** Every record keeps aliases and external IDs separate from its stable internal ID, and shows source position, source CRS, the recorded display transformation, reviewer, license, confidentiality, and the original file checksum.
 - **Role-scoped access.** Viewer, importer, and reviewer keys plus staff accounts (Administrator, Data Manager) with forced first password change and optional TOTP MFA. Authorization is enforced at the API and storage boundary, not only in the UI.
-- **Operations.** Access-profile management, backup creation and verification, typed-confirmation restore with a fresh pre-restore backup, and an administrative audit trail. The Admin Panel renders the change log as build history.
+- **Operations.** Access-profile management, deployment-wide map settings, backup creation and verification, typed-confirmation restore with a fresh pre-restore backup, and an administrative audit trail. The Admin Panel renders the change log as build history.
 
 ## Quick start
 

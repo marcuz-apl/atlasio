@@ -22,7 +22,7 @@ export const USER_DOCS_HTML = `
         <tr><td>Viewer</td><td>Approved records and public originals</td><td>Search, inspect versions and provenance, download where the license allows</td></tr>
         <tr><td>Importer</td><td>All catalog records</td><td>Stage packages, correct metadata, resolve QC findings, submit for review</td></tr>
         <tr><td>Reviewer</td><td>All catalog records</td><td>Review submitted packages, resolve well identity, publish or reject</td></tr>
-        <tr><td>Data Manager</td><td>Administration</td><td>Manage access profiles, create and verify backups, read the audit trail</td></tr>
+        <tr><td>Data Manager</td><td>Administration</td><td>Manage access profiles, set the deployment basemap, create and verify backups, read the audit trail</td></tr>
         <tr><td>Administrator</td><td>Administration</td><td>Everything a Data Manager can do, plus delete and restore backups</td></tr>
       </tbody>
     </table>
@@ -49,7 +49,7 @@ export const USER_DOCS_HTML = `
   <p>The workspace map is a discovery and inspection surface. It fills the screen beneath the header: pan, zoom, and select a well, and the inspector opens beside the map with the record behind that position. The catalog sits in a drawer on the left, and the map display panel on the right stays in view while you work.</p>
   <p>The <strong>Explore / Records / Ingest / Review</strong> bar sits directly below the header in every mode — aligned with the cards' left edge in the list modes, and at the map edge in Explore. The workspace carries no page title; the bar is its only head, so the control never jumps between corners as you switch modes.</p>
   <ul>
-    <li><strong>Basemap.</strong> Choose Topographic, light or dark gray canvas, satellite imagery, NatGeo style, OpenStreetMap, or the offline vector map. If tiles cannot be reached, Atlasio switches to the offline map and tells you.</li>
+    <li><strong>Basemap.</strong> Choose Topographic, light or dark gray canvas, satellite imagery, NatGeo style, OpenStreetMap, or the offline vector map. Administrators set the deployment default in the Admin Panel; a basemap you pick yourself always wins. If tiles cannot be reached, Atlasio switches to the offline map and tells you.</li>
     <li><strong>Display controls.</strong> Toggle well symbols, graticule, country borders, and the area of interest; adjust symbol size and opacity live; reset the view or export the current map as a PNG.</li>
     <li><strong>Quick search.</strong> The field at the top right finds a well by name or ID and flies to it; the catalog drawer keeps the full approved list.</li>
   </ul>
