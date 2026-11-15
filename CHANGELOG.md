@@ -4,6 +4,11 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.7.5 — 2026-11-15
+Build: v0.7.5+2611155
+Type: feat
+- New operator script `scripts/reset-passwords.sh` recovers a locked-out staff account: it runs the supported one-shot `ATLASIO_RESET_PASSWORDS=1` boot, verifies that both the Administrator and Data Manager accounts accept their seeded initial passwords again, clears MFA and login lockouts, then restarts the server normally so the flag never re-fires. Each reset writes an `auth.password.reset` entry to the audit trail, and both accounts must set a new password at first sign-in.
+
 ## 0.7.3 — 2026-11-15
 Build: v0.7.3+2611153
 Type: feat
