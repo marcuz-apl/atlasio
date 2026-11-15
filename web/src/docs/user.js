@@ -49,7 +49,7 @@ export const USER_DOCS_HTML = `
   <p>The workspace map is a discovery and inspection surface. It fills the screen beneath the header: pan, zoom, and select a well, and the inspector opens beside the map with the record behind that position. The catalog sits in a drawer on the left, and the map display panel on the right stays in view while you work.</p>
   <p>The <strong>Explore / Records / Ingest / Review</strong> bar sits directly below the header in every mode — aligned with the cards' left edge in the list modes, and at the map edge in Explore. The workspace carries no page title; the bar is its only head, so the control never jumps between corners as you switch modes.</p>
   <ul>
-    <li><strong>Basemap.</strong> Choose Topographic, light or dark gray canvas, satellite imagery, NatGeo style, or the offline vector map. If tiles cannot be reached, Atlasio switches to the offline map and tells you.</li>
+    <li><strong>Basemap.</strong> Choose Topographic, light or dark gray canvas, satellite imagery, NatGeo style, OpenStreetMap, or the offline vector map. If tiles cannot be reached, Atlasio switches to the offline map and tells you.</li>
     <li><strong>Display controls.</strong> Toggle well symbols, graticule, country borders, and the area of interest; adjust symbol size and opacity live; reset the view or export the current map as a PNG.</li>
     <li><strong>Quick search.</strong> The field at the top right finds a well by name or ID and flies to it; the catalog drawer keeps the full approved list.</li>
   </ul>
@@ -120,6 +120,7 @@ export const USER_DOCS_HTML = `
   <ul>
     <li><strong>MapLibre GL JS</strong> renders the workspace map. It is free, open-source software (BSD-3-Clause) maintained by the MapLibre community — no API key, no usage fees, no tile limits. <a href="https://maplibre.org/" target="_blank" rel="noopener">maplibre.org</a></li>
     <li><strong>Esri</strong> serves the public basemaps: Topographic, Light and Dark Gray Canvas, Satellite imagery (World Imagery), and NatGeo World Map. These tiles are offered by Esri free of charge with attribution, and the map's attribution control shows the active credit (© Esri — …) whenever a raster basemap is on. <a href="https://www.esri.com/" target="_blank" rel="noopener">esri.com</a></li>
+    <li><strong>OpenStreetMap</strong> offers the community-built world map as an alternate public basemap (© OpenStreetMap contributors), giving the gallery a second public tile source beside Esri. <a href="https://www.openstreetmap.org/" target="_blank" rel="noopener">openstreetmap.org</a></li>
     <li><strong>Natural Earth</strong> (public domain) supplies the offline vector fallback map, country borders, and graticule through the world-atlas dataset.</li>
   </ul>
   <p class="docs-muted">Basemap imagery remains the property of Esri and its data suppliers and is used under Esri's terms for its online basemaps. The demo material staged in this workspace comes from open publishers — the Norwegian Offshore Directorate (Sodir), the UK North Sea Transition Authority (NSTA), and Equinor's Volve release — credited with their licences in the demo-data documentation.</p>
