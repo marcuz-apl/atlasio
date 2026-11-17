@@ -2,7 +2,7 @@
 
 **Governed subsurface data, in place.** Atlasio is a workspace for wells, seismic, and the evidence behind them: original files, provenance, immutable versions, role-scoped access, and coordinate integrity are the product, and a map-led surface makes the catalog discoverable.
 
-Release 1 is in progress (current build `v0.7.7`; see [CHANGELOG.md](CHANGELOG.md)). The first vertical slice takes a well package through staging, QC, review, publication, search, and map display. Requirements and open decisions live in [PRD.md](PRD.md); implementation constraints and domain invariants live in [AGENTS.md](AGENTS.md).
+Release 1 is in progress (current build `v0.7.8`; see [CHANGELOG.md](CHANGELOG.md)). The first vertical slice takes a well package through staging, QC, review, publication, search, and map display. Requirements and open decisions live in [PRD.md](PRD.md); implementation constraints and domain invariants live in [AGENTS.md](AGENTS.md).
 
 ## What it does
 
@@ -80,7 +80,7 @@ Runbooks: [staff accounts and MFA recovery](docs/operations/staff-accounts.md), 
 
 ## Tests
 
-- `node scripts/smoke.mjs` — synthetic packages, version replacement, search, map API, download, and access checks.
+- `node scripts/smoke.mjs` — synthetic packages, version replacement, search, map API, download, and access checks. The run deletes the three test wells it publishes when it finishes (via `scripts/cleanup-synthetic-wells.sh --well-ids`); set `ATLASIO_SMOKE_KEEP=1` to keep them for inspection. Remote targets (`ATLASIO_URL` not localhost) are left untouched.
 - `node scripts/admin-smoke.mjs` — staff sign-in, profiles, demo-key rotation, backup, verification, restore rehearsal, maintenance blocking, and audit.
 - `node scripts/auth-smoke.mjs` — MFA enrolment, code challenges, and recovery codes.
 - `node scripts/verify-ingest-wizard.mjs` — table-import wizard end to end: messy CSV profile, auto-derived rules, DMS/decimal-comma/unit/date cleaning, blocked-row report, and staging.

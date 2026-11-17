@@ -202,6 +202,7 @@ export const BUILD_DOCS_HTML = `
         <tr><td>0.1.49</td><td>New operator script <code>scripts/reset-passwords.sh</code> recovers a locked-out staff account: one-shot reset boot, verifies both staff accounts accept their seeded initial passwords, clears MFA and lockouts, restarts clean, and records an audited <code>auth.password.reset</code> entry; a new password is forced at first sign-in.</td></tr>
         <tr><td>0.1.50</td><td>New operator script <code>scripts/cleanup-synthetic-wells.sh</code> removes synthetic test wells (the second-country and CRS/dataset/header fixtures) that verification suites leave in the workspace, including their versions, batches, files, attached datasets, and stored originals; real demo data never matches, immutability triggers are restored and verified, and audit history is preserved.</td></tr>
         <tr><td>0.1.51</td><td>The logo mark's red dot becomes an oil drop — a teardrop with a pointed top and round bulb in the same accent red — across the app header, sign-in gate, and favicon.</td></tr>
+        <tr><td>0.1.52</td><td>The smoke test cleans up after itself: the synthetic wells each run publishes are removed when it ends (also on assertion failure), through a new exact-ID mode of <code>scripts/cleanup-synthetic-wells.sh</code>; <code>ATLASIO_SMOKE_KEEP=1</code> keeps them for inspection.</td></tr>
       </tbody>
     </table>
   </div>

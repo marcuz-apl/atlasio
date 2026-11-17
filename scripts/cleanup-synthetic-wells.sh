@@ -13,6 +13,10 @@
 #
 # Usage (from WSL):
 #   bash /mnt/e/projects/atlasio/scripts/cleanup-synthetic-wells.sh
+#
+# Exact-ID mode (used by scripts/smoke.mjs to remove only the wells a single
+# run created):
+#   bash /mnt/e/projects/atlasio/scripts/cleanup-synthetic-wells.sh --well-ids id1,id2,...
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -22,27 +26,41 @@ BUCKET="${S3_BUCKET:-atlasio-originals}"
 KEYS_FILE="$REPO_DIR/backups/synthetic-object-keys.latest.txt"
 PSQL=(docker exec -i "$CONTAINER" psql -U atlasio -d atlasio -v ON_ERROR_STOP=1)
 
-before="$("${PSQL[@]}" -tAc "SELECT count(*) FROM wells w JOIN well_versions v ON v.id = w.current_version_id WHERE v.name LIKE 'SYNTHETIC%'")"
-echo "Synthetic wells found: $before"
+if [ "${1:-}" = "--well-ids" ]; then
+  IDS="${2:-}"
+  if [ -z "$IDS" ] || printf '%s' "$IDS" | tr ',' '\n' | grep -vqE '^[0-9a-fA-F]{8}-[0-9a-fA-F-]{27}$'; then
+    echo "usage: $0 [--well-ids id1,id2,...]" >&2
+    exit 2
+  fi
+  QUOTED_IDS="$(printf '%s' "$IDS" | sed "s/,/','/g")"
+  PRED="w.id = ANY(ARRAY['$QUOTED_IDS']::uuid[])"
+  SCOPE="the $(( $(printf '%s' "$IDS" | tr ',' '\n' | grep -c .) )) wells created by this test run"
+else
+  PRED="EXISTS (SELECT 1 FROM well_versions v WHERE v.id = w.current_version_id AND v.name LIKE 'SYNTHETIC%')"
+  SCOPE="synthetic test wells (current names starting with SYNTHETIC)"
+fi
+
+before="$("${PSQL[@]}" -tAc "SELECT count(*) FROM wells w WHERE $PRED")"
+echo "Wells to remove: $before ($SCOPE)"
 if [ "$before" = "0" ]; then
   echo "Nothing to clean up."
   exit 0
 fi
 
-# Capture the stored-object keys owned by the synthetic wells so the original
-# files can be removed from object storage after the database rows are gone.
+# Capture the stored-object keys owned by the wells so the original files can
+# be removed from object storage after the database rows are gone.
 mkdir -p "$REPO_DIR/backups"
 "${PSQL[@]}" -tAc "
   SELECT object_key FROM file_assets WHERE batch_id IN (
     SELECT id FROM import_batches WHERE well_id IN (
-      SELECT w.id FROM wells w JOIN well_versions v ON v.id = w.current_version_id WHERE v.name LIKE 'SYNTHETIC%'))
+      SELECT w.id FROM wells w WHERE $PRED))
   UNION
   SELECT object_key FROM datasets WHERE well_id IN (
-    SELECT w.id FROM wells w JOIN well_versions v ON v.id = w.current_version_id WHERE v.name LIKE 'SYNTHETIC%');
+    SELECT w.id FROM wells w WHERE $PRED);
 " > "$KEYS_FILE"
 echo "Object keys to remove: $(grep -c . "$KEYS_FILE" || true) (recorded in ${KEYS_FILE#$REPO_DIR/})"
 
-"${PSQL[@]}" <<'SQL'
+"${PSQL[@]}" <<SQL
 BEGIN;
 
 DROP TRIGGER well_versions_immutable ON well_versions;
@@ -51,9 +69,7 @@ DROP TRIGGER published_datasets_immutable ON datasets;
 DROP TRIGGER published_files_immutable ON file_assets;
 
 CREATE TEMP TABLE tmp_synthetic_wells AS
-  SELECT w.id FROM wells w
-  JOIN well_versions v ON v.id = w.current_version_id
-  WHERE v.name LIKE 'SYNTHETIC%';
+  SELECT w.id FROM wells w WHERE $PRED;
 
 UPDATE wells SET current_version_id = NULL
   WHERE id IN (SELECT id FROM tmp_synthetic_wells);
@@ -92,9 +108,9 @@ CREATE TRIGGER published_files_immutable
 COMMIT;
 SQL
 
-after="$("${PSQL[@]}" -tAc "SELECT count(*) FROM wells w JOIN well_versions v ON v.id = w.current_version_id WHERE v.name LIKE 'SYNTHETIC%'")"
+after="$("${PSQL[@]}" -tAc "SELECT count(*) FROM wells w WHERE $PRED")"
 total="$("${PSQL[@]}" -tAc "SELECT count(*) FROM wells")"
-echo "Synthetic wells remaining: $after (total wells now: $total)"
+echo "Wells remaining from this scope: $after (total wells now: $total)"
 
 # Remove the orphaned original files from object storage (S3Mock keeps one
 # metadata file per object; find it by the exact key and delete its folder).
