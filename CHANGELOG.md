@@ -4,6 +4,14 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.54 — 2026-11-17
+Build: v0.1.54+2611174
+Type: fix
+- Fixed the licences-and-blocks overlay never rendering: its GeoJSON source was named `land` and a layer `land-line`, which already exist in the basemap style, so the loader found the basemap source and returned before adding anything. The overlay now uses `land-areas`, `landarea-fill`, and `landarea-line`.
+- The Dashboard "Concession Maps" count now reports distinct licence references (370) instead of licence-block polygons (723); a licence that covers several blocks remains one concession, while every block polygon stays on the map.
+- Overlay loaders also attach on the first rendered frame, so layers appear even when the style `load` event has already fired.
+- Removed two synthetic restricted test records left behind by an interrupted verification run.
+
 ## 0.1.53 — 2026-11-17
 Build: v0.1.53+2611173
 Type: feat

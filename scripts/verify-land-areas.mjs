@@ -53,7 +53,7 @@ assert(mapAll.value.features.every((feature) => feature.properties.land_area_id)
 
 const dashboard = await request('/dashboard', 'reader');
 assert.equal(dashboard.value.counts.concession_maps.state, 'available');
-assert(dashboard.value.counts.concession_maps.value >= 700, 'catalog count should include the imported concessions');
+assert(dashboard.value.counts.concession_maps.value >= 300, 'catalog count should report distinct licences');
 
 // Restricted record: visible to the importer, invisible to readers everywhere.
 const suffix = randomUUID().slice(0, 8);
