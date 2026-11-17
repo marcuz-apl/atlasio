@@ -84,6 +84,8 @@ Runbooks: [staff accounts and MFA recovery](docs/operations/staff-accounts.md), 
 - `node scripts/admin-smoke.mjs` — staff sign-in, profiles, demo-key rotation, backup, verification, restore rehearsal, maintenance blocking, and audit.
 - `node scripts/auth-smoke.mjs` — MFA enrolment, code challenges, and recovery codes.
 - `node scripts/verify-ingest-wizard.mjs` — table-import wizard end to end: messy CSV profile, auto-derived rules, DMS/decimal-comma/unit/date cleaning, blocked-row report, and staging.
+- `node scripts/import-land-areas.mjs` — imports NSTA UKCS boundaries as governed land areas: licensed blocks (native ED50), the block reference grid, and carbon storage licences. Idempotent; `--only`, `--limit`, and `--dry-run` filters.
+- `node scripts/verify-land-areas.mjs` — land-area governance: ED50 source preserved with WGS 84 display derived, map features, restricted isolation, duplicates, validation, and immutability.
 
 ## Repository layout
 

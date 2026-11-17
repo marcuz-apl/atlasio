@@ -4,6 +4,15 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.53 — 2026-11-17
+Build: v0.1.53+2611173
+Type: feat
+- New governed record type **Land areas**: concession, licence, block, lease, and interest polygons with code, block reference, operator, parties, licence status, effective dates, source, and licence metadata (migration 011). Source geometry is preserved in its native CRS — the NSTA licensed blocks stay in ED50 geographic (EPSG:4230) — and the WGS 84 display footprint is derived only through the verified CRS engine. Published records are immutable.
+- New API: `POST /api/land-areas` (importer and staff) is idempotent per kind/code/block identity, `GET /api/land-areas` lists with confidentiality scoping, `GET /api/land-areas/{id}` returns a record, and `GET /api/map/land-areas` serves published public display geometry for the map.
+- Explore gains a **Licences & blocks** layer with a Display toggle and click-to-inspect details (operator, status, effective dates, source CRS, licence). The Dashboard "Concession Maps" count now reports loaded concessions instead of "planned".
+- New `scripts/import-land-areas.mjs` imports NSTA open data: 698 UKCS offshore petroleum licensed blocks (ED50, rich licence attributes), the 7,266-block UKCS reference grid, and 25 current carbon storage licences. Each layer's own metadata declares its source CRS, which is stored unchanged.
+- New `scripts/verify-land-areas.mjs` verifies the slice end to end: ED50 preservation and WGS 84 derivation, map features for readers, restricted-record isolation, idempotent duplicates, input validation, and trigger-enforced immutability.
+
 ## 0.1.52 — 2026-11-17
 Build: v0.1.52+2611172
 Type: feat

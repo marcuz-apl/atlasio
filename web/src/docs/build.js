@@ -203,6 +203,7 @@ export const BUILD_DOCS_HTML = `
         <tr><td>0.1.50</td><td>New operator script <code>scripts/cleanup-synthetic-wells.sh</code> removes synthetic test wells (the second-country and CRS/dataset/header fixtures) that verification suites leave in the workspace, including their versions, batches, files, attached datasets, and stored originals; real demo data never matches, immutability triggers are restored and verified, and audit history is preserved.</td></tr>
         <tr><td>0.1.51</td><td>The logo mark's red dot becomes an oil drop — a teardrop with a pointed top and round bulb in the same accent red — across the app header, sign-in gate, and favicon.</td></tr>
         <tr><td>0.1.52</td><td>The smoke test cleans up after itself: the synthetic wells each run publishes are removed when it ends (also on assertion failure), through a new exact-ID mode of <code>scripts/cleanup-synthetic-wells.sh</code>; <code>ATLASIO_SMOKE_KEEP=1</code> keeps them for inspection.</td></tr>
+        <tr><td>0.1.53</td><td>Governed land areas: concession, licence, block, and lease polygons keep their native source CRS (NSTA licensed blocks stay ED50/EPSG:4230) with WGS 84 display geometry derived only through the verified CRS engine; Explore gains a licences-and-blocks layer with click-to-inspect, the Dashboard concession count goes live, and NSTA open data (698 licensed blocks, 7,266 reference blocks, 25 carbon storage licences) imports through <code>scripts/import-land-areas.mjs</code>; migration 011.</td></tr>
       </tbody>
     </table>
   </div>
