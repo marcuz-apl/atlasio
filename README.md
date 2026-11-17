@@ -2,7 +2,7 @@
 
 **Governed subsurface data, in place.** Atlasio is a workspace for wells, seismic, and the evidence behind them: original files, provenance, immutable versions, role-scoped access, and coordinate integrity are the product, and a map-led surface makes the catalog discoverable.
 
-Release 1 is in progress (current build `v0.7.8`; see [CHANGELOG.md](CHANGELOG.md)). The first vertical slice takes a well package through staging, QC, review, publication, search, and map display. Requirements and open decisions live in [PRD.md](PRD.md); implementation constraints and domain invariants live in [AGENTS.md](AGENTS.md).
+Release 1 is in progress (current build `v0.7.9`; see [CHANGELOG.md](CHANGELOG.md)). The first vertical slice takes a well package through staging, QC, review, publication, search, and map display. Requirements and open decisions live in [PRD.md](PRD.md); implementation constraints and domain invariants live in [AGENTS.md](AGENTS.md).
 
 ## What it does
 
@@ -84,6 +84,8 @@ Runbooks: [staff accounts and MFA recovery](docs/operations/staff-accounts.md), 
 - `node scripts/admin-smoke.mjs` — staff sign-in, profiles, demo-key rotation, backup, verification, restore rehearsal, maintenance blocking, and audit.
 - `node scripts/auth-smoke.mjs` — MFA enrolment, code challenges, and recovery codes.
 - `node scripts/verify-ingest-wizard.mjs` — table-import wizard end to end: messy CSV profile, auto-derived rules, DMS/decimal-comma/unit/date cleaning, blocked-row report, and staging.
+- `node scripts/import-land-areas.mjs` — imports NSTA UKCS boundaries as governed land areas: licensed blocks (native ED50), the block reference grid, and carbon storage licences. Idempotent; `--only`, `--limit`, and `--dry-run` filters.
+- `node scripts/verify-land-areas.mjs` — land-area governance: ED50 source preserved with WGS 84 display derived, map features, restricted isolation, duplicates, validation, and immutability.
 
 ## Repository layout
 

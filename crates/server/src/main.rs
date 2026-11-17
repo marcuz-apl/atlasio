@@ -260,6 +260,10 @@ pub(crate) async fn migrate(pool: &PgPool) -> Result<(), sqlx::Error> {
             "010_settings.sql",
             include_str!("../../../migrations/010_settings.sql"),
         ),
+        (
+            "011_land_areas.sql",
+            include_str!("../../../migrations/011_land_areas.sql"),
+        ),
     ];
     for (version, sql) in migrations {
         let applied: bool =
@@ -500,6 +504,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/wells/{id}/datasets", get(well_datasets))
         .route("/api/seismic-surveys", post(create_survey).get(list_surveys))
         .route("/api/map/seismic", get(map_seismic))
+        .route("/api/land-areas", post(create_land_area).get(list_land_areas))
+        .route("/api/land-areas/{id}", get(land_area_detail))
+        .route("/api/map/land-areas", get(map_land_areas))
         .route("/api/admin/status", get(admin::status))
         .route(
             "/api/admin/profiles",
@@ -956,6 +963,261 @@ async fn favicon() -> Response {
     }
 }
 
+#[derive(Deserialize)]
+struct LandAreaCreate {
+    kind: String,
+    code: String,
+    name: Option<String>,
+    block_ref: Option<String>,
+    operator: Option<String>,
+    parties: Option<Value>,
+    licence_status: Option<String>,
+    effective_from: Option<String>,
+    effective_to: Option<String>,
+    source: String,
+    source_url: Option<String>,
+    source_crs: String,
+    footprint: Value,
+    license: String,
+    confidentiality: Option<String>,
+}
+
+const LAND_AREA_COLUMNS: &str = "id, kind, code, name, block_ref, operator, parties::text AS parties, licence_status, effective_from::text AS effective_from, effective_to::text AS effective_to, source, source_url, source_crs, license, confidentiality, status, created_at, ST_AsGeoJSON(footprint) AS footprint, ST_AsGeoJSON(display_footprint) AS display_footprint";
+
+fn land_area_row_json(row: &sqlx::postgres::PgRow) -> Value {
+    let parse = |text: Option<String>| {
+        text.and_then(|text| serde_json::from_str::<Value>(&text).ok())
+    };
+    json!({
+        "id": row.get::<Uuid,_>("id"),
+        "kind": row.get::<String,_>("kind"),
+        "code": row.get::<String,_>("code"),
+        "name": row.get::<Option<String>,_>("name"),
+        "block_ref": row.get::<Option<String>,_>("block_ref"),
+        "operator": row.get::<Option<String>,_>("operator"),
+        "parties": parse(row.get::<Option<String>,_>("parties")).unwrap_or_else(|| json!([])),
+        "licence_status": row.get::<Option<String>,_>("licence_status"),
+        "effective_from": row.get::<Option<String>,_>("effective_from"),
+        "effective_to": row.get::<Option<String>,_>("effective_to"),
+        "source": row.get::<String,_>("source"),
+        "source_url": row.get::<Option<String>,_>("source_url"),
+        "source_crs": row.get::<String,_>("source_crs"),
+        "footprint": parse(row.get::<Option<String>,_>("footprint")),
+        "display_footprint": parse(row.get::<Option<String>,_>("display_footprint")),
+        "license": row.get::<String,_>("license"),
+        "confidentiality": row.get::<String,_>("confidentiality"),
+        "status": row.get::<String,_>("status"),
+        "created_at": row.get::<sqlx::types::chrono::DateTime<sqlx::types::chrono::Utc>,_>("created_at"),
+    })
+}
+
+fn valid_date(text: &Option<String>) -> Result<(), ApiError> {
+    if let Some(value) = text {
+        let bytes = value.as_bytes();
+        let shaped = bytes.len() == 10
+            && bytes[4] == b'-'
+            && bytes[7] == b'-'
+            && bytes.iter().enumerate().all(|(index, byte)| {
+                (index == 4 || index == 7) || byte.is_ascii_digit()
+            });
+        if !shaped {
+            return Err(ApiError::new(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "effective_from and effective_to must be YYYY-MM-DD dates",
+            ));
+        }
+    }
+    Ok(())
+}
+
+async fn create_land_area(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(payload): Json<LandAreaCreate>,
+) -> ApiResult {
+    let _who = role(&headers, &state, &["importer", "admin", "datamgr"]).await?;
+    const KINDS: [&str; 6] = ["concession", "licence", "block", "lease", "interest_area", "other"];
+    if !KINDS.contains(&payload.kind.as_str()) {
+        return Err(ApiError::new(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "kind must be one of concession, licence, block, lease, interest_area, other",
+        ));
+    }
+    if payload.code.trim().is_empty() || payload.source.trim().is_empty() || payload.license.trim().is_empty() {
+        return Err(ApiError::new(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "code, source, and license are required",
+        ));
+    }
+    valid_date(&payload.effective_from)?;
+    valid_date(&payload.effective_to)?;
+    let ring = payload.footprint["coordinates"][0]
+        .as_array()
+        .ok_or_else(|| ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, "Footprint must be a Polygon."))?;
+    let mut source_ring: Vec<Value> = Vec::new();
+    let mut display_ring: Vec<Value> = Vec::new();
+    let source_crs_label = payload.source_crs.trim().to_string();
+    let code = crs::normalize(&payload.source_crs);
+    let mut display_ok = crs::is_supported(&code);
+    for pair in ring {
+        let x = pair[0].as_f64().unwrap_or(f64::NAN);
+        let y = pair[1].as_f64().unwrap_or(f64::NAN);
+        source_ring.push(json!([x, y]));
+        if display_ok {
+            match crs::transform(&code, x, y) {
+                Ok(transform) => display_ring.push(json!([transform.longitude, transform.latitude])),
+                Err(_) => display_ok = false,
+            }
+        }
+    }
+    let source_geojson = serde_json::to_string(&json!({ "type": "Polygon", "coordinates": [source_ring] }))
+        .map_err(|_| ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, "Footprint is not valid geometry."))?;
+    let display_geojson = if display_ok {
+        Some(serde_json::to_string(&json!({ "type": "Polygon", "coordinates": [display_ring] })).unwrap())
+    } else {
+        None
+    };
+    let parties = payload.parties.unwrap_or_else(|| json!([]));
+    if !parties.is_array() {
+        return Err(ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, "parties must be an array"));
+    }
+    let id = Uuid::new_v4();
+    let confidentiality = payload.confidentiality.unwrap_or_else(|| "restricted".into());
+    let inserted = sqlx::query(
+        "INSERT INTO land_areas (id, kind, code, name, block_ref, operator, parties, licence_status, effective_from, effective_to, source, source_url, source_crs, footprint, display_footprint, license, confidentiality)
+         VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9::date,$10::date,$11,$12,$13,ST_SetSRID(ST_GeomFromGeoJSON($14),0),ST_SetSRID(ST_GeomFromGeoJSON($15),4326),$16,$17)
+         ON CONFLICT DO NOTHING",
+    )
+    .bind(id)
+    .bind(&payload.kind)
+    .bind(payload.code.trim())
+    .bind(payload.name.as_deref())
+    .bind(payload.block_ref.as_deref())
+    .bind(payload.operator.as_deref())
+    .bind(parties.to_string())
+    .bind(payload.licence_status.as_deref())
+    .bind(payload.effective_from.as_deref())
+    .bind(payload.effective_to.as_deref())
+    .bind(payload.source.trim())
+    .bind(payload.source_url.as_deref())
+    .bind(&source_crs_label)
+    .bind(&source_geojson)
+    .bind(&display_geojson)
+    .bind(payload.license.trim())
+    .bind(&confidentiality)
+    .execute(&state.db)
+    .await?;
+    if inserted.rows_affected() == 0 {
+        return Ok(Json(json!({ "status": "duplicate", "display_footprint": false })));
+    }
+    Ok(Json(json!({
+        "id": id,
+        "status": "published",
+        "source_crs": source_crs_label,
+        "display_footprint": display_geojson.is_some(),
+    })))
+}
+
+#[derive(Deserialize)]
+struct LandAreaQuery {
+    kind: Option<String>,
+    code: Option<String>,
+}
+
+async fn list_land_areas(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(params): Query<LandAreaQuery>,
+) -> ApiResult {
+    let who = role(
+        &headers,
+        &state,
+        &["importer", "reviewer", "reader", "admin", "datamgr"],
+    )
+    .await?;
+    let rows = sqlx::query(&format!(
+        "SELECT {LAND_AREA_COLUMNS} FROM land_areas
+         WHERE status='published'
+           AND ($1 OR confidentiality='public')
+           AND ($2::text IS NULL OR kind=$2)
+           AND ($3::text IS NULL OR code=$3)
+         ORDER BY kind, code, block_ref NULLS FIRST
+         LIMIT 1000"
+    ))
+    .bind(who != "reader")
+    .bind(params.kind.as_deref())
+    .bind(params.code.as_deref())
+    .fetch_all(&state.db)
+    .await?;
+    Ok(Json(json!(rows.iter().map(land_area_row_json).collect::<Vec<_>>())))
+}
+
+async fn land_area_detail(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+) -> ApiResult {
+    let who = role(
+        &headers,
+        &state,
+        &["importer", "reviewer", "reader", "admin", "datamgr"],
+    )
+    .await?;
+    let row = sqlx::query(&format!(
+        "SELECT {LAND_AREA_COLUMNS} FROM land_areas WHERE id=$1"
+    ))
+    .bind(id)
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "Land area not found"))?;
+    if who == "reader" && row.get::<String, _>("confidentiality") != "public" {
+        return Err(ApiError::new(StatusCode::FORBIDDEN, "This land area is restricted."));
+    }
+    Ok(Json(land_area_row_json(&row)))
+}
+
+async fn map_land_areas(State(state): State<AppState>, headers: HeaderMap) -> ApiResult {
+    let who = role(
+        &headers,
+        &state,
+        &["importer", "reviewer", "reader", "admin", "datamgr"],
+    )
+    .await?;
+    let rows = sqlx::query(&format!(
+        "SELECT {LAND_AREA_COLUMNS} FROM land_areas
+         WHERE status='published' AND display_footprint IS NOT NULL
+           AND ($1 OR confidentiality='public')"
+    ))
+    .bind(who != "reader")
+    .fetch_all(&state.db)
+    .await?;
+    let features: Vec<Value> = rows
+        .iter()
+        .map(|row| {
+            let geometry: Value = serde_json::from_str(
+                &row.get::<Option<String>, _>("display_footprint").unwrap_or_default(),
+            )
+            .unwrap_or(Value::Null);
+            json!({
+                "type": "Feature",
+                "id": row.get::<Uuid,_>("id"),
+                "geometry": geometry,
+                "properties": {
+                    "land_area_id": row.get::<Uuid,_>("id"),
+                    "kind": row.get::<String,_>("kind"),
+                    "code": row.get::<String,_>("code"),
+                    "name": row.get::<Option<String>,_>("name"),
+                    "block_ref": row.get::<Option<String>,_>("block_ref"),
+                    "operator": row.get::<Option<String>,_>("operator"),
+                    "licence_status": row.get::<Option<String>,_>("licence_status"),
+                },
+            })
+        })
+        .collect();
+    Ok(Json(json!({ "type": "FeatureCollection", "features": features })))
+}
+
+
 async fn health(State(state): State<AppState>) -> ApiResult {
     sqlx::query_scalar::<_, i32>("SELECT 1")
         .fetch_one(&state.db)
@@ -1031,6 +1293,12 @@ async fn dashboard(
     .bind(&well_ids)
     .fetch_one(&state.db)
     .await?;
+    let concessions: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM land_areas WHERE status='published' AND kind IN ('concession','licence') AND ($1 OR confidentiality='public')",
+    )
+    .bind(who != "reader")
+    .fetch_one(&state.db)
+    .await?;
     Ok(Json(json!({
         "scope": if params.area.unwrap_or(false) { "selected_area" } else { "global" },
         "counts": {
@@ -1048,7 +1316,7 @@ async fn dashboard(
             "seismic_interpretations": { "value": null, "state": "not_cataloged" },
             "reports": { "value": null, "state": "not_cataloged" },
             "ma_reports": { "value": null, "state": "not_cataloged" },
-            "concession_maps": { "value": null, "state": "not_cataloged" },
+            "concession_maps": { "value": concessions, "state": "available" },
             "permits_licenses": { "value": null, "state": "not_cataloged" },
             "land_leases": { "value": null, "state": "not_cataloged" },
             "gis_basemaps": { "value": null, "state": "not_cataloged" },

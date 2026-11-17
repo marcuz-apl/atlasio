@@ -30,7 +30,7 @@ function defaultSettings() {
     basemap: null,
     symbol: 4.2,
     opacity: 100,
-    overlays: { wells: true, graticule: true, borders: true, area: true, seismic: true },
+    overlays: { wells: true, graticule: true, borders: true, area: true, seismic: true, land: true },
     catalog: null,
     display: null,
   };
@@ -236,6 +236,11 @@ function initExploreControls() {
     saveSettings();
     setSeismicVisible(event.target.checked);
   });
+  $('#toggle-land')?.addEventListener('change', (event) => {
+    settings.overlays.land = event.target.checked;
+    saveSettings();
+    setLandVisible(event.target.checked);
+  });
   loadSeismicFootprints();
 }
 
@@ -329,6 +334,145 @@ async function loadSeismicFootprints() {
   if (instance.isStyleLoaded()) await add();
   else instance.once('load', add);
   instance.on('style.load', add);
+  instance.once('render', add);
+}
+
+function setLandVisible(visible) {
+  const instance = map?.map;
+  if (!instance) return;
+  for (const layer of ['land-fill', 'land-line']) {
+    if (instance.getLayer(layer)) {
+      instance.setLayoutProperty(layer, 'visibility', visible ? 'visible' : 'none');
+    }
+  }
+}
+
+async function loadLandAreas() {
+  const instance = map?.map;
+  if (!instance) return;
+  const add = async () => {
+    if (instance.getSource('land')) {
+      setLandVisible(settings.overlays.land !== false);
+      return;
+    }
+    let data;
+    try {
+      data = await api('/map/land-areas');
+    } catch {
+      return;
+    }
+    if (!instance.getSource('land')) {
+      instance.addSource('land', { type: 'geojson', data });
+      instance.addLayer({
+        id: 'land-fill',
+        type: 'fill',
+        source: 'land',
+        paint: { 'fill-color': '#d9a441', 'fill-opacity': 0.12 },
+      });
+      instance.addLayer({
+        id: 'land-line',
+        type: 'line',
+        source: 'land',
+        paint: { 'line-color': '#b8802a', 'line-width': 1.1 },
+      });
+      if (instance.getLayer('wells')) {
+        instance.moveLayer('land-fill', 'wells');
+        instance.moveLayer('land-line', 'wells');
+      }
+      instance.on('click', 'land-fill', (event) => {
+        const feature = event.features && event.features[0];
+        const id = feature && feature.properties && feature.properties.land_area_id;
+        if (id) openLandAreaInspector(id);
+      });
+      instance.on('mouseenter', 'land-fill', () => {
+        instance.getCanvas().style.cursor = 'pointer';
+      });
+      instance.on('mouseleave', 'land-fill', () => {
+        instance.getCanvas().style.cursor = '';
+      });
+    }
+    setLandVisible(settings.overlays.land !== false);
+  };
+  if (instance.isStyleLoaded()) await add();
+  else instance.once('load', add);
+  instance.on('style.load', add);
+  instance.once('render', add);
+}
+
+async function openLandAreaInspector(id) {
+  const aside = $('#inspector');
+  if (!aside) return;
+  inspectorId = `land:${id}`;
+  aside.hidden = false;
+  $('#explore-stage')?.classList.add('has-inspector');
+  aside.replaceChildren();
+  const head = el('header', 'inspector-head');
+  const heading = el('div');
+  heading.append(el('p', 'eyebrow', 'LAND AREA'));
+  heading.append(el('h2', '', 'Loading record…'));
+  const close = el('button', 'icon-btn');
+  close.type = 'button';
+  close.setAttribute('aria-label', 'Close record details');
+  close.dataset.closeInspector = '';
+  close.append(icon('close'));
+  head.append(heading, close);
+  const body = el('div', 'inspector-body');
+  body.append(skeletonRows(4));
+  aside.append(head, body);
+
+  try {
+    const area = await api(`/land-areas/${id}`);
+    if (inspectorId !== `land:${id}`) return;
+    aside.replaceChildren();
+    const nextHead = el('header', 'inspector-head');
+    const nextHeading = el('div');
+    nextHeading.append(el('p', 'eyebrow', `LAND AREA · ${String(area.kind || '').toUpperCase()}`));
+    nextHeading.append(el('h2', '', area.code || 'Unnamed area'));
+    nextHeading.append(el('p', 'inspector-sub', area.block_ref ? `BLOCK ${area.block_ref}` : `RECORD ${shortId(area.id)}`));
+    const nextClose = el('button', 'icon-btn');
+    nextClose.type = 'button';
+    nextClose.setAttribute('aria-label', 'Close record details');
+    nextClose.dataset.closeInspector = '';
+    nextClose.append(icon('close'));
+    nextHead.append(nextHeading, nextClose);
+    const nextBody = el('div', 'inspector-body');
+    const section = el('section', 'inspector-section');
+    section.append(el('h3', '', 'Record'));
+    const list = el('dl');
+    if (area.name) addRow(list, 'Name', area.name, { mono: false });
+    addRow(list, 'Block reference', area.block_ref || '—');
+    addRow(list, 'Operator', area.operator || '—', { mono: false });
+    addRow(list, 'Licence status', area.licence_status || '—');
+    if (area.effective_from) addRow(list, 'Effective from', area.effective_from);
+    if (area.effective_to) addRow(list, 'Effective to', area.effective_to);
+    const parties = (area.parties || []).map((party) => party.name || party).filter(Boolean);
+    if (parties.length) addRow(list, 'Parties', parties.join(', '), { mono: false });
+    addRow(list, 'Source', area.source || '—', { mono: false });
+    addRow(list, 'Source CRS', area.source_crs || '—');
+    addRow(list, 'Display footprint', area.display_footprint ? 'WGS 84 geometry derived' : 'Not available (CRS not transformed)');
+    addRow(list, 'Licence', area.license || '—', { mono: false });
+    addRow(list, 'Confidentiality', area.confidentiality);
+    addRow(list, 'Record ID', shortId(area.id));
+    section.append(list);
+    nextBody.append(section);
+    aside.append(nextHead, nextBody);
+  } catch (error) {
+    if (inspectorId !== `land:${id}`) return;
+    aside.replaceChildren();
+    const failHead = el('header', 'inspector-head');
+    const failHeading = el('div');
+    failHeading.append(el('p', 'eyebrow', 'LAND AREA'));
+    failHeading.append(el('h2', '', 'Record unavailable'));
+    const failClose = el('button', 'icon-btn');
+    failClose.type = 'button';
+    failClose.setAttribute('aria-label', 'Close record details');
+    failClose.dataset.closeInspector = '';
+    failClose.append(icon('close'));
+    failHead.append(failHeading, failClose);
+    const failBody = el('div', 'inspector-body');
+    failBody.append(emptyState({ title: 'Could not load this record', message: error.message, iconName: 'alert' }));
+    aside.append(failHead, failBody);
+  }
 }
 
 function setDrawer(kind, value) {
@@ -386,6 +530,8 @@ function syncDisplayControls() {
   if (opacityOut) opacityOut.textContent = `${settings.opacity}%`;
   const seismicBox = $('#toggle-seismic');
   if (seismicBox) seismicBox.checked = settings.overlays.seismic !== false;
+  const landBox = $('#toggle-land');
+  if (landBox) landBox.checked = settings.overlays.land !== false;
   syncBasemapNote();
 }
 
@@ -480,10 +626,11 @@ export function ensureMap() {
     map.setSymbolSize(settings.symbol);
     map.setWellOpacity(settings.opacity);
     for (const [group, on] of Object.entries(settings.overlays)) {
-      if (group === 'seismic') continue;
+      if (group === 'seismic' || group === 'land') continue;
       map.setOverlay(group, on);
     }
     loadSeismicFootprints();
+    loadLandAreas();
     map.map.on('move', updateRailZoom);
     updateRailZoom();
     if (!fitDone && state.wells.features.length) {
