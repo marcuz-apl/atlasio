@@ -321,14 +321,14 @@ async function loadSeismicFootprints() {
         type: 'fill',
         source: 'seismic',
         filter: ['==', ['get', 'kind'], '3d'],
-        paint: { 'fill-color': '#6ea8fe', 'fill-opacity': 0.16 },
+        paint: { 'fill-color': '#c084fc', 'fill-opacity': 0.2 },
       });
       instance.addLayer({
         id: 'seismic-footprint-line',
         type: 'line',
         source: 'seismic',
         paint: {
-          'line-color': '#6ea8fe',
+          'line-color': ['case', ['==', ['get', 'kind'], '3d'], '#c084fc', '#6ea8fe'],
           'line-width': ['case', ['==', ['get', 'kind'], '3d'], 1.6, 0.8],
         },
       });
