@@ -205,6 +205,7 @@ export const BUILD_DOCS_HTML = `
         <tr><td>0.1.52</td><td>The smoke test cleans up after itself: the synthetic wells each run publishes are removed when it ends (also on assertion failure), through a new exact-ID mode of <code>scripts/cleanup-synthetic-wells.sh</code>; <code>ATLASIO_SMOKE_KEEP=1</code> keeps them for inspection.</td></tr>
         <tr><td>0.1.53</td><td>Governed land areas: concession, licence, block, and lease polygons keep their native source CRS (NSTA licensed blocks stay ED50/EPSG:4230) with WGS 84 display geometry derived only through the verified CRS engine; Explore gains a licences-and-blocks layer with click-to-inspect, the Dashboard concession count goes live, and NSTA open data (698 licensed blocks, 7,266 reference blocks, 25 carbon storage licences) imports through <code>scripts/import-land-areas.mjs</code>; migration 011.</td></tr>
         <tr><td>0.1.54</td><td>Fix: the licences-and-blocks overlay never rendered because its source id `land` collided with the basemap style; it now uses `land-areas`/`landarea-fill`/`landarea-line`. The Dashboard "Concession Maps" count reports distinct licences (370) rather than licence-block polygons (723), and overlay loaders also attach on the first rendered frame.</td></tr>
+        <tr><td>0.1.55</td><td>Catalog alignment: the licence is the record — boundary polygons and permit paperwork are its forms, not separate categories. Imported licensed areas (370 distinct licences) count under Permits &amp; Licenses; Concession Maps stays a planned map view. Glossary now separates "licence" (the granted right) from "concession" (the area it grants).</td></tr>
       </tbody>
     </table>
   </div>
@@ -449,7 +450,8 @@ export const BUILD_DOCS_HTML = `
     <div><dt>KB / DF / GL</dt><dd>Kelly bushing, derrick floor, and ground level: distinct elevation references.</dd></div>
     <div><dt>MD / TVD</dt><dd>Measured depth along the wellbore versus true vertical depth; never interchangeable.</dd></div>
     <div><dt>Culture data</dt><dd>Human-made surface context such as roads, pipelines, facilities, boundaries, and settlements.</dd></div>
-    <div><dt>Concession</dt><dd>A licensed area with boundaries, terms, and an issuing authority.</dd></div>
+    <div><dt>Licence</dt><dd>A granted right over a defined area, with terms and an issuing authority. The licensed area's boundary polygon and the permit paperwork are representations of the same licence record — they are forms, not separate data categories.</dd></div>
+    <div><dt>Concession</dt><dd>A licence whose area is the unit of record: the licensed area with its boundaries and terms. Use "licence" for the record and "concession" for the area it grants.</dd></div>
     <div><dt>Cataloged / planned</dt><dd>Cataloged has managed records and a count; planned is acknowledged but not yet managed.</dd></div>
     <div><dt>Well version</dt><dd>An immutable published snapshot of a well's registry data. A correction creates another version; the earlier version is kept.</dd></div>
     <div><dt>Source file</dt><dd>The original uploaded file behind a published package, retained with its checksum and provenance. It is evidence, not a derived report.</dd></div>

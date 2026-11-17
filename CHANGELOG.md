@@ -4,6 +4,12 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.8.1 — 2026-11-17
+Build: v0.8.1+2611175
+Type: fix
+- Catalog alignment: a licence is the record, and its boundary polygon and permit paperwork are representations of the same licence — not separate data categories. The Dashboard counts imported licensed areas (370 distinct licences) under **Permits & Licenses**; "Concession Maps" stays a planned map view rather than a second count of the same records.
+- Glossary clarified: "Licence" is the granted right with terms and an issuing authority; "Concession" is the licensed area it grants. Boundary polygons and paperwork are forms of the licence record.
+
 ## 0.8.0 — 2026-11-17
 Build: v0.8.0+2611174
 Type: fix
