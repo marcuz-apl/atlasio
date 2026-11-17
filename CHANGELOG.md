@@ -4,6 +4,11 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.51 — 2026-11-17
+Build: v0.1.51+2611171
+Type: feat
+- The logo mark's red dot is now an oil drop: the round accent dot inside the "A" mark is replaced by a teardrop with a pointed top and round bulb, filled in the same accent red. Applied to the app header, the sign-in gate, and the browser favicon (`web/public/favicon.svg`).
+
 ## 0.1.50 — 2026-11-15
 Build: v0.1.50+2611156
 Type: feat

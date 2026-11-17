@@ -44,10 +44,6 @@
   stroke-width: 1.7;
 }
 
-.brand-mark circle {
-  stroke: none;
-}
-
 .brand-name {
   color: var(--ink);
   font-size: 23px;
