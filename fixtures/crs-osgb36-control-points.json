@@ -1,0 +1,28 @@
+{
+  "operation": "EPSG:1314",
+  "operation_name": "OSGB36 to WGS 84 (6)",
+  "method": "Inverse Transverse Mercator on the Airy 1830 ellipsoid (k0 0.9996012717, lat_0 49, lon_0 -2, FE 400000, FN -100000), then a Position Vector transformation (EPSG:9606) to WGS 84.",
+  "accuracy_m": 2.0,
+  "area": "United Kingdom - Great Britain onshore and adjacent waters",
+  "authority": "Published EPSG:1314 parameters; every control generated with PROJ 9.4.0 cs2cs using the explicit pipeline (+proj=tmerc Airy 1830 with +towgs84=446.448,-125.157,542.06,0.15,0.247,0.842,-20.489), not a ballpark fallback.",
+  "helmert": {
+    "dx": 446.448,
+    "dy": -125.157,
+    "dz": 542.06,
+    "rx_arcsec": 0.15,
+    "ry_arcsec": 0.247,
+    "rz_arcsec": 0.842,
+    "scale_ppm": -20.489
+  },
+  "controls": [
+    { "source_crs": "EPSG:27700", "x": 400000.0, "y": -100000.0, "expected_lon": -2.001307469, "expected_lat": 49.000770783 },
+    { "source_crs": "EPSG:27700", "x": 651409.903, "y": 313177.27, "expected_lon": 1.71605199, "expected_lat": 52.657978599 },
+    { "source_crs": "EPSG:27700", "x": 523634.0, "y": 385684.0, "expected_lon": -0.143965529, "expected_lat": 53.353593884 },
+    { "source_crs": "EPSG:27700", "x": 499495.0, "y": 147785.0, "expected_lon": -0.57670411, "expected_lat": 51.220601947 },
+    { "source_crs": "EPSG:27700", "x": 100000.0, "y": 100000.0, "expected_lon": -6.25202073, "expected_lat": 50.721973828 },
+    { "source_crs": "EPSG:27700", "x": 700000.0, "y": 1200000.0, "expected_lon": 3.475412413, "expected_lat": 60.571042691 },
+    { "source_crs": "EPSG:27700", "x": 450000.0, "y": 500000.0, "expected_lon": -1.231468079, "expected_lat": 54.393031167 },
+    { "source_crs": "EPSG:27700", "x": 540000.0, "y": 200000.0, "expected_lon": 0.023604995, "expected_lat": 51.681319108 },
+    { "source_crs": "EPSG:27700", "x": 300000.0, "y": 900000.0, "expected_lon": -3.692482283, "expected_lat": 57.977974366 }
+  ]
+}

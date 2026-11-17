@@ -48,6 +48,7 @@ impl Ellipsoid {
 }
 
 const INTERNATIONAL_1924: Ellipsoid = Ellipsoid { a: 6_378_388.0, f: 1.0 / 297.0 };
+const AIRY_1830: Ellipsoid = Ellipsoid { a: 6_377_563.396, f: 1.0 / 299.3249646 };
 const WGS84: Ellipsoid = Ellipsoid { a: 6_378_137.0, f: 1.0 / 298.257_223_563 };
 
 /// Position Vector (EPSG:9606) Helmert parameters. Rotations are stored in
@@ -87,6 +88,31 @@ const ED50_TO_WGS84: Helmert = Helmert {
 const OPERATION_ID: &str = "EPSG:1311";
 const OPERATION_NAME: &str = "ED50 to WGS 84 (18)";
 const OPERATION_ACCURACY_M: f64 = 1.0;
+
+/// EPSG:1314, OSGB36 to WGS 84 (6). Position Vector (EPSG:9606).
+const OSGB36_TO_WGS84: Helmert = Helmert {
+    dx: 446.448,
+    dy: -125.157,
+    dz: 542.06,
+    rx: 0.15 * ARCSEC_TO_RAD,
+    ry: 0.247 * ARCSEC_TO_RAD,
+    rz: 0.842 * ARCSEC_TO_RAD,
+    s: -20.489e-6,
+};
+
+const BNG_OPERATION_ID: &str = "EPSG:1314";
+const BNG_OPERATION_NAME: &str = "OSGB36 to WGS 84 (6)";
+const BNG_OPERATION_ACCURACY_M: f64 = 2.0;
+const BNG_K0: f64 = 0.999_601_271_7;
+const BNG_LAT0: f64 = 49.0;
+const BNG_LON0: f64 = -2.0;
+const BNG_FE: f64 = 400_000.0;
+const BNG_FN: f64 = -100_000.0;
+/// Verified area of use for the BNG operation (Great Britain and adjacent waters).
+const BNG_LAT_MIN: f64 = 48.5;
+const BNG_LAT_MAX: f64 = 62.0;
+const BNG_LON_MIN: f64 = -10.0;
+const BNG_LON_MAX: f64 = 4.0;
 
 /// A derived display position and the exact operation that produced it.
 #[derive(Clone, Debug, PartialEq)]
@@ -139,6 +165,8 @@ pub fn normalize(crs: &str) -> String {
         "wgs 84" | "wgs84" => "4326",
         "ed50 / utm zone 31n" => "23031",
         "ed50 / utm zone 32n" => "23032",
+        "bng" | "osgb36" | "osgb 1936" | "british national grid" => "27700",
+        "osgb 1936 / british national grid" | "osgb36 / british national grid" => "27700",
         _ => trimmed,
     }
     .to_string()
@@ -152,7 +180,7 @@ fn canonical(crs: &str) -> String {
 pub fn is_supported(crs: &str) -> bool {
     matches!(
         canonical(crs).as_str(),
-        "EPSG:4326" | "EPSG:4230" | "EPSG:23031" | "EPSG:23032"
+        "EPSG:4326" | "EPSG:4230" | "EPSG:23031" | "EPSG:23032" | "EPSG:27700"
     )
 }
 
@@ -163,6 +191,7 @@ pub fn supported_crs() -> &'static [(&'static str, &'static str)] {
         ("EPSG:4230", "ED50 geographic (longitude, latitude)"),
         ("EPSG:23031", "ED50 / UTM zone 31N (easting, northing)"),
         ("EPSG:23032", "ED50 / UTM zone 32N (easting, northing)"),
+        ("EPSG:27700", "OSGB36 / British National Grid (easting, northing)"),
     ]
 }
 
@@ -191,6 +220,7 @@ pub fn transform(crs: &str, x: f64, y: f64) -> Result<Transform, CrsError> {
         }
         "EPSG:23031" => ed50_utm_to_wgs84(31, x, y),
         "EPSG:23032" => ed50_utm_to_wgs84(32, x, y),
+        "EPSG:27700" => bng_to_wgs84(x, y),
         _ => Err(CrsError::Unsupported(code)),
     }
 }
@@ -248,6 +278,107 @@ fn ed50_utm_to_wgs84(zone: u32, easting: f64, northing: f64) -> Result<Transform
     let (lat_deg, lon_deg) = (lat * R2D, lon * R2D);
     check_area(lon_deg, lat_deg)?;
     Ok(ed50_geographic_to_wgs84(lat_deg, lon_deg))
+}
+
+fn check_bng_area(lon: f64, lat: f64) -> Result<(), CrsError> {
+    if !(BNG_LAT_MIN..=BNG_LAT_MAX).contains(&lat)
+        || !(BNG_LON_MIN..=BNG_LON_MAX).contains(&lon)
+    {
+        return Err(CrsError::OutOfArea(format!(
+            "Position is outside the verified area of {BNG_OPERATION_ID} (Great Britain and adjacent waters); register a regional operation before publishing it."
+        )));
+    }
+    Ok(())
+}
+
+fn bng_to_wgs84(easting: f64, northing: f64) -> Result<Transform, CrsError> {
+    if !easting.is_finite() || !northing.is_finite() {
+        return Err(CrsError::InvalidCoordinates(
+            "Source coordinates must be finite numbers.".into(),
+        ));
+    }
+    if !(0.0..=800_000.0).contains(&easting) || !(-200_000.0..=1_400_000.0).contains(&northing) {
+        return Err(CrsError::InvalidCoordinates(
+            "British National Grid easting or northing is outside the projected domain.".into(),
+        ));
+    }
+    let (lat, lon) = inverse_tm(
+        easting,
+        northing,
+        BNG_LON0 * D2R,
+        BNG_LAT0 * D2R,
+        BNG_K0,
+        BNG_FE,
+        BNG_FN,
+        AIRY_1830,
+    );
+    let (lat_deg, lon_deg) = (lat * R2D, lon * R2D);
+    check_bng_area(lon_deg, lat_deg)?;
+    let (x, y, z) = geodetic_to_geocentric(lat, lon, AIRY_1830);
+    let (x, y, z) = OSGB36_TO_WGS84.apply(x, y, z);
+    let (lat, lon) = geocentric_to_geodetic(x, y, z, WGS84);
+    Ok(Transform {
+        longitude: lon * R2D,
+        latitude: lat * R2D,
+        operation: BNG_OPERATION_ID.into(),
+        operation_name: BNG_OPERATION_NAME.into(),
+        accuracy_m: BNG_OPERATION_ACCURACY_M,
+    })
+}
+
+fn meridian_arc(lat: f64, e: Ellipsoid) -> f64 {
+    let e2 = e.e2();
+    let e4 = e2 * e2;
+    let e6 = e4 * e2;
+    e.a * ((1.0 - e2 / 4.0 - 3.0 * e4 / 64.0 - 5.0 * e6 / 256.0) * lat
+        - (3.0 * e2 / 8.0 + 3.0 * e4 / 32.0 + 45.0 * e6 / 1024.0) * (2.0 * lat).sin()
+        + (15.0 * e4 / 256.0 + 45.0 * e6 / 1024.0) * (4.0 * lat).sin()
+        - (35.0 * e6 / 3072.0) * (6.0 * lat).sin())
+}
+
+/// Inverse Transverse Mercator for an arbitrary origin (Snyder series).
+fn inverse_tm(
+    easting: f64,
+    northing: f64,
+    lon0: f64,
+    lat0: f64,
+    k0: f64,
+    false_easting: f64,
+    false_northing: f64,
+    e: Ellipsoid,
+) -> (f64, f64) {
+    let e2 = e.e2();
+    let ep2 = e2 / (1.0 - e2);
+    let m0 = meridian_arc(lat0, e);
+    let m = m0 + (northing - false_northing) / k0;
+    let mu = m / (e.a * (1.0 - e2 / 4.0 - 3.0 * e2 * e2 / 64.0 - 5.0 * e2 * e2 * e2 / 256.0));
+    let e1 = (1.0 - (1.0 - e2).sqrt()) / (1.0 + (1.0 - e2).sqrt());
+    let phi1 = mu
+        + (3.0 * e1 / 2.0 - 27.0 * e1.powi(3) / 32.0) * (2.0 * mu).sin()
+        + (21.0 * e1 * e1 / 16.0 - 55.0 * e1.powi(4) / 32.0) * (4.0 * mu).sin()
+        + (151.0 * e1.powi(3) / 96.0) * (6.0 * mu).sin()
+        + (1097.0 * e1.powi(4) / 512.0) * (8.0 * mu).sin();
+    let (sphi, cphi) = phi1.sin_cos();
+    let tphi = phi1.tan();
+    let c1 = ep2 * cphi * cphi;
+    let t1 = tphi * tphi;
+    let n1 = e.a / (1.0 - e2 * sphi * sphi).sqrt();
+    let r1 = e.a * (1.0 - e2) / (1.0 - e2 * sphi * sphi).powf(1.5);
+    let d = (easting - false_easting) / (n1 * k0);
+    let lat = phi1
+        - (n1 * tphi / r1)
+            * (d * d / 2.0
+                - (5.0 + 3.0 * t1 + 10.0 * c1 - 4.0 * c1 * c1 - 9.0 * ep2) * d.powi(4) / 24.0
+                + (61.0 + 90.0 * t1 + 298.0 * c1 + 45.0 * t1 * t1 - 252.0 * ep2 - 3.0 * c1 * c1)
+                    * d.powi(6)
+                    / 720.0);
+    let lon = lon0
+        + (d - (1.0 + 2.0 * t1 + c1) * d.powi(3) / 6.0
+            + (5.0 - 2.0 * c1 + 28.0 * t1 - 3.0 * c1 * c1 + 8.0 * ep2 + 24.0 * t1 * t1)
+                * d.powi(5)
+                / 120.0)
+            / cphi;
+    (lat, lon)
 }
 
 fn geodetic_to_geocentric(lat: f64, lon: f64, e: Ellipsoid) -> (f64, f64, f64) {

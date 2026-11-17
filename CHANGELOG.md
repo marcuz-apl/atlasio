@@ -4,6 +4,17 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.56 — 2026-11-17
+Build: v0.1.56+2611176
+Type: feat
+- The CRS engine gains **OSGB36 / British National Grid** (`EPSG:27700`): inverse Transverse Mercator on Airy 1830 followed by the position-vector `EPSG:1314` datum shift to WGS 84 (2.0 m stated accuracy), with an area guard for Great Britain and adjacent waters. Nine PROJ-generated control points verify the implementation to 0.1 m; unsupported or out-of-area positions are still rejected, never guessed.
+- Seismic surveys can now carry a line footprint as well as a polygon: 2D lines are stored as `LineString`, 3D surveys as `Polygon`. Surveys gain `operator` and a free-form `attributes` JSON record, so source fields (UKOGL line id, SP/CDP range, length, vintage, operator) are preserved beside the geometry (migration 012).
+- New `scripts/import-seismic-surveys.mjs` reads the NSTA/UKOGL shapefiles directly (SHP, DBF, .cpg, .prj). The 2D package imports **9,435 line records** (the source index repeats five rows verbatim, which the importer collapses) and the 3D package **32 survey outlines**; each keeps its source OSGB36 / British National Grid coordinates unchanged and derives a WGS 84 display footprint only through the verified CRS engine.
+- Explore's seismic layer now draws 2D lines as thin strokes and 3D outlines as filled polygons, and the map endpoint transfers a simplified copy of the display geometry (~11 m tolerance) so the full 9,000-line overview loads ~7 MB instead of ~27 MB; the stored geometry stays exact.
+- Dashboard "Seismic Surveys" (9,467) and "2D Seismic Lines" (9,435) counts go live. "3D Seismic Cubes" stays not catalogued, because the imported 3D records are survey outlines, not volumes.
+- Survey listing is paginated (newest first, 200 per page) with `kind` filtering, plus a lightweight `?names=true` mode for bulk importers; previously the whole catalog was returned on every request.
+- Removed the twelve synthetic seismic surveys and their stored datasets that earlier verification runs had published into the workspace.
+
 ## 0.1.55 — 2026-11-17
 Build: v0.1.55+2611175
 Type: fix
