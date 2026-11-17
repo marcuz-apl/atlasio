@@ -4,6 +4,11 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.8.3 — 2026-11-17
+Build: v0.8.3+2611177
+Type: fix
+- Explore's seismic layer now separates the two shapes by colour: 2D lines draw as blue strokes and 3D survey outlines as violet filled polygons. A small legend under the Display toggles names both.
+
 ## 0.8.2 — 2026-11-17
 Build: v0.8.2+2611176
 Type: feat

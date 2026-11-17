@@ -2,7 +2,7 @@
 
 **Governed subsurface data, in place.** Atlasio is a workspace for wells, seismic, and the evidence behind them: original files, provenance, immutable versions, role-scoped access, and coordinate integrity are the product, and a map-led surface makes the catalog discoverable.
 
-Release 1 is in progress (current build `v0.8.2`; see [CHANGELOG.md](CHANGELOG.md)). The first vertical slice takes a well package through staging, QC, review, publication, search, and map display. Requirements and open decisions live in [PRD.md](PRD.md); implementation constraints and domain invariants live in [AGENTS.md](AGENTS.md).
+Release 1 is in progress (current build `v0.8.3`; see [CHANGELOG.md](CHANGELOG.md)). The first vertical slice takes a well package through staging, QC, review, publication, search, and map display. Requirements and open decisions live in [PRD.md](PRD.md); implementation constraints and domain invariants live in [AGENTS.md](AGENTS.md).
 
 ## What it does
 

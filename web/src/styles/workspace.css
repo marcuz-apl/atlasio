@@ -1034,6 +1034,36 @@ legend {
   gap: 7px;
 }
 
+.display-legend {
+  display: flex;
+  gap: 14px;
+  padding-left: 22px;
+  color: var(--ink-2);
+  font-size: 11px;
+}
+
+.display-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.legend-2d {
+  background: #6ea8fe;
+}
+
+.legend-3d {
+  background: #c084fc;
+  box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.22);
+}
+
 .display-actions {
   display: flex;
   gap: 7px;
