@@ -1295,8 +1295,7 @@ async fn dashboard(
     .await?;
     let concessions: i64 = sqlx::query_scalar(
         "SELECT count(DISTINCT code) FROM land_areas WHERE status='published' AND kind IN ('concession','licence') AND ($1 OR confidentiality='public')",
-    )
-    .bind(who != "reader")
+    )    .bind(who != "reader")
     .fetch_one(&state.db)
     .await?;
     Ok(Json(json!({
@@ -1316,8 +1315,8 @@ async fn dashboard(
             "seismic_interpretations": { "value": null, "state": "not_cataloged" },
             "reports": { "value": null, "state": "not_cataloged" },
             "ma_reports": { "value": null, "state": "not_cataloged" },
-            "concession_maps": { "value": concessions, "state": "available" },
-            "permits_licenses": { "value": null, "state": "not_cataloged" },
+            "concession_maps": { "value": null, "state": "not_cataloged" },
+            "permits_licenses": { "value": concessions, "state": "available" },
             "land_leases": { "value": null, "state": "not_cataloged" },
             "gis_basemaps": { "value": null, "state": "not_cataloged" },
             "drilling_records": { "value": null, "state": "not_cataloged" },
