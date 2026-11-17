@@ -1294,7 +1294,7 @@ async fn dashboard(
     .fetch_one(&state.db)
     .await?;
     let concessions: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM land_areas WHERE status='published' AND kind IN ('concession','licence') AND ($1 OR confidentiality='public')",
+        "SELECT count(DISTINCT code) FROM land_areas WHERE status='published' AND kind IN ('concession','licence') AND ($1 OR confidentiality='public')",
     )
     .bind(who != "reader")
     .fetch_one(&state.db)

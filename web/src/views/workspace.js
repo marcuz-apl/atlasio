@@ -340,7 +340,7 @@ async function loadSeismicFootprints() {
 function setLandVisible(visible) {
   const instance = map?.map;
   if (!instance) return;
-  for (const layer of ['land-fill', 'land-line']) {
+  for (const layer of ['landarea-fill', 'landarea-line']) {
     if (instance.getLayer(layer)) {
       instance.setLayoutProperty(layer, 'visibility', visible ? 'visible' : 'none');
     }
@@ -351,7 +351,7 @@ async function loadLandAreas() {
   const instance = map?.map;
   if (!instance) return;
   const add = async () => {
-    if (instance.getSource('land')) {
+    if (instance.getSource('land-areas')) {
       setLandVisible(settings.overlays.land !== false);
       return;
     }
@@ -361,33 +361,33 @@ async function loadLandAreas() {
     } catch {
       return;
     }
-    if (!instance.getSource('land')) {
-      instance.addSource('land', { type: 'geojson', data });
+    if (!instance.getSource('land-areas')) {
+      instance.addSource('land-areas', { type: 'geojson', data });
       instance.addLayer({
-        id: 'land-fill',
+        id: 'landarea-fill',
         type: 'fill',
-        source: 'land',
+        source: 'land-areas',
         paint: { 'fill-color': '#d9a441', 'fill-opacity': 0.12 },
       });
       instance.addLayer({
-        id: 'land-line',
+        id: 'landarea-line',
         type: 'line',
-        source: 'land',
+        source: 'land-areas',
         paint: { 'line-color': '#b8802a', 'line-width': 1.1 },
       });
       if (instance.getLayer('wells')) {
-        instance.moveLayer('land-fill', 'wells');
-        instance.moveLayer('land-line', 'wells');
+        instance.moveLayer('landarea-fill', 'wells');
+        instance.moveLayer('landarea-line', 'wells');
       }
-      instance.on('click', 'land-fill', (event) => {
+      instance.on('click', 'landarea-fill', (event) => {
         const feature = event.features && event.features[0];
         const id = feature && feature.properties && feature.properties.land_area_id;
         if (id) openLandAreaInspector(id);
       });
-      instance.on('mouseenter', 'land-fill', () => {
+      instance.on('mouseenter', 'landarea-fill', () => {
         instance.getCanvas().style.cursor = 'pointer';
       });
-      instance.on('mouseleave', 'land-fill', () => {
+      instance.on('mouseleave', 'landarea-fill', () => {
         instance.getCanvas().style.cursor = '';
       });
     }
