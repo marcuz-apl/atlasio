@@ -201,6 +201,7 @@ export const BUILD_DOCS_HTML = `
         <tr><td>0.1.48</td><td>Admin Panel gains a Map basemaps panel: administrators and data managers set the deployment default basemap (Esri styles, OpenStreetMap, or offline) through a governed <code>app_settings</code> store with an audit entry; users keep their own choice, and unset reverts to the per-theme default; migration 010.</td></tr>
         <tr><td>0.1.49</td><td>New operator script <code>scripts/reset-passwords.sh</code> recovers a locked-out staff account: one-shot reset boot, verifies both staff accounts accept their seeded initial passwords, clears MFA and lockouts, restarts clean, and records an audited <code>auth.password.reset</code> entry; a new password is forced at first sign-in.</td></tr>
         <tr><td>0.1.50</td><td>New operator script <code>scripts/cleanup-synthetic-wells.sh</code> removes synthetic test wells (the second-country and CRS/dataset/header fixtures) that verification suites leave in the workspace, including their versions, batches, files, attached datasets, and stored originals; real demo data never matches, immutability triggers are restored and verified, and audit history is preserved.</td></tr>
+        <tr><td>0.1.51</td><td>The logo mark's red dot becomes an oil drop — a teardrop with a pointed top and round bulb in the same accent red — across the app header, sign-in gate, and favicon.</td></tr>
       </tbody>
     </table>
   </div>
