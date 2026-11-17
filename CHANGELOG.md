@@ -4,6 +4,12 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.1.52 — 2026-11-17
+Build: v0.1.52+2611172
+Type: feat
+- `scripts/smoke.mjs` now cleans up after itself: every synthetic well it publishes during a run (second-country, revision, and restricted fixtures) is removed when the run ends, so verification runs no longer leave test wells in the workspace. Cleanup runs in a `finally` block, so it also removes the wells when an assertion fails.
+- `scripts/cleanup-synthetic-wells.sh` gains an exact-ID mode (`--well-ids id1,id2,...`) that removes precisely the listed wells instead of every synthetic-named well; the default name-based mode is unchanged. Set `ATLASIO_SMOKE_KEEP=1` to keep a smoke run's wells for inspection; remote `ATLASIO_URL` targets are left untouched.
+
 ## 0.1.51 — 2026-11-17
 Build: v0.1.51+2611171
 Type: feat

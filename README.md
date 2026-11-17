@@ -80,7 +80,7 @@ Runbooks: [staff accounts and MFA recovery](docs/operations/staff-accounts.md), 
 
 ## Tests
 
-- `node scripts/smoke.mjs` — synthetic packages, version replacement, search, map API, download, and access checks.
+- `node scripts/smoke.mjs` — synthetic packages, version replacement, search, map API, download, and access checks. The run deletes the three test wells it publishes when it finishes (via `scripts/cleanup-synthetic-wells.sh --well-ids`); set `ATLASIO_SMOKE_KEEP=1` to keep them for inspection. Remote targets (`ATLASIO_URL` not localhost) are left untouched.
 - `node scripts/admin-smoke.mjs` — staff sign-in, profiles, demo-key rotation, backup, verification, restore rehearsal, maintenance blocking, and audit.
 - `node scripts/auth-smoke.mjs` — MFA enrolment, code challenges, and recovery codes.
 - `node scripts/verify-ingest-wizard.mjs` — table-import wizard end to end: messy CSV profile, auto-derived rules, DMS/decimal-comma/unit/date cleaning, blocked-row report, and staging.
