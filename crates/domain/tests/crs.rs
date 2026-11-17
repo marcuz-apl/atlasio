@@ -56,6 +56,40 @@ fn ed50_transforms_match_proj_controls() {
 }
 
 #[test]
+fn osgb36_transforms_match_proj_controls() {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../fixtures/crs-osgb36-control-points.json"
+    );
+    let text = std::fs::read_to_string(path).expect("osgb36 control-point fixture is present");
+    let data: Fixture = serde_json::from_str(&text).expect("osgb36 fixture parses");
+    assert_eq!(data.operation, "EPSG:1314");
+    assert_eq!(data.accuracy_m, 2.0);
+    assert!(data.controls.len() >= 8, "expected a spread of controls");
+    for control in &data.controls {
+        let result = crs::transform(&control.source_crs, control.x, control.y)
+            .unwrap_or_else(|error| panic!("{}: {error}", control.source_crs));
+        let dlon = (result.longitude - control.expected_lon).abs();
+        let dlat = (result.latitude - control.expected_lat).abs();
+        // ~0.1 m tolerance: proves the series reproduces PROJ to well below the
+        // operation's stated 2 m accuracy.
+        assert!(
+            dlon < 1e-6 && dlat < 1e-6,
+            "{} ({}, {}) -> ({}, {}) expected ({}, {}) dlon={dlon:e} dlat={dlat:e}",
+            control.source_crs,
+            control.x,
+            control.y,
+            result.longitude,
+            result.latitude,
+            control.expected_lon,
+            control.expected_lat,
+        );
+        assert_eq!(result.operation, "EPSG:1314");
+        assert_eq!(result.accuracy_m, 2.0);
+    }
+}
+
+#[test]
 fn wgs84_is_identity() {
     let result = crs::transform("EPSG:4326", 3.5, 56.5).unwrap();
     assert_eq!(result.longitude, 3.5);

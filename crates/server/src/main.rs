@@ -264,6 +264,10 @@ pub(crate) async fn migrate(pool: &PgPool) -> Result<(), sqlx::Error> {
             "011_land_areas.sql",
             include_str!("../../../migrations/011_land_areas.sql"),
         ),
+        (
+            "012_seismic_line_geometry.sql",
+            include_str!("../../../migrations/012_seismic_line_geometry.sql"),
+        ),
     ];
     for (version, sql) in migrations {
         let applied: bool =
@@ -824,6 +828,8 @@ struct SurveyCreate {
     footprint: Value,
     license: String,
     confidentiality: Option<String>,
+    operator: Option<String>,
+    attributes: Option<Value>,
 }
 
 fn survey_row_json(row: &sqlx::postgres::PgRow) -> Value {
@@ -840,11 +846,13 @@ fn survey_row_json(row: &sqlx::postgres::PgRow) -> Value {
         "license": row.get::<String,_>("license"),
         "confidentiality": row.get::<String,_>("confidentiality"),
         "status": row.get::<String,_>("status"),
+        "operator": row.get::<Option<String>,_>("operator"),
+        "attributes": parse(row.get::<Option<String>,_>("attributes")).unwrap_or_else(|| json!({})),
         "created_at": row.get::<sqlx::types::chrono::DateTime<sqlx::types::chrono::Utc>,_>("created_at"),
     })
 }
 
-const SURVEY_COLUMNS: &str = "id, name, kind, source_crs, license, confidentiality, status, created_at, ST_AsGeoJSON(footprint) AS footprint, ST_AsGeoJSON(display_footprint) AS display_footprint";
+const SURVEY_COLUMNS: &str = "id, name, kind, source_crs, license, confidentiality, status, created_at, operator, attributes::text AS attributes, ST_AsGeoJSON(footprint) AS footprint, ST_AsGeoJSON(display_footprint) AS display_footprint";
 
 async fn create_survey(
     State(state): State<AppState>,
@@ -858,51 +866,118 @@ async fn create_survey(
     if payload.license.trim().is_empty() || payload.name.trim().is_empty() {
         return Err(ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, "Survey name and license are required."));
     }
-    let ring = payload.footprint["coordinates"][0]
-        .as_array()
-        .ok_or_else(|| ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, "Footprint must be a Polygon."))?;
-    let mut source_ring: Vec<Value> = Vec::new();
-    let mut display_ring: Vec<Value> = Vec::new();
+    let geometry_type = payload.footprint["type"]
+        .as_str()
+        .filter(|kind| matches!(*kind, "Polygon" | "LineString"))
+        .ok_or_else(|| ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, "Footprint must be a Polygon or LineString."))?
+        .to_string();
+    let pairs = if geometry_type == "Polygon" {
+        payload.footprint["coordinates"][0]
+            .as_array()
+            .ok_or_else(|| ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, "Footprint must be a Polygon."))?
+    } else {
+        payload.footprint["coordinates"]
+            .as_array()
+            .ok_or_else(|| ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, "Footprint must be a LineString."))?
+    };
+    let minimum = if geometry_type == "Polygon" { 4 } else { 2 };
+    if pairs.len() < minimum {
+        return Err(ApiError::new(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "Footprint has too few vertices",
+        ));
+    }
+    let mut source_points: Vec<Value> = Vec::new();
+    let mut display_points: Vec<Value> = Vec::new();
     let code = crs::normalize(&payload.source_crs);
     let mut display_ok = crs::is_supported(&code);
-    for pair in ring {
+    for pair in pairs {
         let x = pair[0].as_f64().unwrap_or(f64::NAN);
         let y = pair[1].as_f64().unwrap_or(f64::NAN);
-        source_ring.push(json!([x, y]));
+        source_points.push(json!([x, y]));
         if display_ok {
             match crs::transform(&code, x, y) {
-                Ok(transform) => display_ring.push(json!([transform.longitude, transform.latitude])),
+                Ok(transform) => display_points.push(json!([transform.longitude, transform.latitude])),
                 Err(_) => display_ok = false,
             }
         }
     }
-    let source_geojson = serde_json::to_string(&json!({ "type": "Polygon", "coordinates": [source_ring] }))
+    let wrap = |points: &[Value]| {
+        if geometry_type == "Polygon" {
+            json!(vec![points.to_vec()])
+        } else {
+            json!(points)
+        }
+    };
+    let source_geojson = serde_json::to_string(&json!({ "type": &geometry_type, "coordinates": wrap(&source_points) }))
         .map_err(|_| ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, "Footprint is not valid geometry."))?;
     let display_geojson = if display_ok {
-        Some(serde_json::to_string(&json!({ "type": "Polygon", "coordinates": [display_ring] })).unwrap())
+        Some(serde_json::to_string(&json!({ "type": &geometry_type, "coordinates": wrap(&display_points) })).unwrap())
     } else {
         None
     };
     let id = Uuid::new_v4();
     let confidentiality = payload.confidentiality.unwrap_or_else(|| "restricted".into());
-    sqlx::query("INSERT INTO seismic_surveys (id, name, kind, source_crs, footprint, display_footprint, license, confidentiality) VALUES ($1,$2,$3,$4,ST_SetSRID(ST_GeomFromGeoJSON($5),0),ST_SetSRID(ST_GeomFromGeoJSON($6),4326),$7,$8)")
+    sqlx::query("INSERT INTO seismic_surveys (id, name, kind, source_crs, footprint, display_footprint, license, confidentiality, operator, attributes) VALUES ($1,$2,$3,$4,ST_SetSRID(ST_GeomFromGeoJSON($5),0),ST_SetSRID(ST_GeomFromGeoJSON($6),4326),$7,$8,$9,$10::jsonb)")
         .bind(id).bind(&payload.name).bind(&payload.kind).bind(&payload.source_crs)
         .bind(&source_geojson).bind(&display_geojson).bind(&payload.license).bind(&confidentiality)
+        .bind(payload.operator.as_deref())
+        .bind(payload.attributes.unwrap_or_else(|| json!({})).to_string())
         .execute(&state.db).await?;
     Ok(Json(json!({ "id": id, "status": "published", "display_footprint": display_geojson.is_some() })))
 }
 
-async fn list_surveys(State(state): State<AppState>, headers: HeaderMap) -> ApiResult {
+#[derive(Deserialize)]
+struct SurveyListParams {
+    names: Option<bool>,
+    kind: Option<String>,
+    limit: Option<i64>,
+    offset: Option<i64>,
+}
+
+async fn list_surveys(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(params): Query<SurveyListParams>,
+) -> ApiResult {
     let who = role(
         &headers,
         &state,
         &["importer", "reviewer", "reader", "admin", "datamgr"],
     )
     .await?;
+    // Name-only mode keeps bulk importers cheap: the survey catalog can hold
+    // thousands of lines, and re-uploading it in full just to learn the names
+    // is wasteful. Full mode is paginated; newest first.
+    if params.names.unwrap_or(false) {
+        let rows = sqlx::query(
+            "SELECT id, name, kind, COALESCE(NULLIF(attributes->>'UKOGL_LINE',''), NULLIF(attributes->>'LINENAME',''), NULLIF(attributes->>'LINE_NAME',''), name) AS identity FROM seismic_surveys WHERE ($1 OR confidentiality='public') ORDER BY name",
+        )
+        .bind(who != "reader")
+        .fetch_all(&state.db)
+        .await?;
+        let names: Vec<Value> = rows
+            .iter()
+            .map(|row| {
+                json!({
+                    "id": row.get::<Uuid,_>("id"),
+                    "name": row.get::<String,_>("name"),
+                    "kind": row.get::<String,_>("kind"),
+                    "identity": row.get::<String,_>("identity"),
+                })
+            })
+            .collect();
+        return Ok(Json(json!({ "total": names.len(), "names": names })));
+    }
+    let limit = params.limit.unwrap_or(200).clamp(1, 2000);
+    let offset = params.offset.unwrap_or(0).max(0);
     let rows = sqlx::query(&format!(
-        "SELECT {SURVEY_COLUMNS} FROM seismic_surveys WHERE ($1 OR confidentiality='public') ORDER BY created_at DESC"
+        "SELECT {SURVEY_COLUMNS} FROM seismic_surveys WHERE ($1 OR confidentiality='public') AND ($2::text IS NULL OR kind=$2) ORDER BY created_at DESC LIMIT $3 OFFSET $4"
     ))
     .bind(who != "reader")
+    .bind(&params.kind)
+    .bind(limit)
+    .bind(offset)
     .fetch_all(&state.db)
     .await?;
     Ok(Json(json!(rows.iter().map(survey_row_json).collect::<Vec<_>>())))
@@ -915,9 +990,12 @@ async fn map_seismic(State(state): State<AppState>, headers: HeaderMap) -> ApiRe
         &["importer", "reviewer", "reader", "admin", "datamgr"],
     )
     .await?;
-    let rows = sqlx::query(&format!(
-        "SELECT {SURVEY_COLUMNS} FROM seismic_surveys WHERE display_footprint IS NOT NULL AND ($1 OR confidentiality='public')"
-    ))
+    // The stored display footprint stays exact. The map payload is simplified
+    // for transfer only: at ~11 m tolerance a survey line keeps its shape while
+    // the 9,000-line overview drops from ~25 MB to ~5 MB of coordinates.
+    let rows = sqlx::query(
+        "SELECT id, name, kind, source_crs, ST_AsGeoJSON(ST_SimplifyPreserveTopology(display_footprint, 0.0001)) AS display_footprint FROM seismic_surveys WHERE display_footprint IS NOT NULL AND ($1 OR confidentiality='public')"
+    )
     .bind(who != "reader")
     .fetch_all(&state.db)
     .await?;
@@ -1298,6 +1376,18 @@ async fn dashboard(
     )    .bind(who != "reader")
     .fetch_one(&state.db)
     .await?;
+    let surveys: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM seismic_surveys WHERE status='published' AND ($1 OR confidentiality='public')",
+    )
+    .bind(who != "reader")
+    .fetch_one(&state.db)
+    .await?;
+    let lines_2d: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM seismic_surveys WHERE status='published' AND kind='2d' AND ($1 OR confidentiality='public')",
+    )
+    .bind(who != "reader")
+    .fetch_one(&state.db)
+    .await?;
     Ok(Json(json!({
         "scope": if params.area.unwrap_or(false) { "selected_area" } else { "global" },
         "counts": {
@@ -1309,8 +1399,8 @@ async fn dashboard(
             "formation_tops": { "value": null, "state": "not_cataloged" },
             "core_samples": { "value": null, "state": "not_cataloged" },
             "interpretations": { "value": null, "state": "not_cataloged" },
-            "seismic_surveys": { "value": null, "state": "not_cataloged" },
-            "seismic_2d_lines": { "value": null, "state": "not_cataloged" },
+            "seismic_surveys": { "value": surveys, "state": "available" },
+            "seismic_2d_lines": { "value": lines_2d, "state": "available" },
             "seismic_3d_cubes": { "value": null, "state": "not_cataloged" },
             "seismic_interpretations": { "value": null, "state": "not_cataloged" },
             "reports": { "value": null, "state": "not_cataloged" },
