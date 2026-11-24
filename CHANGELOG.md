@@ -4,6 +4,11 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.8.4 — 2026-11-24
+Build: v0.8.4+2611241
+Type: feat
+- Added a standalone Dockerized development status page for Atlasio, with an overview of the map-led catalog, well and seismic records, and review provenance.
+
 ## 0.8.3 — 2026-11-17
 Build: v0.8.3+2611177
 Type: fix
