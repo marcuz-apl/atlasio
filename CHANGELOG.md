@@ -4,6 +4,11 @@ Every released build, newest first. The Admin Panel at `#/admin` renders this fi
 
 Maintenance rule: add the next version's section in the same `feat`, `fix`, or `perf` commit that bumps `VERSION`. Run `.githooks/alfazen-version id` to obtain the build identifier the commit hook will stamp. Keep bullets factual and user-visible; internal refactors that change no behaviour can be omitted.
 
+## 0.8.5 — 2026-11-24
+Build: v0.8.5+2611242
+Type: fix
+- Patch and minor version components now roll over from 9 to 0, carrying into the next component.
+
 ## 0.8.4 — 2026-11-24
 Build: v0.8.4+2611241
 Type: feat
